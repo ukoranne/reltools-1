@@ -144,10 +144,14 @@ def cloneSnapRouteGitRepos():
     dirLocation      = gHomeDir + SNAP_ROUTE_SRC
 
     gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models'] # (URL, DIR)
-                        #('https://'+gUserName+'@github.com/SnapRoute/thrift', gHomeDir+EXTERNAL_SRC),
     for repo in gitReposToClone:
         cloneGitRepo ( userRepoPrefix + repo , dirLocation)
+        os.chdir(repo)
         setRemoteUpstream (remoteRepoPrefix +repo+'.git')
+
+def setupGitCredentialCache ():
+    cmd = 'git config --global credential.helper \"cache --timeout=3600\"'
+    os.system(cmd)
 
 if __name__ == '__main__':
     gUserName =  raw_input('Please Enter github username:')
@@ -161,5 +165,6 @@ if __name__ == '__main__':
     else:
         print ' Thrift already exists'
 
+    setupGitCredentialCache()
     cloneSnapRouteGitRepos()
     getExternalGoDeps()
