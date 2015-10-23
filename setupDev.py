@@ -90,6 +90,11 @@ def gitRepoSyncToTag(dirloc, tag):
 def setRemoteUpstream (repoUrl):
     command = 'git remote add upstream ' + repoUrl
     executeCommand(command)
+    commandsToSync = ['git fetch upstream',
+                      'git checkout master',
+                      'git merge upstream/master']
+    for cmd in commandsToSync:
+        executeCommand(cmd)
 
 def getGolangExternalDependencies(repourl, dirloc):
     os.chdir(dirloc)
