@@ -6,19 +6,21 @@ thrift_tar = thrift_pkg_name +'.tar.gz'
 
 TMP_DIR = ".tmp"
 SNAP_ROUTE_SRC = '/snaproute/src/'
-EXTERNAL_SRC = '/external/src/github.com/'
+EXTERNAL_SRC = '/external/src/'
 
 gHomeDir = None
+gDryRun =  False
 
 def executeCommand (command) :
+    out = ''
     if type(command) != list:
         command = [ command]
     for cmd in command:
-        #print 'Executing command %s' %(cmd)
-        #print "%s" %(cmd.split())
-        #print subprocess.check_output(cmd.split())
-        process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-        out,err = process.communicate()
+        if gDryRun :
+            print cmd
+        else:
+            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+            out,err = process.communicate()
         return out
 
 def downloadThrift() :
@@ -33,6 +35,7 @@ def downloadThrift() :
     executeCommand(command)
 
 def verifyThriftInstallation():
+    #return True
     command = []
     command.append('thrift -version')
      #'Thrift version 0.9.3'
@@ -79,7 +82,11 @@ def cloneGitRepo (repourl, dirloc):
     command = 'git clone '+ repourl
     executeCommand(command)
     
-def getGolandExternalDependencies(repourl, dirloc):
+def setRemoteUpstream (repoUrl):
+    command = 'git remote add upstream ' + repoUrl
+    executeCommand(command)
+
+def getGolangExternalDependencies(repourl, dirloc):
     os.chdir(dirloc)
     command = 'git clone '+ repourl
     executeCommand(command)
@@ -90,28 +97,62 @@ def createDirectoryStructure() :
         command = 'mkdir -p '+ gHomeDir + everydir 
         executeCommand(command)
 
+def getExternalGoDeps() :
+    externalGoDeps = [
+                     { 'repo'      : 'thrift',
+                       'renamesrc' : 'thrift',
+                       'renamedst' : 'git.apache.org/thrift.git'
+                     },
+                     { 'repo'       : 'mux',
+                       'renamesrc'  : 'mux',
+                       'renamedst'  : 'github.com/gorilla/'
+                     },
+                     { 'repo'       : 'context',
+                       'renamesrc'  : 'context',
+                       'renamedst'  : 'github.com/gorilla/'
+                     }
+                     ]
+
+    dirLocation = gHomeDir + EXTERNAL_SRC 
+    for dep in externalGoDeps:
+        repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
+        cloneGitRepo ( repoUrl , dirLocation)
+        dstDir = dep['renamedst']
+        dirToMake = dstDir 
+        if not dstDir.endswith('/'):
+            dirToMake = ''.join(dstDir.split('/')[:-1])
+        os.chdir(dirLocation)
+        for d in dirToMake.split('/'):
+            if len(d):
+                cmd  =  'mkdir -p ' + d
+                executeCommand(cmd)
+                os.chdir(d)
+        cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
+        executeCommand(cmd)
+
+
+def cloneSnapRouteGitRepos():
+    userRepoPrefix   = 'https://github.com/'+gUserName+'/'
+    remoteRepoPrefix = 'https://github.com/'+ 'SnapRoute/'
+    dirLocation      = gHomeDir + SNAP_ROUTE_SRC
+
+    gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models'] # (URL, DIR)
+                        #('https://'+gUserName+'@github.com/SnapRoute/thrift', gHomeDir+EXTERNAL_SRC),
+    for repo in gitReposToClone:
+        cloneGitRepo ( userRepoPrefix + repo , dirLocation)
+        setRemoteUpstream (remoteRepoPrefix +repo+'.git')
+
 if __name__ == '__main__':
     gUserName =  raw_input('Please Enter github username:')
-    gHomeDir =  os.getcwd()
-    #print '### Home Directory is %s' %(gHomeDir)
+    gHomeDir = os.path.dirname(os.getcwd())
+    print '### Anchor Directory is %s' %(gHomeDir)
 
     createDirectoryStructure()
-    if False== verifyThriftInstallation():
-        print ' Thrift doesnt exist'
+    if False == verifyThriftInstallation():
         installThriftDependencies()
         installThrift()
     else:
         print ' Thrift already exists'
-    gitReposToClone = [ # (URL, DIR)
-                        ('https://'+gUserName+'@github.com/SnapRoute/thrift', gHomeDir+EXTERNAL_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/l2', gHomeDir+SNAP_ROUTE_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/l3', gHomeDir+SNAP_ROUTE_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/utils', gHomeDir+SNAP_ROUTE_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/asicd', gHomeDir+SNAP_ROUTE_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/config', gHomeDir+SNAP_ROUTE_SRC),
-                        ('https://'+gUserName+'@github.com/'+gUserName+'/models', gHomeDir+SNAP_ROUTE_SRC),
-                      ]
-    for repo in gitReposToClone:
-        #cloneGitRepo(repo[0], repo[1])
-        pass
 
+    cloneSnapRouteGitRepos()
+    getExternalGoDeps()
