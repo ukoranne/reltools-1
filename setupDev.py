@@ -81,6 +81,11 @@ def cloneGitRepo (repourl, dirloc):
     os.chdir(dirloc)
     command = 'git clone '+ repourl
     executeCommand(command)
+
+def gitRepoSyncToTag(dirloc, tag):
+    os.chdir(dirloc)
+    command = 'git checkout tags/'+ tag
+    executeCommand(command)
     
 def setRemoteUpstream (repoUrl):
     command = 'git remote add upstream ' + repoUrl
@@ -100,6 +105,7 @@ def createDirectoryStructure() :
 def getExternalGoDeps() :
     externalGoDeps = [
                      { 'repo'      : 'thrift',
+                       'reltag'    : '0.9.3',
                        'renamesrc' : 'thrift',
                        'renamedst' : 'git.apache.org/thrift.git'
                      },
@@ -117,6 +123,8 @@ def getExternalGoDeps() :
     for dep in externalGoDeps:
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         cloneGitRepo ( repoUrl , dirLocation)
+        if dep.has_key('reltag'):
+            gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
         dstDir = dep['renamedst']
         dirToMake = dstDir 
         if not dstDir.endswith('/'):
@@ -129,7 +137,6 @@ def getExternalGoDeps() :
                 os.chdir(d)
         cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
         executeCommand(cmd)
-
 
 def cloneSnapRouteGitRepos():
     userRepoPrefix   = 'https://github.com/'+gUserName+'/'
