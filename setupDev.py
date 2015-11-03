@@ -39,8 +39,12 @@ def verifyThriftInstallation():
     #return True
     command = []
     command.append('thrift -version')
-     #'Thrift version 0.9.3'
-    resp = executeCommand(command)
+    #'Thrift version 0.9.3'
+    resp = ""
+    try:
+        resp = executeCommand(command)
+    except:
+        pass
     print 'Thrift version check returned %s' %(resp)
     if thrift_version in resp:
         return True
@@ -122,7 +126,11 @@ def getExternalGoDeps() :
                      { 'repo'       : 'context',
                        'renamesrc'  : 'context',
                        'renamedst'  : 'github.com/gorilla/'
-                     }
+                     },
+                     { 'repo'        : 'gopacket',
+                       'renamesrc'   : 'gopacket',
+                       'renamedst'   : 'github.com/gopacket'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
