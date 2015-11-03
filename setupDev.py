@@ -126,10 +126,10 @@ def getExternalGoDeps() :
                        'renamesrc'  : 'context',
                        'renamedst'  : 'github.com/gorilla/'
                      },
-					{ 'repo'        : 'gopacket',
-					  'renamesrc'   : 'gopacket',
-					  'renamedst'   : 'github.com/gopacket'
-					},
+                     { 'repo'        : 'gopacket',
+                       'renamesrc'   : 'gopacket',
+                       'renamedst'   : 'github.com/gopacket'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
