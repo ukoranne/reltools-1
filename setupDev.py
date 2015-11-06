@@ -7,6 +7,7 @@ thrift_tar = thrift_pkg_name +'.tar.gz'
 TMP_DIR = ".tmp"
 SNAP_ROUTE_SRC = '/snaproute/src/'
 EXTERNAL_SRC = '/external/src/'
+GENERATED_SRC = '/generated/src/'
 
 gHomeDir = None
 gDryRun =  False
@@ -106,7 +107,7 @@ def getGolangExternalDependencies(repourl, dirloc):
     executeCommand(command)
 
 def createDirectoryStructure() :
-    dirs = [SNAP_ROUTE_SRC,EXTERNAL_SRC]
+    dirs = [SNAP_ROUTE_SRC,EXTERNAL_SRC, GENERATED_SRC]
     for everydir in dirs:
         command = 'mkdir -p '+ gHomeDir + everydir 
         executeCommand(command)
