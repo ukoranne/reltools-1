@@ -129,7 +129,7 @@ def getExternalGoDeps() :
                      },
                      { 'repo'        : 'gopacket',
                        'renamesrc'   : 'gopacket',
-                       'renamedst'   : 'github.com/gopacket'
+                       'renamedst'   : 'github.com/google/gopacket'
                      },
                      ]
 
