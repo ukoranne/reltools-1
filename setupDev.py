@@ -1,5 +1,7 @@
 import os
 import subprocess
+from optparse import OptionParser
+
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
 thrift_tar = thrift_pkg_name +'.tar.gz'
@@ -129,7 +131,7 @@ def getExternalGoDeps() :
                      },
                      { 'repo'        : 'gopacket',
                        'renamesrc'   : 'gopacket',
-                       'renamedst'   : 'github.com/google/gopacket'
+                       'renamedst'   : 'github.com/google/'
                      },
                      ]
 
@@ -152,25 +154,57 @@ def getExternalGoDeps() :
         cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
         executeCommand(cmd)
 
-def cloneSnapRouteGitRepos():
+def cloneSnapRouteGitRepos( gitReposToClone = None):
     userRepoPrefix   = 'https://github.com/'+gUserName+'/'
     remoteRepoPrefix = 'https://github.com/'+ 'SnapRoute/'
     dirLocation      = gHomeDir + SNAP_ROUTE_SRC
 
-    gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models'] # (URL, DIR)
+    if not gitReposToClone :
+        gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors'] # (URL, DIR)
     for repo in gitReposToClone:
         cloneGitRepo ( userRepoPrefix + repo , dirLocation)
         os.chdir(repo)
         setRemoteUpstream (remoteRepoPrefix +repo+'.git')
+
+def setupMakefileLink ():
+    if not os.path.isfile(gHomeDir + SNAP_ROUTE_SRC +'Makefile' ):
+        cmd = 'ln -s Makefile '+ gHomeDir + SNAP_ROUTE_SRC +'Makefile'
+        executeCommand(cmd)
 
 def setupGitCredentialCache ():
     cmd = 'git config --global credential.helper \"cache --timeout=3600\"'
     os.system(cmd)
 
 if __name__ == '__main__':
+    parser = OptionParser()
+
+    parser.add_option("-r", "--repo", 
+                      dest="specific_repo",
+                      action='store',
+                      help="Only specific Snaproute repo")
+
+    parser.add_option("-s", "--snaproute", 
+                      dest="sr_repos",
+                      action='store_false',
+                      help="Only Snaproute repos")
+
+    parser.add_option("-e", "--external", 
+                      dest="ex_repos",
+                      action='store_true',
+                      help="Only External repos")
+
+    (options, args) = parser.parse_args()
+
     gUserName =  raw_input('Please Enter github username:')
     gHomeDir = os.path.dirname(os.getcwd())
     print '### Anchor Directory is %s' %(gHomeDir)
+
+    todo = ['external', 'snaproute', 'specific_repo']
+    if options.sr_repos or options.specific_repo:
+        todo = ['snaproute']
+
+    if options.ex_repos:
+        todo = ['external']
 
     createDirectoryStructure()
     if False == verifyThriftInstallation():
@@ -180,5 +214,11 @@ if __name__ == '__main__':
         print ' Thrift already exists'
 
     setupGitCredentialCache()
-    cloneSnapRouteGitRepos()
-    getExternalGoDeps()
+    if 'snaproute' in todo:
+        reposList = None
+        if options.specific_repo:
+            reposList = [options.specific_repo]
+        cloneSnapRouteGitRepos(reposList)
+
+    if 'external' in todo:
+        getExternalGoDeps()
