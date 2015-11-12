@@ -168,7 +168,7 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
 
 def setupMakefileLink ():
     if not os.path.isfile(gHomeDir + SNAP_ROUTE_SRC +'Makefile' ):
-        cmd = 'ln -s Makefile '+ gHomeDir + SNAP_ROUTE_SRC +'Makefile'
+        cmd = 'ln -s ' + gHomeDir +  '/reltools/Makefile '+ gHomeDir + SNAP_ROUTE_SRC +'Makefile'
         executeCommand(cmd)
 
 def setupGitCredentialCache ():
@@ -207,6 +207,7 @@ if __name__ == '__main__':
         todo = ['external']
 
     createDirectoryStructure()
+    setupMakefileLink()
     if False == verifyThriftInstallation():
         installThriftDependencies()
         installThrift()
