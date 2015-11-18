@@ -84,10 +84,11 @@ def installThriftDependencies ():
     command.append('sudo apt-get install libboost-dev libboost-test-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev ant')
     executeCommand(command)
 
-def cloneGitRepo (repourl, dirloc):
+def cloneGitRepo (repourl, repo, dirloc):
     os.chdir(dirloc)
-    command = 'git clone '+ repourl
-    executeCommand(command)
+    if not (os.path.exists(dirloc + repo)  and os.path.isdir(dirloc + repo)):
+        command = 'git clone '+ repourl
+        executeCommand(command)
 
 def gitRepoSyncToTag(dirloc, tag):
     os.chdir(dirloc)
@@ -133,26 +134,39 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'gopacket',
                        'renamedst'   : 'github.com/google/'
                      },
+                     { 'repo'        : 'go-sqlite3',
+                       'reltag'      : 'v1.1.0',
+                       'renamesrc'   : 'go-sqlite3',
+                       'renamedst'   : 'github.com/mattn/'
+                     },
+                     { 'repo'        : 'pyang',
+                       'renamesrc'   : 'pyang',
+                       'renamedst'   : ''
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
     for dep in externalGoDeps:
+        #if dep['repo'] == 'pyang':
+        #    import ipdb;ipdb.set_trace()
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
-        cloneGitRepo ( repoUrl , dirLocation)
-        if dep.has_key('reltag'):
-            gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
         dstDir = dep['renamedst']
         dirToMake = dstDir 
-        if not dstDir.endswith('/'):
-            dirToMake = ''.join(dstDir.split('/')[:-1])
-        os.chdir(dirLocation)
-        for d in dirToMake.split('/'):
-            if len(d):
-                cmd  =  'mkdir -p ' + d
-                executeCommand(cmd)
-                os.chdir(d)
-        cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
-        executeCommand(cmd)
+        if not (dstDir != ''  and os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
+            cloneGitRepo ( repoUrl ,dep['repo'], dirLocation)
+            if dep.has_key('reltag'):
+                gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
+
+            if not dstDir.endswith('/'):
+                dirToMake = ''.join(dstDir.split('/')[:-1])
+            os.chdir(dirLocation)
+            for d in dirToMake.split('/'):
+                if len(d):
+                    cmd  =  'mkdir -p ' + d
+                    executeCommand(cmd)
+                    os.chdir(d)
+            cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
+            executeCommand(cmd)
 
 def cloneSnapRouteGitRepos( gitReposToClone = None):
     userRepoPrefix   = 'https://github.com/'+gUserName+'/'
@@ -162,7 +176,7 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
     if not gitReposToClone :
         gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors'] # (URL, DIR)
     for repo in gitReposToClone:
-        cloneGitRepo ( userRepoPrefix + repo , dirLocation)
+        cloneGitRepo ( userRepoPrefix + repo, repo, dirLocation)
         os.chdir(repo)
         setRemoteUpstream (remoteRepoPrefix +repo+'.git')
 
