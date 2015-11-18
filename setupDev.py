@@ -139,14 +139,20 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'go-sqlite3',
                        'renamedst'   : 'github.com/mattn/'
                      },
+                     { 'repo'        : 'pyang',
+                       'renamesrc'   : 'pyang',
+                       'renamedst'   : ''
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
     for dep in externalGoDeps:
+        #if dep['repo'] == 'pyang':
+        #    import ipdb;ipdb.set_trace()
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir = dep['renamedst']
         dirToMake = dstDir 
-        if not (os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
+        if not (dstDir != ''  and os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
             cloneGitRepo ( repoUrl ,dep['repo'], dirLocation)
             if dep.has_key('reltag'):
                 gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
