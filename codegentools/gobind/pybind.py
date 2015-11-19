@@ -665,14 +665,14 @@ def build_typedefs(ctx, defnd):
         class_map[type_name]["default"] = default[0]
         class_map[type_name]["quote_default"] = default[1]
 
-def GetParentChildrenLeafs(ctx, i_module, parent, storeChildren=None):
+def GetParentChildrenLeafs(ctx, i_module, parent, parentChildrenLeaf=None):
 
   if parent.parent not in ({}, None, ''):
     childLeaf = 0
     for ch in parent.i_children:
       if ch.keyword in ('leaf', 'leaf-list'):
         childLeaf += 1
-        if ch.arg not in storeChildren:
+        if ch.arg not in parentChildrenLeaf:
           t = ch.search_one('type')
           et = None
           if t is not None:
@@ -682,18 +682,18 @@ def GetParentChildrenLeafs(ctx, i_module, parent, storeChildren=None):
           #print ch.__dict__
           if hasattr(ch, "i_is_key"):
             isKey = ch.i_is_key
-          storeChildren.update({ch.arg: (et, isKey)})
+          parentChildrenLeaf.update({ch.arg: (et, isKey)})
 
     if childLeaf == len(parent.i_children):
       x = [ch.arg for ch in parent.i_children if ch.keyword in ('leaf', 'leaf-list')]
       for arg in x:
-        storeChildren.pop(arg)
+        parentChildrenLeaf.pop(arg)
       #print "found all children are leafs removing from childrenStore", x
     #else:
       #x = [ch.arg for ch in parent.i_children if ch.keyword in ('leaf', 'leaf-list')]
       #if x:
       #  print "mix of leaf and not", [ch.arg for ch in parent.i_children if ch.keyword in ('leaf', 'leaf-list')]
-    GetParentChildrenLeafs(ctx, parent.i_module, parent.parent, storeChildren)
+    GetParentChildrenLeafs(ctx, parent.i_module, parent.parent, parentChildrenLeaf)
 
 def find_definitions(defn, ctx, module, prefix):
   # Find the statements within a module that map to a particular type of
@@ -755,7 +755,7 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
       e = get_element(ctx, fdDict, ch, module, parent, path+"/"+ch.arg,\
         parent_cfg=parent_cfg, choice=choice)
       # only add the element if this is an all leaf
-      if len([ch.arg for ch in i_children if ch.keyword in ('leaf', 'leaf-list')]) == len(i_children):
+      if len([c.arg for c in i_children if c.keyword in ('leaf', 'leaf-list')]) == len(i_children):
         elements += e
       #print 'element name', len(e), e[0]["name"], e[0]
       parentChildrenLeaf = {}
@@ -799,7 +799,6 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
 
     # add the structure members
     addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, fdDict["struct"])
-
 
     choices = {}
     choice_attrs = []
@@ -960,9 +959,15 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
   for name, elemtype in parentChildrenLeaf.iteritems():
     elements_str += "\t// parent %s\n" % elemtype[0][0]
     if elemtype[1]:
-      elements_str += "\t%s %s  %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+      if isinstance(elemtype[0][1]["native_type"],list):
+        elements_str += "\t%sKey %s  []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+      else:
+        elements_str += "\t%sKey %s  %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
     else:
-      elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
+      if isinstance(elemtype[0][1]["native_type"],list):
+        elements_str += "\t%s []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0])
+      else:
+        elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
 
 
   for i in elements:
@@ -987,7 +992,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
           elemName = elemName + '_' + subsubname
           if keyname == i["name"]:
-            elements_str += "\t%s %s  %s\n" % (elemName, varname, LIST_KEY_STR)
+            elements_str += "\t%skey %s  %s\n" % (elemName, varname, LIST_KEY_STR)
           else:
             elements_str += "\t%s %s\n" % (elemName, varname)
       else:
@@ -996,7 +1001,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             varname = varname[0]
 
           if keyname == i["name"]:
-            elements_str += "\t%s []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
+            elements_str += "\t%sKey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
           else:
             elements_str += "\t%s []%s\n" % (elemName, varname)
 
@@ -1007,7 +1012,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
       listType = i["type"]
 
       if keyname == i["name"]:
-        elements_str += "\t%s []%s  %s\n" % (elemName, listType, LIST_KEY_STR)
+        elements_str += "\t%sKey []%s  %s\n" % (elemName, listType, LIST_KEY_STR)
       else:
         elements_str += "\t%s []%s" % (elemName, listType)
 
@@ -1027,7 +1032,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
           membertype = "[]%s" % membertype[0]
 
         if keyname == i["name"]:
-          elements_str += "\t%s %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
+          elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
         else:
           elements_str += "\t%s %s\n" % (elemName, membertype)
     else:
@@ -1040,7 +1045,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
       #print "i[name]", i["name"], keyname
       if keyname == i["name"]:
-        elements_str += "\t%s %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
+        elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
       else:
         elements_str += "\t%s %s\n" % (elemName, membertype)
   elements_str += "}\n"
@@ -1308,6 +1313,24 @@ def get_element(ctx, fdDict, element, module, parent, path,
   # produces a dictionary that can then be mapped into the relevant code that
   # dynamically generates a class.
 
+  # NOTE: THIS IS A HACK AND SPECIFIC TO OPENCONFIG YANG files
+  pathList = copy.copy(path.split('/'))
+  lengthPathList = len(pathList)
+  if lengthPathList > 3:
+    for i in range(lengthPathList):
+      # remove convention naming of list and name
+      if i+1 < len(pathList) and pathList[i+1] == pathList[i][:-1]:
+        if lengthPathList != 4:
+          pathList.remove(pathList[i+1])
+        pathList.remove(pathList[i])
+    #print "path:",path
+    #print "pathList:", pathList
+
+    newpath = "/".join(pathList)
+    #print "newpath:",newpath
+  else:
+    newpath = path
+
   this_object = []
   default = False
   has_children = False
@@ -1330,13 +1353,13 @@ def get_element(ctx, fdDict, element, module, parent, path,
     # Fixup the path when within a choice, because this iteration belives that
     # we are under a new container, but this does not exist in the path.
     if element.keyword in ["choice"]:
-      path_parts = path.split("/")
+      path_parts = newpath.split("/")
       npath = ""
       for i in range(0,len(path_parts)-1):
         npath += "%s/" % path_parts[i]
       npath.rstrip("/")
     else:
-      npath=path
+      npath=newpath
 
     # Create an element for a container.
     if element.i_children:
@@ -1353,7 +1376,7 @@ def get_element(ctx, fdDict, element, module, parent, path,
       # Handle the different cases of class name, this depends on whether we
       # were asked to split the bindings into a directory structure or not.
 
-      elemdict["type"] = CreateStructSkeleton(module, None, element, path, write=False)
+      elemdict["type"] = CreateStructSkeleton(module, None, element, newpath, write=False)
       print 'creating unique class name', elemdict["type"]
 
       # Deal with specific cases for list - such as the key and how it is
@@ -1545,7 +1568,7 @@ def get_element(ctx, fdDict, element, module, parent, path,
     # within it.
     elemdict = {"name": elemname, "type": elemntype,
                         "origtype": element.search_one('type').arg, "path": \
-                        safe_name(path),
+                        safe_name(newpath),
                         "class": cls, "default": elemdefault, \
                         "config": elemconfig, "defaulttype": default_type, \
                         "quote_arg": quote_arg, \
