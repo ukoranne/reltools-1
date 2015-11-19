@@ -6,6 +6,8 @@ thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
 thrift_tar = thrift_pkg_name +'.tar.gz'
 
+pcap_version = '1.6.2-2'
+
 TMP_DIR = ".tmp"
 SNAP_ROUTE_SRC = '/snaproute/src/'
 EXTERNAL_SRC = '/external/src/'
@@ -36,6 +38,13 @@ def downloadThrift() :
     command.append('wget -O '+ TMP_DIR + '/' +thrift_tar+ ' '+ 
                     'http://apache.arvixe.com/thrift/0.9.3/thrift-0.9.3.tar.gz')
     executeCommand(command)
+
+def installGoPacketDependencies ():
+    command = []
+    command.append('sudo apt-get install libpcap-dev')
+    executeCommand(command)
+
+
 
 def verifyThriftInstallation():
     #return True
@@ -227,6 +236,8 @@ if __name__ == '__main__':
         installThrift()
     else:
         print ' Thrift already exists'
+		
+	installGoPacketDependencies()
 
     setupGitCredentialCache()
     if 'snaproute' in todo:
