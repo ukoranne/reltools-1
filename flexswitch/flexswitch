@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+import os
+import sys
+import time
+daemonsToStart = [
+                 #{'name': 'asicd',
+                 # 'params': '-params=/opt/flexswitch/params'},
+
+                 {'name': 'ribd',
+                  'params': '-params=/opt/flexswitch/params'},
+
+                 #{'name': 'portd',
+                 # 'params': '-params=/opt/flexswitch/params'},
+
+                 #{'name': 'bgpd',
+                 # 'params': '-params=/opt/flexswitch/params'},
+
+                 {'name': 'confd',
+                  'params': '-params=/opt/flexswitch/params'},
+                 ]
+if __name__=="__main__":
+    for dmn in daemonsToStart: 
+        print "Starting Daemon %s" %( dmn['name'])
+        cmd = '/opt/flexswitch/bin/'+ dmn['name'] 
+        #cmd = '/home/hari/git/reltools/flexswitch/dmn'
+        print "Command before  is %s" %(cmd)
+        args = (cmd, '-params=/opt/flexswitch/bin/params')
+        pid =  os.fork()
+        if pid > 0:
+            continue
+        else:
+	    os.chdir("/") 
+            os.setsid() 
+            os.umask(0) 
+            pid = os.fork() 
+            if pid >0:
+                sys.exit()
+            else:
+                os.execvp(cmd, args)

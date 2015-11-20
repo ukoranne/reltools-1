@@ -17,7 +17,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="flexswitch"
 NAME=flexswitch
-DAEMON=/usr/sbin/flexswitch
+DAEMON=/opt/flexswitch/flexswitch
 DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
@@ -69,6 +69,7 @@ do_start()
 #
 do_stop()
 {
+	return 0
 	# Return
 	#   0 if daemon has been stopped
 	#   1 if daemon was already stopped
@@ -94,6 +95,7 @@ do_stop()
 # Function that sends a SIGHUP to the daemon/service
 #
 do_reload() {
+	return 0
 	#
 	# If the daemon can reload its configuration without
 	# restarting (for example, when it is sent a SIGHUP),
