@@ -200,7 +200,7 @@ def executeGoModelCleanupCommand (command) :
             print cmd
             process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
-
+            print out, err
         return out
 
 # Base machinery to support operation as a plugin to pyang.
@@ -222,9 +222,8 @@ class BTPyGOClass(plugin.PyangPlugin):
                 "func": open(name+"_func.go", 'w')}
 
       # TODO figure out why this is causing an execption
-      #cmd = "cd %s; rm *.go" % CODE_GENERATION_PATH
-      #cmd = "cd %s" % CODE_GENERATION_PATH
-      #executeGoModelCleanupCommand([cmd])
+      cmd = "rm %s%s*" % (CODE_GENERATION_PATH, name)
+      executeGoModelCleanupCommand([cmd])
 
       build_pybind(ctx, modules, fdDict)
 
@@ -381,9 +380,15 @@ def build_pybind(ctx, modules, fdDict):
   for fd in fdDict.values():
     fd.write(ctx.pybind_common_hdr)
 
-  #fd.write("import (\n")
-  #fd.write("\t \"unicode\"\n")
-  #fd.write(")\n")
+
+  fdDict["func"].write("import (\n")
+  fdDict["func"].write("""\t \"encoding/json\"\n
+  \t\"fmt\"\n""")
+  fdDict["func"].write(")\n")
+
+  fdDict["func"].write("""type ConfigObj interface {
+	UnmarshalObject(data []byte) (ConfigObj, error)
+    }\n""")
 
 
   # Build the identities and typedefs (these are added to the class_map which
@@ -749,8 +754,14 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
           e = get_element(ctx, fdDict, case_ch, module, parent, \
             path+"/"+ch.arg, parent_cfg=parent_cfg, \
             choice=(ch.arg,choice_ch.arg))
-          elements += e
-          print 'element name xx', len(e), e[0]["name"], e[0]
+          if len([c.arg for c in choice_ch.i_children if c.keyword in ('leaf', 'leaf-list')]) == len(i_children):
+            elements += e
+          #print 'element name', len(e), e[0]["name"], e[0]
+          parentChildrenLeaf = {}
+          GetParentChildrenLeafs(ctx, case_ch.i_module, case_ch.parent, parentChildrenLeaf)
+
+          #elements += e
+          #print 'element name xx', len(e), e[0]["name"], e[0]
     else:
       e = get_element(ctx, fdDict, ch, module, parent, path+"/"+ch.arg,\
         parent_cfg=parent_cfg, choice=choice)
@@ -776,6 +787,8 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
       # this will create the beginning of the struct definition
       structName = CreateStructSkeleton(module, fdDict["struct"], parent, path)
       if structName != '':
+        print 'creating unique class name', structName
+
         addStructDescription(module, fdDict["struct"], parent, path)
       else:
         return None
@@ -931,17 +944,15 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     nfd.write("\treturn new\n}\n\n")
 
     # TODO: write unmarshalObject function
-    #func (obj Vlan) UnmarshalObject(body []byte) (ConfigObj, error) {
-    #var vlanObj Vlan
-    #var err error
-    #if err = json.Unmarshal(body, &vlanObj); err != nil  {
-    #    fmt.Println("### Vlan create called, unmarshal failed", vlanObj)
-    #}
-    #return vlanObj, err
-    #}
-    #if 'Config' == structName[-6:]:
-
-
+    if structName.endswith("Config"):
+      nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
+      var Obj %s
+      var err error
+      if err = json.Unmarshal(body, &Obj); err != nil  {
+          fmt.Println("### %s create called, unmarshal failed", Obj)
+      }
+      return Obj, err
+      }\n""" %(structName, structName, structName))
 
   return structName
 
@@ -959,16 +970,18 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
   for name, elemtype in parentChildrenLeaf.iteritems():
     elements_str += "\t// parent %s\n" % elemtype[0][0]
     if elemtype[1]:
-      if isinstance(elemtype[0][1]["native_type"],list):
-        elements_str += "\t%sKey %s  []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+      if isinstance(elemtype[0][1]["native_type"], list):
+        elements_str += "\t%sKey []%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
       else:
-        elements_str += "\t%sKey %s  %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+        elements_str += "\t%sKey %s %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
     else:
-      if isinstance(elemtype[0][1]["native_type"],list):
-        elements_str += "\t%s []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0])
+      if elemtype[0][0] != 'leaf-union':
+        if isinstance(elemtype[0][1]["native_type"], list):
+          elements_str += "\t%s []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0])
+        else:
+          elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
       else:
-        elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
-
+        print 'WARNING UNHANDLED PARENT LEAF-UNION', elemtype
 
   for i in elements:
     #print '******************************************'
@@ -1314,20 +1327,25 @@ def get_element(ctx, fdDict, element, module, parent, path,
   # dynamically generates a class.
 
   # NOTE: THIS IS A HACK AND SPECIFIC TO OPENCONFIG YANG files
+  # BGP/VLAN/INTERFACE
   pathList = copy.copy(path.split('/'))
+  modPathList = copy.copy(path.split('/'))
+  #print 'orig:', pathList
   lengthPathList = len(pathList)
-  if lengthPathList > 3:
+  if lengthPathList > 4 and pathList[-1] in ("config", "counters", "state"):
     for i in range(lengthPathList):
       # remove convention naming of list and name
-      if i+1 < len(pathList) and pathList[i+1] == pathList[i][:-1]:
-        if lengthPathList != 4:
-          pathList.remove(pathList[i+1])
-        pathList.remove(pathList[i])
-    #print "path:",path
-    #print "pathList:", pathList
-
-    newpath = "/".join(pathList)
-    #print "newpath:",newpath
+      if i+1 < lengthPathList and pathList[i+1] == pathList[i][:-1] and pathList[i][-1] == 's':
+        if i <= 1:
+          modPathList.remove(pathList[i+1])
+        modPathList.remove(pathList[i])
+    newpath = "/".join(modPathList)
+  elif lengthPathList == 4 and pathList[-1] in ("config", "counters", "state"):
+    if pathList[2] == pathList[1][:-1] and pathList[1][-1] == 's':
+        modPathList.remove(pathList[1])
+        newpath = "/".join(modPathList)
+    else:
+      newpath = path
   else:
     newpath = path
 
@@ -1377,7 +1395,6 @@ def get_element(ctx, fdDict, element, module, parent, path,
       # were asked to split the bindings into a directory structure or not.
 
       elemdict["type"] = CreateStructSkeleton(module, None, element, newpath, write=False)
-      print 'creating unique class name', elemdict["type"]
 
       # Deal with specific cases for list - such as the key and how it is
       # ordered.

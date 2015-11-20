@@ -1,4 +1,5 @@
 import os
+import json
 
 GO_MODEL_BASE_PATH = "/home/ccordes/git/snaproute/generated/src/gomodel/"
 
@@ -16,26 +17,22 @@ def scan_dir_for_go_files(dir):
 def build_json_object_from_go():
     # generate thrift code from go code
     for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
-        print dir, gofilename, dir.split('/')[-1]
         jsonFileName = gofilename.split('.')[0] + ".json"
-        jsonfd = open(jsonFileName, 'w')
 
-        path = os.path.join(dir, gofilename)
-        print 'path', path
-        gofd = open(path, 'r')
-        jsonfd.write("{\n")
-        deletingComment = False
-        for line in gofd.readlines():
-            if line.startswith("type") and \
-                "struct" in line and \
-                "Config" in line:
-                structName = line.split(" ")[1]
-                print "found struct", structName
+        data = {}
+        with open(jsonFileName, 'w') as f:
 
-                jsonfd.write(""" \"%s\"\t: {"Owner" : \"\",\n""" % structName)
-                jsonfd.write("""            "Listeners" : []},\n""")
-        jsonfd.write("}")
-        jsonfd.close()
+            path = os.path.join(dir, gofilename)
+            gofd = open(path, 'r')
+            deletingComment = False
+            for line in gofd.readlines():
+                if line.startswith("type") and \
+                    "struct" in line and \
+                    "Config" in line:
+                    structName = line.split(" ")[1]
+                    data.update({structName : {"Owner": "",
+                                               "Listeners": []}})
+            json.dump(data, f, indent=4)
 
 if __name__ == "__main__":
 
