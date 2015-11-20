@@ -6,14 +6,17 @@ daemonsToStart = [
                  #{'name': 'asicd',
                  # 'params': '-params=/opt/flexswitch/params'},
 
+                 {'name': 'arpd',
+                  'params': '-params=/opt/flexswitch/params'},
+
+                 {'name': 'portd',
+                  'params': '-params=/opt/flexswitch/params'},
+
                  {'name': 'ribd',
                   'params': '-params=/opt/flexswitch/params'},
 
-                 #{'name': 'portd',
-                 # 'params': '-params=/opt/flexswitch/params'},
-
-                 #{'name': 'bgpd',
-                 # 'params': '-params=/opt/flexswitch/params'},
+                 {'name': 'bgpd',
+                  'params': '-params=/opt/flexswitch/params'},
 
                  {'name': 'confd',
                   'params': '-params=/opt/flexswitch/params'},
