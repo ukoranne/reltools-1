@@ -3,11 +3,15 @@ import subprocess
 import json
 import pprint
 
+OBJECT_MAP_NAME = "objectmap.go"
+
 HOME = os.getenv("HOME")
 GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
 JSON_MODEL_REGISTRAION_PATH = HOME + "/git/snaproute/src/models/"
 CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = HOME + "/git/snaproute/src/config/"
+OBJMAP_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
+THRIFT_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gorpc/"
 
 goToThirftTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -24,7 +28,7 @@ goToThirftTypeMap = {
 }
 
 gDryRun =  False
-def executeGoFmtCommand (fd, command) :
+def executeGoFmtCommand (fd, command, dstPath) :
     out = ''
     if type(command) != list:
         command = [ command]
@@ -47,21 +51,40 @@ def executeGoFmtCommand (fd, command) :
             nfd.write(out)
             nfd.close()
 
-            renameCmd = "mv %s %s" %(nfd.name, fd.name)
+            process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
+            out,err = process.communicate()
+            print out, err
+
+            renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
             process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
             print out, err
 
-            copyCmd = "cp %s %s" %(fd.name, CLIENTIF_CODE_GENERATION_PATH,)
-            process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-
-            # lets copy the file to the models directory
-            #if err is None:
-            #  print os.path.abspath(nfd.name)
-            #  os.rename(os.path.abspath(nfd.name))
+            out = executeCopyCommand(dir+fd.name, dstPath)
 
         return out
+
+def executeCopyCommand (name, dstPath) :
+    dir = dstPath
+    if not os.path.exists(dir):
+      os.makedirs(dir)
+
+    copyCmd = "cp %s %s" %(name, dstPath,)
+    process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
+    out,err = process.communicate()
+
+    print out, err
+
+    return out
+
+def executeLocalCleanup():
+
+    for name in os.listdir(CODE_GENERATION_PATH):
+        if name.endswith(".go") or name.endswith(".thrift"):
+            cmd = "rm %s" %(CODE_GENERATION_PATH+name,)
+            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+            out,err = process.communicate()
+            print out, err
 
 
 def scan_dir_for_go_files(dir):
@@ -89,6 +112,38 @@ def scan_dir_for_json_files(dir):
 def build_thrift_from_go():
     # generate thrift code from go code
     goStructToListersDict = {}
+
+    # lets determine from the json file the structs and associated listeners
+    deamons = get_listeners_from_json(goStructToListersDict)
+
+    pprint.pprint(goStructToListersDict)
+
+    allCrudStructList = []
+    # lets create the clientIf and .thrift files for each listener deamon
+    for d in deamons:
+        clientIfName = "gen" + d + "clientif.go"
+        clientIfFd = open(clientIfName, 'w')
+        clientIfFd.write("package main\n")
+        thriftFileName = d + ".thrift"
+        thriftfd = open(thriftFileName, 'w')
+        thriftfd.write("namespace go %sServices\n" %(d))
+
+        # create the thrift file info
+        (goMemberTypeDict, crudStructsList) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
+        thriftfd.close()
+        # copy the thrift files to appropriate dir
+        executeCopyCommand(CODE_GENERATION_PATH+thriftfd.name, THRIFT_CODE_GENERATION_PATH)
+
+        allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
+
+        # create a client if info
+        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict)
+
+    # create teh object map file
+    generate_objmap(allCrudStructList)
+
+
+def get_listeners_from_json(goStructToListersDict):
     deamons = []
     for dir, gofilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
         path = os.path.join(dir, gofilename)
@@ -105,136 +160,144 @@ def build_thrift_from_go():
                 if v["Listeners"]:
                     goStructToListersDict.setdefault(k, [])
                     goStructToListersDict[k] += v["Listeners"]
-                    for d  in v["Listeners"]:
+                    for d in v["Listeners"]:
                         if d not in deamons:
                             deamons.append(d)
-    pprint.pprint(goStructToListersDict)
-    print deamons
-    for d in deamons:
-        clientIfName = d + "ClientIf.go"
-        clientIfFd = open(clientIfName, 'w')
-        clientIfFd.write("package main\n")
-        thriftFileName = d + ".thrift"
-        thriftfd = open(thriftFileName, 'w')
-        thriftfd.write("namespace go %sServices\n" %(d))
-        crudStructsList = []
+    return deamons
+
+def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
+    goMemberTypeDict = {}
+    crudStructsList = []
+    for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
+        print dir, gofilename, dir.split('/')[-1]
+
+        path = os.path.join(dir, gofilename)
+        gofd = open(path, 'r')
+        deletingComment = False
+        writingStruct = False
+        memberCnt = 1
+        currentStruct = None
+        for line in gofd.readlines():
+            if not deletingComment:
+                if "struct" in line:
+                    lineSplit = line.split(" ")
+                    structLine = "struct " + lineSplit[1] + "{\n"
+                    if lineSplit[1] in goStructToListersDict:
+                        # print "found line now checking deamon", d, goStructToListersDict[lineSplit[1]]
+                        if d in goStructToListersDict[lineSplit[1]]:
+                            goMemberTypeDict[lineSplit[1]] = {}
+                            currentStruct = lineSplit[1]
+                            thriftfd.write(structLine)
+                            crudStructsList.append(lineSplit[1])
+                            writingStruct = True
+                elif "}" in line and writingStruct:
+                    thriftfd.write("}\n")
+                    writingStruct = False
+                    memberCnt = 1
+                # lets skip all blank lines
+                # skip comments
+                elif line == '\n' or \
+                                "//" in line or \
+                                "#" in line or \
+                                "package" in line:
+                    continue
+                elif "/*" in line:
+                    deletingComment = True
+                elif writingStruct:  # found element in struct
+                    # print "found element line", line
+                    lineSplit = line.split(' ')
+                    # print lineSplit
+                    elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
+                    # print lineSplit
+                    # print elemtype, type(elemtype), goToThirftTypeMap.keys()
+                    if elemtype in goToThirftTypeMap.keys():
+                        goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
+                                                                    goToThirftTypeMap[elemtype]["native_type"]})
+                        thriftfd.write("\t%s : %s %s\n" % (memberCnt,
+                                                           goToThirftTypeMap[elemtype]["native_type"],
+                                                           lineSplit[0]))
+                    memberCnt += 1
+            else:
+                if "*/" in line:
+                    deletingComment = False
+
+    print crudStructsList
+    thriftfd.write("service %sServer {\n" % (d.upper()))
+    for s in crudStructsList:
+        thriftfd.write(
+            """\tCreate%s(1:%s config);\n\tUpdate%s(1:%s config);\n\tDelete%s(1:%s config);\n\n""" % (s, s, s, s, s, s))
+    thriftfd.write("}")
+    return goMemberTypeDict, crudStructsList
 
 
-
-        goMemberTypeDict = {}
-        for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
-            print dir, gofilename, dir.split('/')[-1]
-
-            path = os.path.join(dir, gofilename)
-            gofd = open(path, 'r')
-            deletingComment = False
-            writingStruct = False
-            memberCnt = 1
-            currentStruct = None
-            for line in gofd.readlines():
-                if not deletingComment:
-                    if "struct" in line:
-                        lineSplit = line.split(" ")
-                        structLine = "struct " + lineSplit[1] + "{\n"
-                        if lineSplit[1] in goStructToListersDict:
-                            #print "found line now checking deamon", d, goStructToListersDict[lineSplit[1]]
-                            if d in goStructToListersDict[lineSplit[1]]:
-                                goMemberTypeDict[lineSplit[1]] = {}
-                                currentStruct = lineSplit[1]
-                                thriftfd.write(structLine)
-                                crudStructsList.append(lineSplit[1])
-                                writingStruct = True
-                    elif "}" in line and writingStruct:
-                        thriftfd.write("}\n")
-                        writingStruct = False
-                        memberCnt = 1
-                    # lets skip all blank lines
-                    # skip comments
-                    elif line == '\n' or \
-                        "//" in line or \
-                       "#" in line or \
-                       "package" in line:
-                        continue
-                    elif "/*" in line:
-                        deletingComment = True
-                    elif writingStruct: # found element in struct
-                        #print "found element line", line
-                        lineSplit = line.split(' ')
-                        #print lineSplit
-                        elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
-                        #print lineSplit
-                        #print elemtype, type(elemtype), goToThirftTypeMap.keys()
-                        if elemtype in goToThirftTypeMap.keys():
-                            goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') : goToThirftTypeMap[elemtype]["native_type"]})
-                            thriftfd.write("\t%s : %s %s\n" %(memberCnt,
-                                                            goToThirftTypeMap[elemtype]["native_type"],
-                                                            lineSplit[0]))
-                        memberCnt += 1
-                else:
-                    if "*/" in line:
-                        deletingComment = False
-
-        print crudStructsList
-        thriftfd.write("service %sServer {\n" %(d.upper()))
-        for s in crudStructsList:
-            thriftfd.write("""\tCreate%s(1:%s config);\n\tUpdate%s(1:%s config);\n\tDelete%s(1:%s config);\n\n""" %(s, s, s, s, s, s) )
-        thriftfd.write("}")
-        thriftfd.close()
-
-        newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
-        lowerDeamonName = d.lower()
-        # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""type %sClient struct {
+def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
+    newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
+    lowerDeamonName = d.lower()
+    # BELOW CODE WILL BE FORMATED BY GOFMT
+    clientIfFd.write("""type %sClient struct {
 	                        IPCClientBase
 	                        ClientHdl *%sServices.%sServiceClient
-                            }\n""" %(newDeamonName, lowerDeamonName, newDeamonName))
-
-        clientIfFd.write("""
+                            }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
+    clientIfFd.write("""
                         func (clnt *%sClient) Initialize(name string, address string) {
 	                    clnt.Address = address
 	                    return
-                        }\n""" %(newDeamonName, ) )
-
-        clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
+                        }\n""" % (newDeamonName,))
+    clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
 
 	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
 	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
 		                clnt.ClientHdl = %sServices.New%sServiceClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
 	                    }
 	                    return true
-                        }\n""" %(newDeamonName, lowerDeamonName, newDeamonName))
-
-        clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
+                        }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
+    clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 	                    return true
-                        }\n""" %(newDeamonName,))
+                        }\n""" % (newDeamonName,))
+    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj) bool {
 
-        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj) bool {
-
-	                    switch obj.(type) {\n""" %(newDeamonName,))
-
-        for s in crudStructsList:
-            clientIfFd.write("""
+	                    switch obj.(type) {\n""" % (newDeamonName,))
+    for s in crudStructsList:
+        clientIfFd.write("""
                             case models.%s :
                             data := obj.(models.%s)
-                            conf := %s.New%s()\n""" %(s, s, d, s))
-            for k,v in goMemberTypeDict[s].iteritems():
-                print k.split(' ')
-                clientIfFd.write("""conf.%s = %s(data.%s)\n""" %(k, v, k))
-            clientIfFd.write("""
+                            conf := %s.New%s()\n""" % (s, s, d, s))
+        for k, v in goMemberTypeDict[s].iteritems():
+            print k.split(' ')
+            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, v, k))
+        clientIfFd.write("""
                             _, err := clnt.ClientHdl.Create%s(conf)
                             if err != nil {
                             return false
                             }
-                            break\n""" %(s, ))
-        clientIfFd.write("""default:
+                            break\n""" % (s,))
+    clientIfFd.write("""default:
 		                break
 	                    }
 
 	                    return true
                         }\n""")
-        clientIfFd.close()
-        executeGoFmtCommand(clientIfFd, ["gofmt %s" %(clientIfName,)])
+    clientIfFd.close()
+
+    # lets beautify the the client if code
+    executeGoFmtCommand(clientIfFd, ["gofmt %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
+
+def generate_objmap(allStructList):
+
+    fd = open(OBJECT_MAP_NAME, 'w+')
+    fd.write("""package models\n\n""")
+    fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
+    length = len(allStructList)
+    for i, s in enumerate(allStructList):
+        fd.write(""""%s" : &%s{},\n""" %(s, s,))
+
+    fd.write("""}\n""")
+    fd.close()
+
+    executeGoFmtCommand(fd, ["gofmt %s" %(fd.name,)], OBJMAP_CODE_GENERATION_PATH)
+
 
 if __name__ == "__main__":
 
     build_thrift_from_go()
+    executeLocalCleanup()
