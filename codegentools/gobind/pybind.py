@@ -179,14 +179,14 @@ def executeGoFmtCommand (fd, command) :
             print fmt_name_with_dir
             if not os.path.exists(dir):
               os.makedirs(dir)
-            nfd = os.open(fmt_name_with_dir, os.O_RDWR|os.O_CREAT)
-            os.write(nfd, out)
-            os.close(nfd)
+            nfd = open(fmt_name_with_dir, 'w+')
+            nfd.write(out)
+            nfd.close()
 
             # lets copy the file to the models directory
-            #if err is None:
-            #  print os.path.abspath(nfd.name)
-              #os.rename(os.path.abspath(nfd.name))
+            if err is None:
+              print os.path.abspath(nfd.name)
+              os.rename(os.path.abspath(nfd.name))
 
         return out
 def executeGoModelCleanupCommand (command) :
