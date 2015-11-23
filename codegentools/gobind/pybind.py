@@ -168,25 +168,22 @@ def executeGoFmtCommand (fd, command) :
         if gDryRun :
             print cmd
         else:
-            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            # create a go format version, at this point the fd is still
-            # open so this is a .tmp file, lets strip this for the new
-            # file
-            print err
-            dir = CODE_GENERATION_PATH
-            fmt_name_with_dir = dir + fd.name.rstrip('.tmp')
-            print fmt_name_with_dir
-            if not os.path.exists(dir):
-              os.makedirs(dir)
-            nfd = open(fmt_name_with_dir, 'w+')
-            nfd.write(out)
-            nfd.close()
+          process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+          out,err = process.communicate()
+          # create a go format version, at this point the fd is still
+          # open so this is a .tmp file, lets strip this for the new
+          # file
+          print err
+          dir = CODE_GENERATION_PATH
+          fmt_name_with_dir = dir + fd.name.rstrip('.tmp')
+          print fmt_name_with_dir
+          if not os.path.exists(dir):
+            os.makedirs(dir)
 
-            # lets copy the file to the models directory
-            if err is None:
-              print os.path.abspath(nfd.name)
-              os.rename(os.path.abspath(nfd.name))
+          copyCmd = "cp %s %s" %(fd.name.rstrip('.tmp'), fmt_name_with_dir)
+          process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
+          out,err = process.communicate()
+
 
         return out
 def executeGoModelCleanupCommand (command) :
@@ -228,7 +225,8 @@ class BTPyGOClass(plugin.PyangPlugin):
       build_pybind(ctx, modules, fdDict)
 
       for f in fdDict.values():
-        executeGoFmtCommand(f, ['gofmt %s' % f.name])
+        f.close()
+        executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
 
 
     def add_opts(self, optparser):
@@ -376,6 +374,9 @@ def build_pybind(ctx, modules, fdDict):
   ctx.pybind_common_hdr = "package %s\n\n" %(pkgname,)
   '''
 
+  #for modname in pyang_called_modules:
+  #  print 'found module', modname
+
   ctx.pybind_common_hdr = "package models\n\n"
   for fd in fdDict.values():
     fd.write(ctx.pybind_common_hdr)
@@ -418,6 +419,7 @@ def CreateGoStructAndFunc(ctx, fdDict, module_d, pyang_called_modules):
     for m in mods:
       children = [ch for ch in module.i_children
                   if ch.keyword in statements.data_definition_keywords]
+
       get_children(ctx, fdDict, children, m, m)
 
 enumerationDict = {}
@@ -756,7 +758,7 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
             choice=(ch.arg,choice_ch.arg))
           if len([c.arg for c in choice_ch.i_children if c.keyword in ('leaf', 'leaf-list')]) == len(i_children):
             elements += e
-          #print 'element name', len(e), e[0]["name"], e[0]
+          #print 'element name', len(e), e[0]["name"], e
           parentChildrenLeaf = {}
           GetParentChildrenLeafs(ctx, case_ch.i_module, case_ch.parent, parentChildrenLeaf)
 
@@ -766,21 +768,24 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
       e = get_element(ctx, fdDict, ch, module, parent, path+"/"+ch.arg,\
         parent_cfg=parent_cfg, choice=choice)
       # only add the element if this is an all leaf
-      if len([c.arg for c in i_children if c.keyword in ('leaf', 'leaf-list')]) == len(i_children):
+      if len([c.arg for c in i_children if c.keyword in ('leaf', 'leaf-list', 'choice')]) == len(i_children):
         elements += e
-      #print 'element name', len(e), e[0]["name"], e[0]
+        #print 'adding e', e[0]["name"]
+        #print e[0]["name"]
+        #if e[0]["name"].lower() == "members":
+        #  print 'element name', len(e), e[0]["name"], len(i_children), len([c.arg for c in i_children if c.keyword in ('leaf', 'leaf-list')])
+        #  for c in i_children:
+        #    print c.arg, c.keyword, parent.keyword
       parentChildrenLeaf = {}
       GetParentChildrenLeafs(ctx, ch.i_module, ch.parent, parentChildrenLeaf)
       #print "additional children leafs", parentChildrenLeaf
 
-  elements_str = ""
   if len(elements) == 0:
     pass
   else:
 
     # 'container', 'module', 'list' and 'submodule' all have their own classes
     # generated.
-    structName = None
     if parent.keyword in ["container", "module", "list", "submodule"]:
 
       # create struct skeleton
@@ -996,27 +1001,37 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
       #print "GO-STRUCT %s %s %s %s %s" % (elemName, i["class"], i["type"]["native_names"], i["type"]["native_type"], type(i["type"]["native_names"]))
       #print '******************************************'
       if isinstance(i["type"]["native_names"], list):
-        for subname, nativetype in zip(i["type"]["native_names"], i["type"]["native_type"]):
-          subsubname = safe_name(subname)
+        if i["type"]["native_names"] is not None:
+          for subname, nativetype in zip(i["type"]["native_names"], i["type"]["native_type"]):
+            subsubname = safe_name(subname)
 
-          varname = nativetype
-          if isinstance(varname, list):
-            varname = varname[0]
+            varname = nativetype
+            if isinstance(varname, list):
+              varname = varname[0]
 
-          elemName = elemName + '_' + subsubname
-          if keyname == i["name"]:
-            elements_str += "\t%skey %s  %s\n" % (elemName, varname, LIST_KEY_STR)
-          else:
-            elements_str += "\t%s %s\n" % (elemName, varname)
-      else:
+            elemName = elemName + '_' + subsubname
+            if keyname == i["name"]:
+              elements_str += "\t%skey %s  %s\n" % (elemName, varname, LIST_KEY_STR)
+            else:
+              elements_str += "\t%s %s\n" % (elemName, varname)
+        else:
           varname = i["type"]["native_type"]
           if isinstance(varname, list):
             varname = varname[0]
 
           if keyname == i["name"]:
-            elements_str += "\t%sKey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
+            elements_str += "\t%skey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
           else:
             elements_str += "\t%s []%s\n" % (elemName, varname)
+      else:
+        varname = i["type"]["native_type"]
+        if isinstance(varname, list):
+          varname = varname[0]
+
+        if keyname == i["name"]:
+          elements_str += "\t%sKey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
+        else:
+          elements_str += "\t%s []%s\n" % (elemName, varname)
 
     elif i["class"] == "list":
       #print '******************************************'
@@ -1381,6 +1396,7 @@ def get_element(ctx, fdDict, element, module, parent, path,
 
     # Create an element for a container.
     if element.i_children:
+      #print "element has children", element.arg, len(element.i_children)
       chs = element.i_children
       get_children(ctx, fdDict, chs, module, element, npath, parent_cfg=parent_cfg,\
                    choice=choice)

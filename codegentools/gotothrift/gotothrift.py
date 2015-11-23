@@ -43,7 +43,7 @@ def executeGoFmtCommand (fd, command, dstPath) :
             # file
             print out, err
             dir = CODE_GENERATION_PATH
-            fmt_name_with_dir = dir + "fmt_" + fd.name.rstrip('.tmp')
+            fmt_name_with_dir = dir + "fmt_" + fd.name
             print fmt_name_with_dir
             if not os.path.exists(dir):
               os.makedirs(dir)
@@ -197,9 +197,9 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                 # lets skip all blank lines
                 # skip comments
                 elif line == '\n' or \
-                                "//" in line or \
-                                "#" in line or \
-                                "package" in line:
+                    "//" in line or \
+                    "#" in line or \
+                    "package" in line:
                     continue
                 elif "/*" in line:
                     deletingComment = True
@@ -208,14 +208,25 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                     lineSplit = line.split(' ')
                     # print lineSplit
                     elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
-                    # print lineSplit
-                    # print elemtype, type(elemtype), goToThirftTypeMap.keys()
-                    if elemtype in goToThirftTypeMap.keys():
+
+                    #print "elemtype:", lineSplit, elemtype
+                    if elemtype.startswith("[]"):
+                        elemtype = elemtype.lstrip("[]")
+                        # lets make all list an unordered list
+                        nativetype = "set<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
                         goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
-                                                                    goToThirftTypeMap[elemtype]["native_type"]})
+                                                                nativetype})
+
                         thriftfd.write("\t%s : %s %s\n" % (memberCnt,
-                                                           goToThirftTypeMap[elemtype]["native_type"],
+                                                           nativetype,
                                                            lineSplit[0]))
+                    else:
+                        if elemtype in goToThirftTypeMap.keys():
+                            goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
+                                                                        goToThirftTypeMap[elemtype]["native_type"]})
+                            thriftfd.write("\t%s : %s %s\n" % (memberCnt,
+                                                               goToThirftTypeMap[elemtype]["native_type"],
+                                                               lineSplit[0]))
                     memberCnt += 1
             else:
                 if "*/" in line:
@@ -280,7 +291,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
     clientIfFd.close()
 
     # lets beautify the the client if code
-    executeGoFmtCommand(clientIfFd, ["gofmt %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
+    executeGoFmtCommand(clientIfFd, ["gofmt -w %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
 
 def generate_objmap(allStructList):
 
@@ -294,7 +305,7 @@ def generate_objmap(allStructList):
     fd.write("""}\n""")
     fd.close()
 
-    executeGoFmtCommand(fd, ["gofmt %s" %(fd.name,)], OBJMAP_CODE_GENERATION_PATH)
+    executeGoFmtCommand(fd, ["gofmt -w %s" %(fd.name,)], OBJMAP_CODE_GENERATION_PATH)
 
 
 if __name__ == "__main__":
