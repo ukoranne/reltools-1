@@ -51,9 +51,9 @@ def executeGoFmtCommand (fd, command, dstPath) :
             nfd.write(out)
             nfd.close()
 
-            process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            print out, err
+            #process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
+            #out,err = process.communicate()
+            #print out, err
 
             renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
             process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
