@@ -8,6 +8,7 @@ OBJECT_MAP_NAME = "objectmap.go"
 HOME = os.getenv("HOME")
 GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
 JSON_MODEL_REGISTRAION_PATH = HOME + "/git/snaproute/src/models/"
+#JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = HOME + "/git/snaproute/src/config/"
 OBJMAP_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
@@ -43,13 +44,13 @@ def executeGoFmtCommand (fd, command, dstPath) :
             # file
             print out, err
             dir = CODE_GENERATION_PATH
-            fmt_name_with_dir = dir + "fmt_" + fd.name
+            fmt_name_with_dir = dir + fd.name
             print fmt_name_with_dir
             if not os.path.exists(dir):
               os.makedirs(dir)
-            nfd = open(fmt_name_with_dir, 'w+')
-            nfd.write(out)
-            nfd.close()
+            #nfd = open(fmt_name_with_dir, 'w+')
+            #nfd.write(out)
+            #nfd.close()
 
             #process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
             #out,err = process.communicate()
@@ -294,7 +295,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
     executeGoFmtCommand(clientIfFd, ["gofmt -w %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
 
 def generate_objmap(allStructList):
-
+    print allStructList
     fd = open(OBJECT_MAP_NAME, 'w+')
     fd.write("""package models\n\n""")
     fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
