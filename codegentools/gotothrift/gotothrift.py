@@ -6,12 +6,13 @@ import pprint
 OBJECT_MAP_NAME = "objectmap.go"
 
 HOME = os.getenv("HOME")
-GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
+MODEL_NAME = 'genmodels'
+GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
 JSON_MODEL_REGISTRAION_PATH = HOME + "/git/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = HOME + "/git/snaproute/src/config/"
-OBJMAP_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gomodel/"
+OBJMAP_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
 THRIFT_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gorpc/"
 
 goToThirftTypeMap = {
@@ -93,7 +94,7 @@ def scan_dir_for_go_files(dir):
         #print "x", dir, name
         path = os.path.join(dir, name)
         if name.endswith('.go'):
-            if os.path.isfile(path) and "enum" not in path and "func" not in path:
+            if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
                 yield (dir, name)
         elif not "." in name:
             for d, f  in scan_dir_for_go_files(path):
@@ -127,7 +128,10 @@ def build_thrift_from_go():
         clientIfFd.write("package main\n")
         thriftFileName = d + ".thrift"
         thriftfd = open(thriftFileName, 'w')
-        thriftfd.write("namespace go %sServices\n" %(d))
+        thriftfd.write("namespace go %s\n" %(d))
+        thriftfd.write("""typedef i32 int
+typedef i16 uint16
+""")
 
         # create the thrift file info
         (goMemberTypeDict, crudStructsList) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
@@ -237,7 +241,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     thriftfd.write("service %sServer {\n" % (d.upper()))
     for s in crudStructsList:
         thriftfd.write(
-            """\tCreate%s(1:%s config);\n\tUpdate%s(1:%s config);\n\tDelete%s(1:%s config);\n\n""" % (s, s, s, s, s, s))
+            """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
     thriftfd.write("}")
     return goMemberTypeDict, crudStructsList
 
@@ -297,7 +301,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
 def generate_objmap(allStructList):
     print allStructList
     fd = open(OBJECT_MAP_NAME, 'w+')
-    fd.write("""package models\n\n""")
+    fd.write("""package %s\n\n""" % MODEL_NAME)
     fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
     length = len(allStructList)
     for i, s in enumerate(allStructList):
