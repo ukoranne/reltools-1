@@ -4,6 +4,8 @@ import json
 import pprint
 
 
+IGNORE_GO_FILE_LIST = ["objectmap.go"]
+
 HOME = os.getenv("HOME")
 MODEL_NAME = 'genmodels'
 GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
@@ -100,6 +102,9 @@ def build_gosqllite_from_go():
     # lets determine from the json file the structs and associated listeners
     for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
         if '_func' in gofilename and '_enum' in gofilename and '_db' in gofilename:
+            continue
+
+        if gofilename in IGNORE_GO_FILE_LIST:
             continue
 
         dbFileName = gofilename.rstrip('.go') + "_db.go"
