@@ -5,4 +5,7 @@
 #export DH_VERBOSE=1
 
 %:
-	dh $@ 
+	dh $@
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l$(SR_CODE_BASE)/snaproute/src/asicd/plugins

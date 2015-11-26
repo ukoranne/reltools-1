@@ -3,8 +3,8 @@ import os
 import sys
 import time
 daemonsToStart = [
-                 #{'name': 'asicd',
-                 # 'params': '-params=/opt/flexswitch/params'},
+                 {'name': 'asicd',
+                  'params': '-params=/opt/flexswitch/params'},
 
                  {'name': 'arpd',
                   'params': '-params=/opt/flexswitch/params'},
@@ -27,7 +27,7 @@ if __name__=="__main__":
         cmd = '/opt/flexswitch/bin/'+ dmn['name'] 
         #cmd = '/home/hari/git/reltools/flexswitch/dmn'
         print "Command before  is %s" %(cmd)
-        args = (cmd, '-params=/opt/flexswitch/bin/params')
+        args = (cmd, dmn['params'])
         pid =  os.fork()
         if pid > 0:
             continue
