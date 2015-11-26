@@ -18,3 +18,6 @@ exe: $(COMPS)
 
 ipc: $(COMPS_WITH_IPC)
 	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) ipc;)
+
+install: $(COMPS_WITH_IPC)
+	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) ipc;)
