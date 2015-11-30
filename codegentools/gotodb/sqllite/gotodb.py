@@ -8,7 +8,7 @@ IGNORE_GO_FILE_LIST = ["objectmap.go"]
 
 HOME = os.getenv("HOME")
 MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
+GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
 CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotodb/sqllite/"
 
 goToSqlliteTypeMap = {
