@@ -149,8 +149,7 @@ def getExternalGoDeps() :
                        'renamedst'   : 'github.com/mattn/'
                      },
                      { 'repo'        : 'pyang',
-                       'renamesrc'   : 'pyang',
-                       'renamedst'   : ''
+                       #'renamesrc'   : 'pyang',
                      },
                      ]
 
@@ -159,7 +158,7 @@ def getExternalGoDeps() :
         #if dep['repo'] == 'pyang':
         #    import ipdb;ipdb.set_trace()
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
-        dstDir = dep['renamedst']
+        dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
         dirToMake = dstDir 
         if not (dstDir != ''  and os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
             cloneGitRepo ( repoUrl ,dep['repo'], dirLocation)
@@ -174,8 +173,9 @@ def getExternalGoDeps() :
                     cmd  =  'mkdir -p ' + d
                     executeCommand(cmd)
                     os.chdir(d)
-            cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
-            executeCommand(cmd)
+            if dep.has_key('renamesrc'):
+                cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
+                executeCommand(cmd)
 
 def cloneSnapRouteGitRepos( gitReposToClone = None):
     userRepoPrefix   = 'https://github.com/'+gUserName+'/'
