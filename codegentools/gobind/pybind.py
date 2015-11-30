@@ -123,7 +123,7 @@ ENABLE_CAMEL_CASE = True
 MODEL_NAME = 'genmodels'
 HOME = os.getenv("HOME")
 MODELS_PATH_LIST = [HOME + "/git/snaproute/src/models/"]
-CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
+CODE_GENERATION_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
 
 
 def safe_name(arg):

@@ -7,13 +7,13 @@ OBJECT_MAP_NAME = "objectmap.go"
 
 HOME = os.getenv("HOME")
 MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
+GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
 JSON_MODEL_REGISTRAION_PATH = HOME + "/git/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = HOME + "/git/snaproute/src/config/"
-OBJMAP_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/%s/" % MODEL_NAME
-THRIFT_CODE_GENERATION_PATH = HOME + "/git/snaproute/generated/src/gorpc/"
+OBJMAP_CODE_GENERATION_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
+THRIFT_CODE_GENERATION_PATH = HOME + "/git/generated/src/gorpc/"
 
 goToThirftTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -308,9 +308,11 @@ def generate_objmap(allStructList):
 
     # lets temporarily add the manual objects
     fd.write(""" "IPV4Route":    &models.IPV4Route{},    // manually merged from originional
-	"Vlan":         &models.VlanOrig{},         // manually added, no YANG defined
+	"Vlan":         &models.Vlan{},         // manually added, no YANG defined
 	"IPv4Intf":     &models.IPv4Intf{},     // manually added, no YANG defined
-	"IPv4Neighbor": &models.IPv4Neighbor{}, // manually added, no YANG defined\n""")
+	"IPv4Neighbor": &models.IPv4Neighbor{}, // manually added, no YANG defined
+	"BGPGlobalConfig": &models.BGPGlobalConfig{}, //manually added, no YANG defined
+	"BGPNeighborConfig" : &models.BGPNeighborConfig{}, //manually added, no YANG defined\n""")
 
     length = len(allStructList)
     for i, s in enumerate(allStructList):

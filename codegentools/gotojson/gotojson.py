@@ -1,8 +1,9 @@
 import os
 import json
 
+HOME = os.getenv("HOME")
 MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = "/home/ccordes/git/snaproute/generated/src/%s/" %MODEL_NAME
+GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
 
 def scan_dir_for_go_files(dir):
     for name in os.listdir(dir):
