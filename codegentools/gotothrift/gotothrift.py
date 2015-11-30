@@ -150,24 +150,25 @@ typedef i16 uint16
 
 def get_listeners_from_json(goStructToListersDict):
     deamons = []
-    for dir, gofilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
-        path = os.path.join(dir, gofilename)
-        print path
-        with open(path, 'r') as f:
-            data = json.load(f)
+    for dir, jsonfilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
+        path = os.path.join(dir, jsonfilename)
+        if jsonfilename.endswith(".json"):
+            print path
+            with open(path, 'r') as f:
+                data = json.load(f)
 
-            for k, v in data.iteritems():
-                if v["Owner"]:
-                    goStructToListersDict.setdefault(k, [])
-                    goStructToListersDict[k].append(v["Owner"])
-                    if v["Owner"] not in deamons:
-                        deamons.append(v["Owner"])
-                if v["Listeners"]:
-                    goStructToListersDict.setdefault(k, [])
-                    goStructToListersDict[k] += v["Listeners"]
-                    for d in v["Listeners"]:
-                        if d not in deamons:
-                            deamons.append(d)
+                for k, v in data.iteritems():
+                    if v["Owner"]:
+                        goStructToListersDict.setdefault(k, [])
+                        goStructToListersDict[k].append(v["Owner"])
+                        if v["Owner"] not in deamons:
+                            deamons.append(v["Owner"])
+                    if v["Listeners"]:
+                        goStructToListersDict.setdefault(k, [])
+                        goStructToListersDict[k] += v["Listeners"]
+                        for d in v["Listeners"]:
+                            if d not in deamons:
+                                deamons.append(d)
     return deamons
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
@@ -302,7 +303,15 @@ def generate_objmap(allStructList):
     print allStructList
     fd = open(OBJECT_MAP_NAME, 'w+')
     fd.write("""package %s\n\n""" % MODEL_NAME)
-    fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
+    fd.write("""import \"models\"\n""")
+    fd.write("""var ConfigObjectMap = map[string] models.ConfigObj{\n""")
+
+    # lets temporarily add the manual objects
+    fd.write(""" "IPV4Route":    &models.IPV4Route{},    // manually merged from originional
+	"Vlan":         &models.VlanOrig{},         // manually added, no YANG defined
+	"IPv4Intf":     &models.IPv4Intf{},     // manually added, no YANG defined
+	"IPv4Neighbor": &models.IPv4Neighbor{}, // manually added, no YANG defined\n""")
+
     length = len(allStructList)
     for i, s in enumerate(allStructList):
         fd.write(""""%s" : &%s{},\n""" %(s, s,))

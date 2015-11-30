@@ -114,6 +114,7 @@ def build_gosqllite_from_go():
 
         dbFd.write("""import (
         	"database/sql"
+        	"strconv"
                    "fmt"
                    )""")
         generate_gosqllite_funcs(dbFd, dir, gofilename)
@@ -146,28 +147,15 @@ def createDBTable(fd, structName, goMemberTypeDict):
             fd.write("""%s, """ % k)
     fd.write(""" ) \"\n""")
 
-    fd.write("""txn, err := dbHdl.Begin()
-	    if err != nil {
-		    fmt.Println("### Failed to strart a transaction")
-	    }
-	    fmt.Println("**** Executing DB command ", dbCmd)
-	    _, err = dbHdl.Exec(dbCmd)
-	    if err != nil {
-		    fmt.Println("**** Failed to Create table", err)
-	    }
-
-	    err = txn.Commit()
-	    if err != nil {
-		    fmt.Println("### Failed to Commit transaction")
-	    }
-	    return nil
+    fd.write("""_, err := ExecuteSQLStmt(dbCmd, dbHdl)
+    return err
     }""")
 
 def createStoreObjInDb(fd, structName, goMemberTypeDict):
     storefuncline = "\nfunc (obj %s) StoreObjectInDb(dbHdl *sql.DB) (int64, error) {\n" % structName
     fd.write(storefuncline)
     fd.write("""var objectId int64\n""")
-    fd.write("""insertsql := fmt.Sprintf(\"INSERT INTO %s (""" % structName)
+    fd.write("""dbCmd := fmt.Sprintf(\"INSERT INTO %s (""" % structName)
     # loop through member and type
     for i, (m, t) in enumerate(goMemberTypeDict[structName].iteritems()):
         if i == len(goMemberTypeDict[structName]) - 1:
@@ -188,29 +176,59 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 
     fd.write("""fmt.Println("**** Create Object called with ", obj)
 
-	txn, err := dbHdl.Begin()
+	result, err := ExecuteSQLStmt(dbCmd, dbHdl)
 	if err != nil {
-		fmt.Println("### Failed to strart a transaction")
-	}
-	fmt.Println("**** Executing DB command ", insertsql)
-	result, err1 := dbHdl.Exec(insertsql)
-	if err1 != nil {
 		fmt.Println("**** Failed to Create table", err)
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		fmt.Println("### Failed to Commit transaction")
 	}
 	objectId, err = result.LastInsertId()
 	if err != nil {
 		fmt.Println("### Failed to return last object id", err)
-	} else {
-		fmt.Println("### Object ID return ", objectId)
 	}
-
-	return objectId, nil
+	return objectId, err
 }\n""")
+
+def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
+    storefuncline = "\nfunc (obj %s) DeleteObjectFromDb(objId int64, dbHdl *sql.DB) error {\n" % structName
+    fd.write(storefuncline)
+    fd.write("""dbCmd := "delete from %s where rowid = " + strconv.FormatInt(objId, 10)\n""" %(structName, ))
+    fd.write("""fmt.Println("### DB Deleting %s\\n")\n""" % structName)
+    fd.write("""_, err := ExecuteSQLStmt(dbCmd, dbHdl)
+                return err
+                }""")
+
+def createCommonDbFunc():
+
+    fd = open("common_db.go", "w")
+
+    fd.write("package genmodels\n")
+
+    fd.write("""import (
+             "database/sql"
+             "database/sql/driver"
+             "fmt"
+             )\n""")
+
+    fd.write("""func ExecuteSQLStmt(dbCmd string, dbHdl *sql.DB) (driver.Result, error) {
+	var result driver.Result
+	txn, err := dbHdl.Begin()
+	if err != nil {
+		fmt.Println("### Failed to strart db transaction for command", dbCmd)
+		return result, err
+	}
+	result, err = dbHdl.Exec(dbCmd)
+	if err != nil {
+		fmt.Println("### Failed to execute command ", dbCmd, err)
+		return result, err
+	}
+	err = txn.Commit()
+	if err != nil {
+		fmt.Println("### Failed to Commit transaction for command", dbCmd, err)
+		return result, err
+	}
+	return result, err
+} """)
+    fd.close()
+    return fd
 
 def generate_gosqllite_funcs(fd, dir, gofilename):
     goMemberTypeDict = {}
@@ -233,6 +251,7 @@ def generate_gosqllite_funcs(fd, dir, gofilename):
                 # create the various functions for db
                 createDBTable(fd, currentStruct, goMemberTypeDict)
                 createStoreObjInDb(fd, currentStruct, goMemberTypeDict)
+                createDeleteObjFromDb(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments
@@ -268,5 +287,8 @@ def generate_gosqllite_funcs(fd, dir, gofilename):
 
 if __name__ == "__main__":
 
+
     build_gosqllite_from_go()
+    fd = createCommonDbFunc()
+    executeGoFmtCommand(fd, ["gofmt -w %s" % fd.name], GO_MODEL_BASE_PATH)
     #executeLocalCleanup()
