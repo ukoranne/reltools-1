@@ -7,10 +7,12 @@ PROD_NAME=flexswitch
 
 COMPDIRS=$(SRC_DIR)/asicd\
 		$(SRC_DIR)/config\
-		$(SRC_DIR)/l3
+		$(SRC_DIR)/l3\
+                $(SRC_DIR)/l2
 
 COMPS_WITH_IPC=$(SRC_DIR)/asicd\
-					$(SRC_DIR)/l3\
+		$(SRC_DIR)/l3\
+		$(SRC_DIR)/l2
 
 all:installdir ipc exe 
 
