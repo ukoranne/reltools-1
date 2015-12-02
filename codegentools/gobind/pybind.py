@@ -227,7 +227,6 @@ class BTPyGOClass(plugin.PyangPlugin):
       build_pybind(ctx, modules, fdDict)
 
       for f in fdDict.values():
-        print '### Name of the file being closed %s' %(f.name)
         f.close()
         #import ipdb;ipdb.set_trace()
         executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
