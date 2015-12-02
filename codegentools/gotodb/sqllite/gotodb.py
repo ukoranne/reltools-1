@@ -6,10 +6,10 @@ import pprint
 
 IGNORE_GO_FILE_LIST = ["objectmap.go"]
 
-HOME = os.getenv("HOME")
-MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
-CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotodb/sqllite/"
+#HOME = os.getenv("HOME")
+srBase = os.environ.get('SR_CODE_BASE', None)
+GO_MODEL_BASE_PATH = srBase + "/generated/src/model/"
+CODE_GENERATION_PATH = srBase + "/generated/src/model/db/"
 
 goToSqlliteTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -39,12 +39,12 @@ def executeGoFmtCommand (fd, command, dstPath) :
             # create a go format version, at this point the fd is still
             # open so this is a .tmp file, lets strip this for the new
             # file
-            print out, err
-            dir = CODE_GENERATION_PATH
-            fmt_name_with_dir = dir + fd.name
+            #print out, err
+            directory = CODE_GENERATION_PATH
+            fmt_name_with_dir = fd.name
             print fmt_name_with_dir
-            if not os.path.exists(dir):
-              os.makedirs(dir)
+            if not os.path.exists(directory):
+              os.makedirs(directory)
             #nfd = open(fmt_name_with_dir, 'w+')
             #nfd.write(out)
             #nfd.close()
@@ -53,19 +53,19 @@ def executeGoFmtCommand (fd, command, dstPath) :
             #out,err = process.communicate()
             #print out, err
 
-            renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
-            process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            print out, err
+            #renameCmd = "mv %s %s" %(fmt_name_with_dir, fd.name)
+            #process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
+            #out,err = process.communicate()
+            #print out, err
 
-            out = executeCopyCommand(dir+fd.name, dstPath)
+            #out = executeCopyCommand(fd.name, dstPath)
 
         return out
 
 def executeCopyCommand (name, dstPath) :
-    dir = dstPath
-    if not os.path.exists(dir):
-      os.makedirs(dir)
+    directory = dstPath
+    if not os.path.exists(directory):
+      os.makedirs(directory)
 
     copyCmd = "cp %s %s" %(name, dstPath,)
     process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
@@ -84,13 +84,13 @@ def executeLocalCleanup():
             out,err = process.communicate()
             print out, err
 
-def scan_dir_for_go_files(dir):
-    for name in os.listdir(dir):
-        #print "x", dir, name
-        path = os.path.join(dir, name)
+def scan_dir_for_go_files(directory):
+    for name in os.listdir(directory):
+        #print "x", directory, name
+        path = os.path.join(directory, name)
         if name.endswith('.go'):
             if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
-                yield (dir, name)
+                yield (directory, name)
         elif not "." in name:
             for d, f  in scan_dir_for_go_files(path):
                 yield (d, f)
@@ -100,14 +100,14 @@ def build_gosqllite_from_go():
     goStructToListersDict = {}
 
     # lets determine from the json file the structs and associated listeners
-    for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
+    for directory, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
         if '_func' in gofilename and '_enum' in gofilename and '_db' in gofilename:
             continue
 
         if gofilename in IGNORE_GO_FILE_LIST:
             continue
 
-        dbFileName = gofilename.rstrip('.go') + "_db.go"
+        dbFileName = CODE_GENERATION_PATH + gofilename.rstrip('.go') + "_db.go"
 
         dbFd = open(dbFileName, 'w')
         dbFd.write("package genmodels\n")
@@ -117,7 +117,7 @@ def build_gosqllite_from_go():
         	"strconv"
                    "fmt"
                    )""")
-        generate_gosqllite_funcs(dbFd, dir, gofilename)
+        generate_gosqllite_funcs(dbFd, directory, gofilename)
 
         dbFd.close()
         executeGoFmtCommand(dbFd, ["gofmt -w %s" % dbFd.name], GO_MODEL_BASE_PATH)
@@ -198,7 +198,7 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
 
 def createCommonDbFunc():
 
-    fd = open("common_db.go", "w")
+    fd = open(CODE_GENERATION_PATH + "common_db.go", "w")
 
     fd.write("package genmodels\n")
 
@@ -230,10 +230,10 @@ def createCommonDbFunc():
     fd.close()
     return fd
 
-def generate_gosqllite_funcs(fd, dir, gofilename):
+def generate_gosqllite_funcs(fd, directory, gofilename):
     goMemberTypeDict = {}
 
-    path = os.path.join(dir, gofilename)
+    path = os.path.join(directory, gofilename)
     gofd = open(path, 'r')
     deletingComment = False
     foundStruct = False

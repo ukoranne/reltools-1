@@ -4,7 +4,7 @@
 # pyang below here
 
 p=`pwd`
-OPENCONFIG=$HOME/git/external/src/github.com/openconfig/release
+OPENCONFIG=$SR_CODE_BASE/external/src/openconfig/release
 export PATH=$p/bin:$PATH
 export MANPATH=$p/man:$MANPATH
 export PYTHONPATH=$p:$PYTHONPATH

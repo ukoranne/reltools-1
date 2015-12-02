@@ -5,13 +5,16 @@ COMPS=asicd\
 		l3
 
 COMPS_WITH_IPC=asicd\
-					l3\
+					l3
 
-all:installdir ipc exe 
+all: codegen installdir ipc exe 
 
 installdir:
 	$(MKDIR) $(DESTDIR)
 
+
+codegen:
+	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
 exe: $(COMPS)
 	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) exe;)

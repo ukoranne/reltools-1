@@ -151,6 +151,9 @@ def getExternalGoDeps() :
                      { 'repo'        : 'pyang',
                        #'renamesrc'   : 'pyang',
                      },
+                     { 'repo'        : 'openconfig',
+                       #'renamesrc'   : 'pyang',
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 

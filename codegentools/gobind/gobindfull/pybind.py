@@ -196,6 +196,7 @@ class BTPyGOClass(plugin.PyangPlugin):
     def emit(self, ctx, modules, fd):
       # When called, call the build_pyangbind function.
       name = fd.name.split('.')[0]
+      print '### FD name in emit full ' %(fd.name)
 
       fdDict = {"struct" : fd,
                 "enums" : open(name+"_enum.go", 'w'),
@@ -1285,7 +1286,7 @@ def get_element(ctx, fdDict, element, module, parent, path,
       # were asked to split the bindings into a directory structure or not.
 
       elemdict["type"] = CreateStructSkeleton(module, None, element, path, write=False)
-      print 'creating unique class name', elemdict["type"]
+      #print 'creating unique class name', elemdict["type"]
 
       # Deal with specific cases for list - such as the key and how it is
       # ordered.
