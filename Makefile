@@ -1,11 +1,11 @@
 MKDIR=mkdir -p
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/bin
-COMPS=asicd\
-		config\
-		l3
+COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
+		$(SR_CODE_BASE)/snaproute/src/config\
+		$(SR_CODE_BASE)/snaproute/src/l3
 
-COMPS_WITH_IPC=asicd\
-					l3
+COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
+					$(SR_CODE_BASE)/snaproute/src/l3
 
 all: codegen installdir ipc exe 
 
@@ -17,10 +17,14 @@ codegen:
 	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
 exe: $(COMPS)
-	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) exe;)
+	 $(foreach f,$^, make -C $(f) exe;)
 
 ipc: $(COMPS_WITH_IPC)
-	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) ipc;)
+	 $(foreach f,$^, make -C $(f) ipc;)
 
 install: $(COMPS)
-	 $(foreach f,$^, make -C $(SR_CODE_BASE)/snaproute/src/$(f) ipc;)
+	 $(foreach f,$^, make -C $(f) ipc;)
+
+clean: $(COMPS)
+	 $(foreach f,$^, make -C $(f) clean;)
+
