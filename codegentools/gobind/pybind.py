@@ -120,10 +120,10 @@ reserved_name = ["list", "str", "int", "global", "decimal", "float",
 
 
 ENABLE_CAMEL_CASE = True
-MODEL_NAME = 'genmodels'
-HOME = os.getenv("HOME")
-MODELS_PATH_LIST = [HOME + "/git/snaproute/src/models/"]
-CODE_GENERATION_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
+MODEL_NAME = 'model'
+srBase = os.environ.get('SR_CODE_BASE', None)
+MODELS_PATH_LIST = [srBase + "/generated/src/model/"]
+CODE_GENERATION_PATH = srBase + "/generated/src/model/"
 
 
 def safe_name(arg):
@@ -175,16 +175,16 @@ def executeGoFmtCommand (fd, command) :
           # create a go format version, at this point the fd is still
           # open so this is a .tmp file, lets strip this for the new
           # file
-          print err
-          dir = CODE_GENERATION_PATH
-          fmt_name_with_dir = dir + fd.name.rstrip('.tmp')
+          #print err
+          directory = CODE_GENERATION_PATH
+          fmt_name_with_dir = fd.name.rstrip('.tmp')
           print fmt_name_with_dir
-          if not os.path.exists(dir):
-            os.makedirs(dir)
+          if not os.path.exists(directory):
+            os.makedirs(directory)
 
-          copyCmd = "cp %s %s" %(fd.name.rstrip('.tmp'), fmt_name_with_dir)
-          process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
-          out,err = process.communicate()
+          #copyCmd = "cp %s %s" %(fd.name.rstrip('.tmp'), fmt_name_with_dir)
+          #process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
+          #out,err = process.communicate()
 
 
         return out
@@ -196,10 +196,10 @@ def executeGoModelCleanupCommand (command) :
         if gDryRun :
             print cmd
         else:
-            print cmd
+            #print cmd
             process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
-            print out, err
+            #print out, err
         return out
 
 # Base machinery to support operation as a plugin to pyang.
@@ -217,17 +217,18 @@ class BTPyGOClass(plugin.PyangPlugin):
       name = fd.name.split('.')[0]
 
       fdDict = {"struct" : fd,
-                #"enums" : open(name+"_enum.go", 'w'),
-                "func": open(name+"_func.go", 'w')}
+                "func": open(name+"_func.go", 'w+b')}
 
       for ext in ('','_enum', '_func', '_db'):
-        cmd = "rm %s%s%s.go" % (CODE_GENERATION_PATH, name, ext)
+        #cmd = "rm %s%s%s.go" % (CODE_GENERATION_PATH, name, ext)
+        cmd = "rm -f %s%s.go" % (name, ext)
         executeGoModelCleanupCommand([cmd])
 
       build_pybind(ctx, modules, fdDict)
 
       for f in fdDict.values():
         f.close()
+        #import ipdb;ipdb.set_trace()
         executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
 
         #cmd = "rm %s%s" % (MODELS_PATH_LIST[0] + f.name.split('_')[0].rstrip('.go').rstrip('.tmp') + "/", f.name.rstrip('tmp'))
@@ -814,7 +815,7 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
       # this will create the beginning of the struct definition
       structName = CreateStructSkeleton(module, fdDict["struct"], parent, path)
       if structName != '':
-        print 'creating unique class name', structName
+        #print 'creating unique class name', structName
 
         addStructDescription(module, fdDict["struct"], parent, path)
       else:
@@ -1196,6 +1197,7 @@ def createGOStructMethods(elements, nfd, structName):
         argtype = "[]%s" % argtype[0]
       nfd.write("func (d *%s) %s_Set(value %s) bool {" % (structName, varName, argtype))
 
+    #print '### Element type is %s' %(nfd.name)
     if not skipBodyCreation:
       createBody(varName, i, precision, nfd)
 
