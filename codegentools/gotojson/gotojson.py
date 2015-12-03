@@ -1,14 +1,16 @@
 import os
 import json
 
-GO_MODEL_BASE_PATH = "/home/ccordes/git/snaproute/generated/src/gomodel/"
+HOME = os.getenv("HOME")
+MODEL_NAME = 'genmodels'
+GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
 
 def scan_dir_for_go_files(dir):
     for name in os.listdir(dir):
         #print "x", dir, name
         path = os.path.join(dir, name)
         if name.endswith('.go'):
-            if os.path.isfile(path) and "enum" not in path and "func" not in path:
+            if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
                 yield (dir, name)
         elif not "." in name:
             for d, f  in scan_dir_for_go_files(path):
