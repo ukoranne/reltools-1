@@ -118,6 +118,11 @@ def installPythonDependencies ():
     command.append('sudo apt-get install python-dev python-bitarray')
     executeCommand(command)
 
+def installPkgDependencies ():
+    command = []
+    command.append('sudo apt-get install fakeroot dh-make')
+    executeCommand(command)
+
 
 def cloneGitRepo (repourl, repo, dirloc):
     os.chdir(dirloc)
