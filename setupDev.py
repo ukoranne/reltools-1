@@ -41,8 +41,8 @@ def downloadThrift() :
 
 def installGoPacketDependencies ():
     command = []
-    command.append('sudo apt-get install libpcap-dev')
-    executeCommand(command)
+#    command.append('sudo apt-get install libpcap-dev')
+#    executeCommand(command)
 
 def installNanoMsgLib(dir) :
     print 'Installing nanomsg dir - ', dir
@@ -181,6 +181,14 @@ def getExternalGoDeps() :
                      { 'repo'        : 'go-nanomsg',
                        'renamesrc'   : 'go-nanomsg',
                        'renamedst'   : 'github.com/op/'
+                     },
+                     { 'repo'        : 'netlink',
+                       'renamesrc'   : 'netlink',
+                       'renamedst'   : 'github.com/vishvananda/netlink'
+                     },
+                     { 'repo'        : 'netns',
+                       'renamesrc'   : 'netns',
+                       'renamedst'   : 'github.com/vishvananda/netns'
                      },
                      ]
 
