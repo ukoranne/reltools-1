@@ -277,6 +277,7 @@ if __name__ == '__main__':
     setupMakefileLink()
 
     installPythonDependencies()
+    installPkgDependencies()
 
     if False == verifyThriftInstallation():
         installThriftDependencies()
