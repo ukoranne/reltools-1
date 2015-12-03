@@ -123,10 +123,10 @@ def build_thrift_from_go():
     # lets create the clientIf and .thrift files for each listener deamon
     for d in deamons:
         clientIfName = "gen" + d + "clientif.go"
-        clientIfFd = open(CLIENTIF_CODE_GENERATION_PATH + clientIfName, 'w')
+        clientIfFd = open(CLIENTIF_CODE_GENERATION_PATH + clientIfName, 'w+')
         clientIfFd.write("package main\n")
         thriftFileName = d + ".thrift"
-        thriftfd = open(THRIFT_CODE_GENERATION_PATH + thriftFileName, 'w')
+        thriftfd = open(THRIFT_CODE_GENERATION_PATH + thriftFileName, 'w+')
         thriftfd.write("namespace go %s\n" %(d))
         thriftfd.write("""typedef i32 int
 typedef i16 uint16
