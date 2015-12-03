@@ -8,8 +8,8 @@ IGNORE_GO_FILE_LIST = ["objectmap.go"]
 
 #HOME = os.getenv("HOME")
 srBase = os.environ.get('SR_CODE_BASE', None)
-GO_MODEL_BASE_PATH = srBase + "/generated/src/model/"
-CODE_GENERATION_PATH = srBase + "/generated/src/model/db/"
+GO_MODEL_BASE_PATH = srBase + "/generated/src/models/"
+CODE_GENERATION_PATH = srBase + "/generated/src/models/db/"
 
 goToSqlliteTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -110,7 +110,7 @@ def build_gosqllite_from_go():
         dbFileName = CODE_GENERATION_PATH + gofilename.rstrip('.go') + "_db.go"
 
         dbFd = open(dbFileName, 'w')
-        dbFd.write("package genmodels\n")
+        dbFd.write("package models\n")
 
         dbFd.write("""import (
         	"database/sql"
@@ -200,7 +200,7 @@ def createCommonDbFunc():
 
     fd = open(CODE_GENERATION_PATH + "common_db.go", "w")
 
-    fd.write("package genmodels\n")
+    fd.write("package models\n")
 
     fd.write("""import (
              "database/sql"

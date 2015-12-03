@@ -6,7 +6,7 @@ import subprocess
 
 PYANG = 'external/src/pyang/bin/pyang'
 PLUGIN_DIR = 'reltools/codegentools/gobind'
-GEN_OUT_BASE = 'generated/src/model'
+GEN_OUT_BASE = 'generated/src/models'
 modelsToBuild = [
                  {'srcs'   : 'openconfig/release/models/interfaces/*.yang',
                   'output' : 'genInterface.go'},
@@ -31,6 +31,7 @@ if __name__=="__main__":
         sys.exit(0)
 
     os.system('mkdir -p ' + srBase + '/' + GEN_OUT_BASE + '/')
+    os.system('mkdir -p ' + srBase + '/' + GEN_OUT_BASE + '/db/')
     for src in modelsToBuild:
         cmd  = srBase + '/' + PYANG + ' --plugindir ' + srBase + '/' + 'reltools/codegentools/gobind/ -f pybind -o ' + \
                srBase + '/' + GEN_OUT_BASE + '/' + src['output'] + ' '  +\
