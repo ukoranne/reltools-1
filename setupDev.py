@@ -211,7 +211,7 @@ def getExternalGoDeps() :
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
         dirToMake = dstDir 
-        if True or not (dstDir != ''  and os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
+        if dstDir != '' and not (os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
             cloneGitRepo ( repoUrl ,dep['repo'], dirLocation)
             if dep.has_key('reltag'):
                 gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
