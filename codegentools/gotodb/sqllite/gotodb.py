@@ -108,6 +108,8 @@ def build_gosqllite_from_go():
             continue
 
         dbFileName = CODE_GENERATION_PATH + gofilename.rstrip('.go') + "_db.go"
+        if not os.path.exists(CODE_GENERATION_PATH):
+            os.makedirs(CODE_GENERATION_PATH)
 
         dbFd = open(dbFileName, 'w')
         dbFd.write("package models\n")
