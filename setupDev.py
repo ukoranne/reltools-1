@@ -44,7 +44,27 @@ def installGoPacketDependencies ():
     command.append('sudo apt-get install libpcap-dev')
     executeCommand(command)
 
-
+def installNanoMsgLib(dir) :
+    print 'Installing nanomsg dir - ', dir
+    os.chdir(dir)
+    command = []
+    command.append('sudo apt-get install libtool')
+    executeCommand(command)
+    command = []
+    command.append('libtoolize')
+    executeCommand(command)
+    command = []
+    command.append('./autogen.sh')
+    executeCommand(command)
+    command = []
+    command.append('./configure')
+    executeCommand(command)
+    command = []
+    command.append('make')
+    executeCommand(command)
+    command = []
+    command.append('sudo make install')
+    executeCommand(command)
 
 def verifyThriftInstallation():
     #return True
@@ -152,6 +172,14 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'pyang',
                        'renamedst'   : ''
                      },
+                     { 'repo'        : 'nanomsg',
+                       'renamesrc'   : 'nanomsg',
+                       'renamedst'   : 'github.com/nanomsg/'
+                     },
+                     { 'repo'        : 'go-nanomsg',
+                       'renamesrc'   : 'go-nanomsg',
+                       'renamedst'   : 'github.com/op/'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
@@ -176,6 +204,8 @@ def getExternalGoDeps() :
                     os.chdir(d)
             cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
             executeCommand(cmd)
+            if dep['repo'] == 'nanomsg':
+                installNanoMsgLib(dirLocation + dep['renamedst'] + dep['renamesrc'])
 
 def cloneSnapRouteGitRepos( gitReposToClone = None):
     userRepoPrefix   = 'https://github.com/'+gUserName+'/'
