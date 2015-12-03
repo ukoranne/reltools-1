@@ -2,41 +2,63 @@
 import os
 import sys
 import time
-daemonsToStart = [
-                 {'name': 'asicd',
-                  'params': '-params=/opt/flexswitch/params'},
+import daemon 
+from optparse import OptionParser
 
-                 {'name': 'arpd',
-                  'params': '-params=/opt/flexswitch/params'},
+def getDaemonsInfo (baseDir) :
 
-                 {'name': 'portd',
-                  'params': '-params=/opt/flexswitch/params'},
+    daemonsToStart = [
+                    {'name': 'asicd',
+                     'params': '-params=' + baseDir + '/params'},
 
-                 {'name': 'ribd',
-                  'params': '-params=/opt/flexswitch/params'},
+                    {'name': 'arpd',
+                     'params': '-params=' + baseDir + '/params'},
 
-                 {'name': 'bgpd',
-                  'params': '-params=/opt/flexswitch/params'},
+                    {'name': 'portd',
+                     'params': '-params=' + baseDir + '/params'},
 
-                 {'name': 'confd',
-                  'params': '-params=/opt/flexswitch/params'},
-                 ]
+                    {'name': 'ribd',
+                     'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'bgpd',
+                     'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'confd',
+                    'params': '-params=' + baseDir + '/params'},
+                    ]
+    return daemonsToStart
+
+class FlexSwitchDaemon (daemon.Daemon):
+    def run(self, *args, **kwargs):
+        print "Running ConfD"
+        cmd = args[0][0]
+        pargs = args[0]
+        os.execvp(cmd, pargs)
+
+
 if __name__=="__main__":
-    for dmn in daemonsToStart: 
+    parser = OptionParser()
+
+    parser.add_option("-d", "--dir", 
+                      dest="directory",
+                      action='store',
+                      help="Directory where the binaries are stored")
+
+    (opts, args) = parser.parse_args()
+    baseDir = opts.directory if (opts.directory != None) else "/opt/flexswitch"
+    pidFileDir = baseDir+'/bin/pids/'
+
+    if not os.path.exists(pidFileDir):
+        os.makedirs(pidFileDir)
+
+    for dmn in getDaemonsInfo(baseDir+'/bin'): 
         print "Starting Daemon %s" %( dmn['name'])
-        cmd = '/opt/flexswitch/bin/'+ dmn['name'] 
-        #cmd = '/home/hari/git/reltools/flexswitch/dmn'
-        print "Command before  is %s" %(cmd)
-        args = (cmd, dmn['params'])
-        pid =  os.fork()
-        if pid > 0:
-            continue
-        else:
-	    os.chdir("/") 
-            os.setsid() 
-            os.umask(0) 
-            pid = os.fork() 
-            if pid >0:
-                sys.exit()
-            else:
-                os.execvp(cmd, args)
+        cmd = baseDir +'/bin/'+ dmn['name'] 
+        pargs = (cmd, dmn['params'])
+        pidFile = pidFileDir + dmn['name']+'.pid' 
+        print 'PID File is %s' %(pidFile)
+        dmn = FlexSwitchDaemon (pidFile, 
+                                #stdout= baseDir+'/bin/'+'log.txt', 
+                                #stderr= baseDir+'/bin/'+'log.txt', 
+                                verbose=2)
+        dmn.start(pargs)

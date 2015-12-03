@@ -1,6 +1,7 @@
 import os
 import subprocess
 from optparse import OptionParser
+import sys
 
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
@@ -193,11 +194,19 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'go-nanomsg',
                        'renamedst'   : 'github.com/op/'
                      },
+                     { 'repo'        : 'netlink',
+                       'renamesrc'   : 'netlink',
+                       'renamedst'   : 'github.com/vishvananda/netlink'
+                     },
+                     { 'repo'        : 'netns',
+                       'renamesrc'   : 'netns',
+                       'renamedst'   : 'github.com/vishvananda/netns'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
     for dep in externalGoDeps:
-        #if dep['repo'] == 'pyang':
+        #if dep['repo'] == 'netlink':
         #    import ipdb;ipdb.set_trace()
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
@@ -208,13 +217,10 @@ def getExternalGoDeps() :
                 gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
 
             if not dstDir.endswith('/'):
-                dirToMake = ''.join(dstDir.split('/')[:-1])
+                dirToMake = dstDir[0:dstDir.rfind('/')]
             os.chdir(dirLocation)
-            for d in dirToMake.split('/'):
-                if len(d):
-                    cmd  =  'mkdir -p ' + d
-                    executeCommand(cmd)
-                    os.chdir(d)
+            cmd  =  'mkdir -p ' + dirToMake
+            executeCommand(cmd)
             if dep.has_key('renamesrc'):
                 cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
                 executeCommand(cmd)
@@ -284,7 +290,7 @@ if __name__ == '__main__':
         installThrift()
     else:
         print ' Thrift already exists'
-
+    
     installGoPacketDependencies()
 
     setupGitCredentialCache()

@@ -18,6 +18,7 @@ all:installdir ipc exe
 
 install:installdir copy
 	install $(SR_CODE_BASE)/reltools/flexswitch/flexswitch $(DESTDIR)/opt/$(PROD_NAME)
+	install $(SR_CODE_BASE)/reltools/flexswitch/daemon.py $(DESTDIR)/opt/$(PROD_NAME)
 	install $(SRC_DIR)/flexswitch-0.0.1/confd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRC_DIR)/flexswitch-0.0.1/arpd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRC_DIR)/flexswitch-0.0.1/bgpd $(DESTDIR)/opt/$(PROD_NAME)/bin
