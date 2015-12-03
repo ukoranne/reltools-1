@@ -322,5 +322,12 @@ def generate_objmap(allStructList):
 
 if __name__ == "__main__":
 
+    for dirpath in [CODE_GENERATION_PATH,
+                    CLIENTIF_CODE_GENERATION_PATH,
+                    OBJMAP_CODE_GENERATION_PATH,
+                    THRIFT_CODE_GENERATION_PATH]
+        if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+
     build_thrift_from_go()
     #executeLocalCleanup()
