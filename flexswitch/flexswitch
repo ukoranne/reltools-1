@@ -51,14 +51,15 @@ if __name__=="__main__":
     if not os.path.exists(pidFileDir):
         os.makedirs(pidFileDir)
 
-    for dmn in getDaemonsInfo(baseDir+'/bin'): 
+    for dmn in getDaemonsInfo(baseDir): 
         print "Starting Daemon %s" %( dmn['name'])
         cmd = baseDir +'/bin/'+ dmn['name'] 
         pargs = (cmd, dmn['params'])
         pidFile = pidFileDir + dmn['name']+'.pid' 
-        print 'PID File is %s' %(pidFile)
-        dmn = FlexSwitchDaemon (pidFile, 
-                                #stdout= baseDir+'/bin/'+'log.txt', 
-                                #stderr= baseDir+'/bin/'+'log.txt', 
-                                verbose=2)
-        dmn.start(pargs)
+        pid = os.fork()
+        if pid == 0:
+            dmn = FlexSwitchDaemon (pidFile, 
+                                    #stdout= baseDir+'/bin/'+'log.txt', 
+                                    #stderr= baseDir+'/bin/'+'log.txt', 
+                                    verbose=2)
+            dmn.start(pargs)
