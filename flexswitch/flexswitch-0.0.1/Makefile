@@ -21,6 +21,7 @@ install:installdir copy
 	install $(SRC_DIR)/flexswitch-0.0.1/bgpd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRC_DIR)/flexswitch-0.0.1/ribd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRC_DIR)/flexswitch-0.0.1/asicd $(DESTDIR)/opt/$(PROD_NAME)/bin
+	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/opt/$(PROD_NAME)/sharedlib
 
 installdir:
 	$(MKDIR) $(DESTDIR)

@@ -20,6 +20,8 @@ set -e
 #FIXME: Create the sym links conditionally, depending on target + pass in directory
 ln -sf /opt/flexswitch/sharedlib/libAsicMgr.so.1 /opt/flexswitch/sharedlib/libAsicMgr.so
 ln -sf /opt/flexswitch/sharedlib/libopennsl.so.1 /opt/flexswitch/sharedlib/libopennsl.so
+ln -sf /opt/flexswitch/sharedlib/libnanomsg.so.4.0.0 /opt/flexswitch/sharedlib/libnanomsg.so
+ln -sf /opt/flexswitch/sharedlib/libnanomsg.so.4.0.0 /opt/flexswitch/sharedlib/libnanomsg.so.4
 case "$1" in
     configure)
         echo "postinst Configure called with unknown argument \`$1'" >&2
