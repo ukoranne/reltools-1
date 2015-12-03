@@ -1,6 +1,7 @@
 import os
 import subprocess
 from optparse import OptionParser
+import sys
 
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
@@ -41,8 +42,8 @@ def downloadThrift() :
 
 def installGoPacketDependencies ():
     command = []
-#    command.append('sudo apt-get install libpcap-dev')
-#    executeCommand(command)
+    command.append('sudo apt-get install libpcap-dev')
+    executeCommand(command)
 
 def installNanoMsgLib(dir) :
     print 'Installing nanomsg dir - ', dir
@@ -194,7 +195,7 @@ def getExternalGoDeps() :
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
     for dep in externalGoDeps:
-        #if dep['repo'] == 'pyang':
+        #if dep['repo'] == 'netlink':
         #    import ipdb;ipdb.set_trace()
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
@@ -205,13 +206,10 @@ def getExternalGoDeps() :
                 gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
 
             if not dstDir.endswith('/'):
-                dirToMake = ''.join(dstDir.split('/')[:-1])
+                dirToMake = dstDir[0:dstDir.rfind('/')]
             os.chdir(dirLocation)
-            for d in dirToMake.split('/'):
-                if len(d):
-                    cmd  =  'mkdir -p ' + d
-                    executeCommand(cmd)
-                    os.chdir(d)
+            cmd  =  'mkdir -p ' + dirToMake
+            executeCommand(cmd)
             if dep.has_key('renamesrc'):
                 cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
                 executeCommand(cmd)
@@ -278,7 +276,7 @@ if __name__ == '__main__':
     else:
         print ' Thrift already exists'
 		
-	installGoPacketDependencies()
+    installGoPacketDependencies()
 
     setupGitCredentialCache()
     if 'snaproute' in todo:
