@@ -5,7 +5,8 @@ COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/l3
 
 COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
-					$(SR_CODE_BASE)/snaproute/src/l3
+					$(SR_CODE_BASE)/snaproute/src/l3\
+					$(SR_CODE_BASE)/snaproute/src/infra
 
 all: codegen installdir ipc exe 
 
