@@ -93,6 +93,12 @@ def installThriftDependencies ():
     command.append('sudo apt-get install libboost-dev libboost-test-dev libboost-program-options-dev libboost-system-dev libboost-filesystem-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev ant')
     executeCommand(command)
 
+def installPythonDependencies ():
+    command = []
+    command.append('sudo apt-get install python-dev python-bitarray')
+    executeCommand(command)
+
+
 def cloneGitRepo (repourl, repo, dirloc):
     os.chdir(dirloc)
     if not (os.path.exists(dirloc + repo)  and os.path.isdir(dirloc + repo)):
@@ -234,13 +240,16 @@ if __name__ == '__main__':
 
     createDirectoryStructure()
     setupMakefileLink()
+
+    installPythonDependencies()
+
     if False == verifyThriftInstallation():
         installThriftDependencies()
         installThrift()
     else:
         print ' Thrift already exists'
-		
-	installGoPacketDependencies()
+
+    installGoPacketDependencies()
 
     setupGitCredentialCache()
     if 'snaproute' in todo:
