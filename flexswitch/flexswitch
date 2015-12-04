@@ -11,13 +11,13 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'asicd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'arpd',
-                     'params': '-params=' + baseDir + '/params'},
-
                     {'name': 'portd',
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ribd',
+                     'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'arpd',
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'bgpd',
@@ -65,6 +65,7 @@ if __name__=="__main__":
         cmd = baseDir +'/bin/'+ dmn['name'] 
         pargs = (cmd, dmn['params'])
         pidFile = pidFileDir + dmn['name']+'.pid' 
+        time.sleep(20)
         pid = os.fork()
         if pid == 0:
             dmn = FlexSwitchDaemon (pidFile, 
