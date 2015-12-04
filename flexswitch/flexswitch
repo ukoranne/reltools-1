@@ -60,7 +60,7 @@ if __name__=="__main__":
     if not os.path.exists(pidFileDir):
         os.makedirs(pidFileDir)
 
-    for dmn in getDaemonsInfo(baseDir if localBld else baseDir+'/bin'): 
+    for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'): 
         print "Starting Daemon %s" %( dmn['name'])
         cmd = baseDir +'/bin/'+ dmn['name'] 
         pargs = (cmd, dmn['params'])
