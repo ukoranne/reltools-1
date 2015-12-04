@@ -48,13 +48,19 @@ if __name__=="__main__":
                       help="Directory where the binaries are stored")
 
     (opts, args) = parser.parse_args()
-    baseDir = opts.directory if (opts.directory != None) else "/opt/flexswitch"
+    localBld = False
+    if opts.directory != None:
+        localBld = True
+        baseDir = opts.directory 
+    else:
+        baseDir = "/opt/flexswitch"
+
     pidFileDir = baseDir+'/bin/pids/'
 
     if not os.path.exists(pidFileDir):
         os.makedirs(pidFileDir)
 
-    for dmn in getDaemonsInfo(baseDir): 
+    for dmn in getDaemonsInfo(baseDir if localBld else baseDir+'/bin'): 
         print "Starting Daemon %s" %( dmn['name'])
         cmd = baseDir +'/bin/'+ dmn['name'] 
         pargs = (cmd, dmn['params'])
