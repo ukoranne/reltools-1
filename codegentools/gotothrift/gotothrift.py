@@ -127,13 +127,13 @@ def build_thrift_from_go():
         clientIfFd.write("package main\n")
         thriftFileName = d + ".thrift"
         thriftfd = open(THRIFT_CODE_GENERATION_PATH + thriftFileName, 'w+')
-        thriftfd.write("namespace go %s\n" %(d))
+        thriftfd.write("namespace go %sServices\n" %(d))
         thriftfd.write("""typedef i32 int
 typedef i16 uint16
 """)
 
         # create the thrift file info
-        (goMemberTypeDict, crudStructsList) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
+        (goMemberTypeDict, crudStructsList, goStructDict) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
         thriftfd.close()
 
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
@@ -170,6 +170,7 @@ def get_listeners_from_json(goStructToListersDict):
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     goMemberTypeDict = {}
+    goStructDict = {}
     crudStructsList = []
     for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
         #print dir, gofilename, dir.split('/')[-1]
@@ -189,6 +190,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         # print "found line now checking deamon", d, goStructToListersDict[lineSplit[1]]
                         if d in goStructToListersDict[lineSplit[1]]:
                             goMemberTypeDict[lineSplit[1]] = {}
+                            goStructDict[lineSplit[1]] = {}
                             currentStruct = lineSplit[1]
                             thriftfd.write(structLine)
                             crudStructsList.append(lineSplit[1])
@@ -219,6 +221,8 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         nativetype = "set<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
                         goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                 nativetype})
+                        goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
+                                                            elemtype + "[]"})
 
                         thriftfd.write("\t%s : %s %s\n" % (memberCnt,
                                                            nativetype,
@@ -227,6 +231,9 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         if elemtype in goToThirftTypeMap.keys():
                             goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                         goToThirftTypeMap[elemtype]["native_type"]})
+                            goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
+                                                                elemtype})
+
                             thriftfd.write("\t%s : %s %s\n" % (memberCnt,
                                                                goToThirftTypeMap[elemtype]["native_type"],
                                                                lineSplit[0]))
@@ -236,21 +243,27 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                     deletingComment = False
 
     #print crudStructsList
-    thriftfd.write("service %sServer {\n" % (d.upper()))
+    thriftfd.write("service %sServices {\n" % (d.upper()))
     for s in crudStructsList:
         thriftfd.write(
             """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
     thriftfd.write("}")
-    return goMemberTypeDict, crudStructsList
+    return goMemberTypeDict, crudStructsList, goStructDict
 
 
 def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
-    newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
+    #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
+    newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     # BELOW CODE WILL BE FORMATED BY GOFMT
+    clientIfFd.write("""import (
+    "%sServices"
+    "models"
+    "database/sql"
+    )\n""" % lowerDeamonName)
     clientIfFd.write("""type %sClient struct {
 	                        IPCClientBase
-	                        ClientHdl *%sServices.%sServiceClient
+	                        ClientHdl *%sServices.%sServicesClient
                             }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
     clientIfFd.write("""
                         func (clnt *%sClient) Initialize(name string, address string) {
@@ -261,36 +274,44 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
 
 	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
 	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
-		                clnt.ClientHdl = %sServices.New%sServiceClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
+		                clnt.ClientHdl = %sServices.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
 	                    }
 	                    return true
                         }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
     clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 	                    return true
                         }\n""" % (newDeamonName,))
-    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj ConfigObj) bool {
+    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
         clientIfFd.write("""
-                            case %s :
-                            data := obj.(%s)
-                            conf := %s.New%s()\n""" % (s, s, d, s))
+                            case models.%s :
+                            data := obj.(models.%s)
+                            conf := %sServices.New%s()\n""" % (s, s, d, s))
         for k, v in goMemberTypeDict[s].iteritems():
             #print k.split(' ')
-            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, v, k))
+            cast = v
+            # lets convert thrift i8, i16, i32, i64 to int...
+            if cast.startswith('i'):
+                cast = 'int' + cast.lstrip('i')
+            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
         clientIfFd.write("""
                             _, err := clnt.ClientHdl.Create%s(conf)
                             if err != nil {
-                            return false
+                            return int64(0), false
                             }
                             break\n""" % (s,))
     clientIfFd.write("""default:
 		                break
 	                    }
 
-	                    return true
+	                    return int64(0), true
                         }\n""")
+
+    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId int64, dbHdl *sql.DB) bool {
+    return true
+    }""" % (newDeamonName,))
     clientIfFd.close()
 
     # lets beautify the the client if code
