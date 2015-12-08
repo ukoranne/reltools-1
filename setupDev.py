@@ -208,8 +208,9 @@ def getExternalGoDeps() :
             if not dstDir.endswith('/'):
                 dirToMake = dstDir[0:dstDir.rfind('/')]
             os.chdir(dirLocation)
-            cmd  =  'mkdir -p ' + dirToMake
-            executeCommand(cmd)
+            if dirToMake:
+                cmd  =  'mkdir -p ' + dirToMake
+                executeCommand(cmd)
             if dep.has_key('renamesrc'):
                 cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
                 executeCommand(cmd)
