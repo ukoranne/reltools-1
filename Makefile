@@ -1,7 +1,7 @@
 MKDIR=mkdir -p
 RMDIRFORCE=rm -rf
 PROD_NAME=flexswitch
-BUILD_DIR=flexswitch-0.0.1
+BUILD_DIR=bin
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
 COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
@@ -44,6 +44,7 @@ install:installdir copy
 	install $(SRCDIR)/$(BUILD_DIR)/arpd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/bgpd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/opt/$(PROD_NAME)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/opt/$(PROD_NAME)/bin
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/opt/$(PROD_NAME)/sharedlib
 

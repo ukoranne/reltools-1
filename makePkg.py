@@ -2,7 +2,7 @@ import os
 import json
 import subprocess
 
-TEMPLATE_BUILD_DIR = "flexswitch-0.0.1"
+TEMPLATE_BUILD_DIR = "=bin"
 TEMPLATE_CHANGELOG_VER = "0.0.1"
 
 def executeCommand (command) :
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     executeCommand(command)
     #Edit makefile
     command = []
-    command.append('sed -i s/' + TEMPLATE_BUILD_DIR +'/' + build_dir + '/ ' + build_dir +'/Makefile')
+    command.append('sed -i s/' + TEMPLATE_BUILD_DIR +'/=' + build_dir + '/ ' + build_dir +'/Makefile')
     executeCommand(command)
     #Edit changelog
     command = []
