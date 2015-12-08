@@ -31,7 +31,6 @@ def getDaemonsInfo (baseDir) :
 
 class FlexSwitchDaemon (daemon.Daemon):
     def run(self, *args, **kwargs):
-        print "Running ConfD"
         cmd = args[0][0]
         pargs = args[0]
         os.execvp(cmd, pargs)
@@ -60,11 +59,11 @@ if __name__=="__main__":
 
     if opts.op != None and opts.op not in ['start', 'stop']:
         parser.print_usage()
-
+        sys.exit(0)
 
     pidFileDir = baseDir+'/bin/pids/'
 
-    if not os.path.exists(pidFileDir):
+    if ((not os.path.exists(pidFileDir)) and (opts.op == 'start')):
         os.makedirs(pidFileDir)
 
     for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'): 
@@ -75,7 +74,25 @@ if __name__=="__main__":
                 pf = file(pidFile, 'r')
                 pid = int(pf.read().strip())
                 pf.close()
-                print os.kill(pid, signal.SIGTERM)
+                try :
+                    #Check if process matching pid file is running
+                    os.kill(pid, 0)
+                except:
+                    #Process with pid not running, cleanup pid file
+                    os.remove(pidFile)
+                    continue
+                #Process matching pid exists, perform cleanup
+                os.kill(pid, signal.SIGHUP)
+                time.sleep(10)
+                try :
+                    #Check if cleanup completed
+                    os.kill(pid, 0)
+                except:
+                    #Process with pid successfully cleaned up
+                    os.remove(pidFile)
+                    continue
+                #Force kill by sending SIGTERM
+                os.kill(pid, signal.SIGTERM)
                 os.remove(pidFile)
             except:
                 print '*** Failed to Kill process [%s]' %(dmn['name'])
