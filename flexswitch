@@ -46,6 +46,7 @@ if __name__=="__main__":
 
     parser.add_option("-o", "--op", 
                       dest="op",
+                      default="start",
                       action='store',
                       help="Operation (start/stop) ")
 
@@ -66,7 +67,7 @@ if __name__=="__main__":
     if ((not os.path.exists(pidFileDir)) and (opts.op == 'start')):
         os.makedirs(pidFileDir)
 
-    for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'): 
+    for dmn in getDaemonsInfo(baseDir): 
         pidFile = pidFileDir + dmn['name']+'.pid' 
         if opts.op == 'stop':
             print "Stopping Daemon %s" %( dmn['name'])
@@ -105,7 +106,7 @@ if __name__=="__main__":
             pid = os.fork()
             if pid == 0:
                 dmn = FlexSwitchDaemon (pidFile, 
-                                        #stdout= baseDir+'/bin/'+'log.txt', 
-                                        #stderr= baseDir+'/bin/'+'log.txt', 
+                                        stdout= baseDir+'/bin/'+'log.txt', 
+                                        stderr= baseDir+'/bin/'+'log.txt', 
                                         verbose=2)
                 dmn.start(pargs)
