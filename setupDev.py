@@ -27,7 +27,7 @@ def executeCommand (command) :
         else:
             process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
-        return out
+    return out
 
 def downloadThrift() :
     print 'Downloading Thrift'
@@ -48,24 +48,14 @@ def installGoPacketDependencies ():
 def installNanoMsgLib(dir) :
     print 'Installing nanomsg dir - ', dir
     os.chdir(dir)
-    command = []
-    command.append('sudo apt-get install libtool')
-    executeCommand(command)
-    command = []
-    command.append('libtoolize')
-    executeCommand(command)
-    command = []
-    command.append('./autogen.sh')
-    executeCommand(command)
-    command = []
-    command.append('./configure')
-    executeCommand(command)
-    command = []
-    command.append('make')
-    executeCommand(command)
-    command = []
-    command.append('sudo make install')
-    executeCommand(command)
+    cmdList = ['sudo apt-get install libtool',
+               'libtoolize',
+               './autogen.sh',
+               './configure',
+               'make',
+               'sudo make install',
+              ]
+    executeCommand(cmdList)
 
 def verifyThriftInstallation():
     #return True
@@ -190,6 +180,11 @@ def getExternalGoDeps() :
                      { 'repo'        : 'netns',
                        'renamesrc'   : 'netns',
                        'renamedst'   : 'github.com/vishvananda/netns'
+                     },
+
+                     { 'repo'        : 'gouuid',
+                       'renamesrc'   : 'gouuid',
+                       'renamedst'   : 'github.com/nu7hatch/gouuid'
                      },
                      ]
 
