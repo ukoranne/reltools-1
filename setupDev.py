@@ -27,7 +27,7 @@ def executeCommand (command) :
         else:
             process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
-        return out
+    return out
 
 def downloadThrift() :
     print 'Downloading Thrift'
@@ -48,24 +48,14 @@ def installGoPacketDependencies ():
 def installNanoMsgLib(dir) :
     print 'Installing nanomsg dir - ', dir
     os.chdir(dir)
-    command = []
-    command.append('sudo apt-get install libtool')
-    executeCommand(command)
-    command = []
-    command.append('libtoolize')
-    executeCommand(command)
-    command = []
-    command.append('./autogen.sh')
-    executeCommand(command)
-    command = []
-    command.append('./configure')
-    executeCommand(command)
-    command = []
-    command.append('make')
-    executeCommand(command)
-    command = []
-    command.append('sudo make install')
-    executeCommand(command)
+    cmdList = ['sudo apt-get install libtool',
+               'libtoolize',
+               './autogen.sh',
+               './configure',
+               'make',
+               'sudo make install',
+              ]
+    executeCommand(cmdList)
 
 def verifyThriftInstallation():
     #return True
@@ -202,6 +192,11 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'netns',
                        'renamedst'   : 'github.com/vishvananda/netns'
                      },
+
+                     { 'repo'        : 'gouuid',
+                       'renamesrc'   : 'gouuid',
+                       'renamedst'   : 'github.com/nu7hatch/gouuid'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
@@ -211,7 +206,8 @@ def getExternalGoDeps() :
         repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
         dirToMake = dstDir 
-        if dstDir != '' and not (os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir)):
+        #if dstDir == '' or (dstDir != '' and not (os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir))):
+        if dstDir == '' or (dstDir != '' and not (os.path.exists(dirLocation + dstDir + '/' + dep['repo']))):
             cloneGitRepo ( repoUrl ,dep['repo'], dirLocation)
             if dep.has_key('reltag'):
                 gitRepoSyncToTag(dirLocation+dep['repo'], dep['reltag'])
@@ -219,8 +215,9 @@ def getExternalGoDeps() :
             if not dstDir.endswith('/'):
                 dirToMake = dstDir[0:dstDir.rfind('/')]
             os.chdir(dirLocation)
-            cmd  =  'mkdir -p ' + dirToMake
-            executeCommand(cmd)
+            if dirToMake:
+                cmd  =  'mkdir -p ' + dirToMake
+                executeCommand(cmd)
             if dep.has_key('renamesrc'):
                 cmd = 'mv ' + dirLocation + dep['renamesrc']+ ' ' + dirLocation + dep['renamedst']
                 executeCommand(cmd)
