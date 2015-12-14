@@ -63,14 +63,27 @@ if __name__=="__main__":
 
     pidFileDir = baseDir+'/bin/pids/'
 
-    if ((not os.path.exists(pidFileDir)) and (opts.op == 'start')):
-        os.makedirs(pidFileDir)
-
-    for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'): 
-        pidFile = pidFileDir + dmn['name']+'.pid' 
-        if opts.op == 'stop':
-            print "Stopping Daemon %s" %( dmn['name'])
+    if opts.op == 'start':
+        if ((not os.path.exists(pidFileDir))):
+            os.makedirs(pidFileDir)
+        for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
+            print "Starting Daemon %s" %( dmn['name'])
+            pidFile = pidFileDir + dmn['name']+'.pid'
+            cmd = baseDir +'/bin/'+ dmn['name']
+            pargs = (cmd, dmn['params'])
+            time.sleep(10)
+            pid = os.fork()
+            if pid == 0:
+                dmn = FlexSwitchDaemon (pidFile,
+                                        #stdout= baseDir+'/bin/'+'log.txt',
+                                        #stderr= baseDir+'/bin/'+'log.txt',
+                                        verbose=2)
+                dmn.start(pargs)
+    else:
+        for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
             try:
+                print "Stopping Daemon %s" %( dmn['name'])
+                pidFile = pidFileDir + dmn['name']+'.pid'
                 pf = file(pidFile, 'r')
                 pid = int(pf.read().strip())
                 pf.close()
@@ -83,7 +96,12 @@ if __name__=="__main__":
                     continue
                 #Process matching pid exists, perform cleanup
                 os.kill(pid, signal.SIGHUP)
-                time.sleep(10)
+            except:
+                print '*** Failed to stop process [%s]' %(dmn['name'])
+        time.sleep(10)
+        for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
+            try:
+                pidFile = pidFileDir + dmn['name']+'.pid'
                 try :
                     #Check if cleanup completed
                     os.kill(pid, 0)
@@ -91,21 +109,8 @@ if __name__=="__main__":
                     #Process with pid successfully cleaned up
                     os.remove(pidFile)
                     continue
-                #Force kill by sending SIGTERM
-                os.kill(pid, signal.SIGTERM)
-                os.remove(pidFile)
+                    #Force kill by sending SIGTERM
+                    os.kill(pid, signal.SIGTERM)
+                    os.remove(pidFile)
             except:
                 print '*** Failed to Kill process [%s]' %(dmn['name'])
-
-        else:
-            print "Starting Daemon %s" %( dmn['name'])
-            cmd = baseDir +'/bin/'+ dmn['name'] 
-            pargs = (cmd, dmn['params'])
-            time.sleep(10)
-            pid = os.fork()
-            if pid == 0:
-                dmn = FlexSwitchDaemon (pidFile, 
-                                        #stdout= baseDir+'/bin/'+'log.txt', 
-                                        #stderr= baseDir+'/bin/'+'log.txt', 
-                                        verbose=2)
-                dmn.start(pargs)
