@@ -309,7 +309,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
 	                    return int64(0), true
                         }\n""")
 
-    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId int64, dbHdl *sql.DB) bool {
+    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId string, dbHdl *sql.DB) bool {
     return true
     }""" % (newDeamonName,))
     clientIfFd.close()

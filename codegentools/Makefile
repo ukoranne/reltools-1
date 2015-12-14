@@ -9,10 +9,10 @@ all: codegen
 codegen: structs json thriftclient dbif
 
 structs:
-	 python $(SR_CODE_BASE)/reltools/codegentools/generateCode.py
+	python $(SR_CODE_BASE)/reltools/codegentools/generateCode.py
 dbif:
-	 python $(SR_CODE_BASE)/reltools/codegentools/gotodb/sqllite/gotodb.py
+	python $(SR_CODE_BASE)/reltools/codegentools/gotodb/sqllite/gotodb.py
 json:
-	 python $(SR_CODE_BASE)/reltools/codegentools/gotojson/gotojson.py
+	python $(SR_CODE_BASE)/reltools/codegentools/gotojson/gotojson.py
 thriftclient:
-	 python $(SR_CODE_BASE)/reltools/codegentools/gotothrift/gotothrift.py
+	python $(SR_CODE_BASE)/reltools/codegentools/gotothrift/gotothrift.py
