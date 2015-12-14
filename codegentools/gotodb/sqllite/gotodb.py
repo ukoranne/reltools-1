@@ -136,9 +136,9 @@ def createDBTable(fd, structName, goMemberTypeDict):
         if 'Key' in m:
             keyList.append(m)
         if "LIST" in t:
-            fd.write("""\" %s TEXT \" +\n""" %(m,))
+            fd.write("""\" %s TEXT, \" +\n""" %(m,))
         else:
-            fd.write("""\" %s %s \" +\n""" %(m, t))
+            fd.write("""\" %s %s, \" +\n""" %(m, t))
 
     fd.write(""" \"PRIMARY KEY(""")
     for i, k in enumerate(keyList):
