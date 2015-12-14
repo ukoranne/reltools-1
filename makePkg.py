@@ -2,8 +2,10 @@ import os
 import json
 import subprocess
 
-TEMPLATE_BUILD_DIR = "=bin"
+PACKAGE_BUILD="PKG_BUILD=TRUE"
+TEMPLATE_BUILD_TYPE="PKG_BUILD=FALSE"
 TEMPLATE_CHANGELOG_VER = "0.0.1"
+TEMPLATE_BUILD_DIR = "flexswitch-0.0.1"
 
 def executeCommand (command) :
     out = ''
@@ -20,33 +22,22 @@ if __name__ == '__main__':
         parsedPkgInfo = json.loads(pkgInfo)
     cfgFile.close()
     build_dir = "flexswitch-" + parsedPkgInfo['version']
-    #Create workspace
-    command = []
-    command.append('cp -a tmplPkgDir ' + build_dir)
-    executeCommand(command)
-    command = []
-    command.append('cp Makefile ' + build_dir)
-    executeCommand(command)
-    #Edit makefile
-    command = []
-    command.append('sed -i s/' + TEMPLATE_BUILD_DIR +'/=' + build_dir + '/ ' + build_dir +'/Makefile')
-    executeCommand(command)
-    #Edit changelog
-    command = []
-    command.append('sed -i s/' + TEMPLATE_CHANGELOG_VER + '/' + parsedPkgInfo['version'] + '/ ' + build_dir + '/debian/changelog')
-    executeCommand(command)
-    #Build package
-    command = []
+    preProcess = [
+            'cp -a tmplPkgDir ' + build_dir,
+            'cp Makefile ' + build_dir,
+            'sed -i s/' + TEMPLATE_BUILD_DIR +'/' + build_dir + '/ ' + build_dir +'/Makefile',
+            'sed -i s/' + TEMPLATE_BUILD_TYPE +'/' + PACKAGE_BUILD + '/ ' + build_dir + '/Makefile',
+            'sed -i s/' + TEMPLATE_CHANGELOG_VER + '/' + parsedPkgInfo['version'] + '/ ' + build_dir + '/debian/changelog',
+            ]
+    executeCommand(preProcess)
     os.chdir(build_dir)
-    command.append('fakeroot debian/rules clean')
-    executeCommand(command)
-    command = []
-    command.append('fakeroot debian/rules build')
-    executeCommand(command)
-    command = []
-    command.append('fakeroot debian/rules binary')
-    executeCommand(command)
-    #Cleanup build dir
+    pkgRecipe = [
+            'fakeroot debian/rules clean',
+            'fakeroot debian/rules build',
+            'fakeroot debian/rules binary',
+            'make clean'
+            ]
+    executeCommand(pkgRecipe)
     os.chdir("..")
     command = []
     command.append('rm -rf ' + build_dir)
