@@ -287,7 +287,7 @@ if __name__ == '__main__':
         installThrift()
     else:
         print ' Thrift already exists'
-    
+		
     installGoPacketDependencies()
 
     setupGitCredentialCache()
