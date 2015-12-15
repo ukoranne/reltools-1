@@ -1,9 +1,23 @@
 MKDIR=mkdir -p
 RMDIRFORCE=rm -rf
+PKG_BUILD=FALSE
 PROD_NAME=flexswitch
-BUILD_DIR=bin
+ifneq (,$(findstring $(PKG_BUILD), FALSE))
+	EXT_INSTALL_PATH=
+	BUILD_DIR=out
+	ALL_DEPS=installdir ipc exe
+else
+	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
+	BUILD_DIR=flexswitch-0.0.1
+	ALL_DEPS=installdir ipc exe install
+endif
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
+ifneq (,$(findstring $(PKG_BUILD), FALSE))
+	EXE_DIR=/bin
+else
+	EXE_DIR=
+endif
 COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/config\
 		$(SR_CODE_BASE)/snaproute/src/infra\
@@ -15,38 +29,38 @@ COMPS_WITH_IPC=$(SRCDIR)/asicd\
 
 #FIXME: Add codegen once things are stable
 #all: codegen installdir ipc exe install
-all: installdir ipc exe install
+all: $(ALL_DEPS)
 
 installdir:
 	$(MKDIR) $(DESTDIR)
-	$(MKDIR) $(DESTDIR)/opt/$(PROD_NAME)/
-	$(MKDIR) $(DESTDIR)/opt/$(PROD_NAME)/kmod
-	$(MKDIR) $(DESTDIR)/opt/$(PROD_NAME)/bin
-	$(MKDIR) $(DESTDIR)/opt/$(PROD_NAME)/params
-	$(MKDIR) $(DESTDIR)/opt/$(PROD_NAME)/sharedlib
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/kmod
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/params
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
 codegen:
 	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
 exe: $(COMPS)
-	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR);)
+	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) GOLDFLAGS="-r /opt/flexswitch/sharedlib";)
 
 ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
 
 copy: $(COMPS)
-	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/opt/$(PROD_NAME);)
+	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH);)
 
 install:installdir copy
-	install $(SR_CODE_BASE)/reltools/flexswitch $(DESTDIR)/opt/$(PROD_NAME)
-	install $(SR_CODE_BASE)/reltools/daemon.py $(DESTDIR)/opt/$(PROD_NAME)
-	install $(SRCDIR)/$(BUILD_DIR)/confd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/arpd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/bgpd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/opt/$(PROD_NAME)/bin
-	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/opt/$(PROD_NAME)/sharedlib
+	install $(SR_CODE_BASE)/reltools/flexswitch $(DESTDIR)/$(EXT_INSTALL_PATH)
+	install $(SR_CODE_BASE)/reltools/daemon.py $(DESTDIR)/$(EXT_INSTALL_PATH)
+	install $(SRCDIR)/$(BUILD_DIR)/confd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/arpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/bgpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
 clean: $(COMPS)
 	$(foreach f,$^, make -C $(f) clean;)
