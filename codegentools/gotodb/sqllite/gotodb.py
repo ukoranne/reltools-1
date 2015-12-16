@@ -8,8 +8,8 @@ IGNORE_GO_FILE_LIST = ["objectmap.go"]
 
 #HOME = os.getenv("HOME")
 srBase = os.environ.get('SR_CODE_BASE', None)
-GO_MODEL_BASE_PATH = srBase + "/generated/src/model/"
-CODE_GENERATION_PATH = srBase + "/generated/src/model/db/"
+GO_MODEL_BASE_PATH = srBase + "/generated/src/models/"
+CODE_GENERATION_PATH = srBase + "/generated/src/models/db/"
 
 goToSqlliteTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -112,11 +112,10 @@ def build_gosqllite_from_go():
             os.makedirs(CODE_GENERATION_PATH)
 
         dbFd = open(dbFileName, 'w')
-        dbFd.write("package genmodels\n")
+        dbFd.write("package models\n")
 
         dbFd.write("""import (
         	"database/sql"
-        	"strconv"
                    "fmt"
                    )""")
         generate_gosqllite_funcs(dbFd, directory, gofilename)
@@ -137,9 +136,9 @@ def createDBTable(fd, structName, goMemberTypeDict):
         if 'Key' in m:
             keyList.append(m)
         if "LIST" in t:
-            fd.write("""\" %s TEXT \" +\n""" %(m,))
+            fd.write("""\" %s TEXT, \" +\n""" %(m,))
         else:
-            fd.write("""\" %s %s \" +\n""" %(m, t))
+            fd.write("""\" %s %s, \" +\n""" %(m, t))
 
     fd.write(""" \"PRIMARY KEY(""")
     for i, k in enumerate(keyList):
@@ -164,7 +163,8 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
             fd.write("""%s) VALUES (""" % m)
         else:
             fd.write("""%s, """ % m )
-    for i, (m, t) in enumerate(goMemberTypeDict[structName].iteritems()):
+
+    for i in range(len(goMemberTypeDict[structName])):
         if i == len(goMemberTypeDict[structName]) - 1:
             fd.write("""%v);\",\n""")
         else:
@@ -190,19 +190,47 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 }\n""")
 
 def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
-    storefuncline = "\nfunc (obj %s) DeleteObjectFromDb(objId int64, dbHdl *sql.DB) error {\n" % structName
+    storefuncline = "\nfunc (obj %s) DeleteObjectFromDb(objId string, dbHdl *sql.DB) error {\n" % structName
     fd.write(storefuncline)
-    fd.write("""dbCmd := "delete from %s where rowid = " + strconv.FormatInt(objId, 10)\n""" %(structName, ))
+    fd.write("""dbCmd := "delete from %s where rowid = " + objId\n""" %(structName, ))
     fd.write("""fmt.Println("### DB Deleting %s\\n")\n""" % structName)
     fd.write("""_, err := ExecuteSQLStmt(dbCmd, dbHdl)
                 return err
                 }""")
 
+def createGetKeyObjFromDb(fd, structName, goMemberTypeDict):
+    keyList = []
+
+    for m, t in goMemberTypeDict[structName].iteritems():
+        if 'Key' in m and "PRIMARY" not in m:
+            keyList.append((m, t))
+
+    storfuncline = "\nfunc (obj %s) GetKey() (string, error) {\n" % structName
+    fd.write(storfuncline)
+    if len(keyList) > 0:
+
+        fd.write("""key := """)
+        #print structName, keyList
+        for i, (m, t) in enumerate(keyList):
+            fd.write(""""%s = " + string(obj.%s) """ % (m, m))
+            if i == len(keyList) - 1:
+                fd.write("""
+                return key, nil\n""")
+            else:
+                fd.write(""" + "and" + """)
+
+        fd.write("""}\n""")
+    else:
+        fd.write(""" return "", nil
+        }""")
+
+
+
 def createCommonDbFunc():
 
     fd = open(CODE_GENERATION_PATH + "common_db.go", "w")
 
-    fd.write("package genmodels\n")
+    fd.write("package models\n")
 
     fd.write("""import (
              "database/sql"
@@ -233,6 +261,7 @@ def createCommonDbFunc():
     return fd
 
 def generate_gosqllite_funcs(fd, directory, gofilename):
+
     goMemberTypeDict = {}
 
     path = os.path.join(directory, gofilename)
@@ -254,6 +283,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename):
                 createDBTable(fd, currentStruct, goMemberTypeDict)
                 createStoreObjInDb(fd, currentStruct, goMemberTypeDict)
                 createDeleteObjFromDb(fd, currentStruct, goMemberTypeDict)
+                createGetKeyObjFromDb(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments

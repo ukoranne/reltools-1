@@ -1,9 +1,9 @@
 import os
 import json
 
-HOME = os.getenv("HOME")
-MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
+srBase = os.environ.get('SR_CODE_BASE', None)
+MODEL_NAME = 'models'
+GO_MODEL_BASE_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
 
 def scan_dir_for_go_files(dir):
     for name in os.listdir(dir):
@@ -22,7 +22,7 @@ def build_json_object_from_go():
         jsonFileName = gofilename.split('.')[0] + ".json"
 
         data = {}
-        with open(jsonFileName, 'w') as f:
+        with open(GO_MODEL_BASE_PATH + jsonFileName, 'w') as f:
 
             path = os.path.join(dir, gofilename)
             gofd = open(path, 'r')
