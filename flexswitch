@@ -24,8 +24,8 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'bgpd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'lacpd',
-                    'params': '-params=' + baseDir + '/params'},
+                    #{'name': 'lacpd',
+                    #'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
@@ -49,6 +49,7 @@ if __name__=="__main__":
 
     parser.add_option("-o", "--op", 
                       dest="op",
+                      default="start",
                       action='store',
                       help="Operation (start/stop) ")
 
