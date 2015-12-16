@@ -24,6 +24,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'bgpd',
                      'params': '-params=' + baseDir + '/params'},
 
+                    #{'name': 'lacpd',
+                    #'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
                     ]
@@ -76,8 +79,8 @@ if __name__=="__main__":
             pid = os.fork()
             if pid == 0:
                 dmn = FlexSwitchDaemon (pidFile,
-                                        #stdout= baseDir+'/bin/'+'log.txt',
-                                        #stderr= baseDir+'/bin/'+'log.txt',
+                                        stdout= baseDir+'/bin/'+'log.txt',
+                                        stderr= baseDir+'/bin/'+'log.txt',
                                         verbose=2)
                 dmn.start(pargs)
     else:

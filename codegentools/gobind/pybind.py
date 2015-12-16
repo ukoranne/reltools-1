@@ -120,10 +120,10 @@ reserved_name = ["list", "str", "int", "global", "decimal", "float",
 
 
 ENABLE_CAMEL_CASE = True
-MODEL_NAME = 'model'
+MODEL_NAME = 'models'
 srBase = os.environ.get('SR_CODE_BASE', None)
-MODELS_PATH_LIST = [srBase + "/generated/src/model/"]
-CODE_GENERATION_PATH = srBase + "/generated/src/model/"
+MODELS_PATH_LIST = [srBase + "/generated/src/models/"]
+CODE_GENERATION_PATH = srBase + "/generated/src/models/"
 
 
 def safe_name(arg):
@@ -219,10 +219,10 @@ class BTPyGOClass(plugin.PyangPlugin):
       fdDict = {"struct" : fd,
                 "func": open(name+"_func.go", 'w+b')}
 
-      for ext in ('','_enum', '_func', '_db'):
-        #cmd = "rm %s%s%s.go" % (CODE_GENERATION_PATH, name, ext)
-        cmd = "rm -f %s%s.go" % (name, ext)
-        executeGoModelCleanupCommand([cmd])
+      #for ext in ('','_enum', '_func', '_db'):
+      #  #cmd = "rm %s%s%s.go" % (CODE_GENERATION_PATH, name, ext)
+      #  cmd = "rm -f %s%s.go" % (name, ext)
+      #  executeGoModelCleanupCommand([cmd])
 
       build_pybind(ctx, modules, fdDict)
 
@@ -391,7 +391,6 @@ def build_pybind(ctx, modules, fdDict):
   fdDict["func"].write("import (\n")
   fdDict["func"].write("""\t \"encoding/json\"\n
   \t\"fmt\"\n
-  \t\"models\"\n
   )\n""")
 
   #fdDict["func"].write("""type ConfigObj interface {
@@ -968,7 +967,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     # TODO: write unmarshalObject function
     if structName.endswith("Config"):
-      nfd.write("""func (obj %s) UnmarshalObject(body []byte) (models.ConfigObj, error) {
+      nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
       var Obj %s
       var err error
       if err = json.Unmarshal(body, &Obj); err != nil  {

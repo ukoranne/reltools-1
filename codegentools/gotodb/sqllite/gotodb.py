@@ -10,8 +10,8 @@ IGNORE_GO_FILE_LIST = ["objectmap.go"]
 
 #HOME = os.getenv("HOME")
 srBase = os.environ.get('SR_CODE_BASE', None)
-GO_MODEL_BASE_PATH = srBase + "/generated/src/model/"
-CODE_GENERATION_PATH = srBase + "/generated/src/model/db/"
+GO_MODEL_BASE_PATH = srBase + "/generated/src/models/"
+CODE_GENERATION_PATH = srBase + "/generated/src/models/db/"
 
 goToSqlliteTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -137,7 +137,7 @@ def build_gosqllite_from_go(files, generatePath, objects):
             #print "generate file name =", dbFileName
 
             dbFd = open(dbFileName, 'w')
-            dbFd.write("package genmodels\n")
+        dbFd.write("package models\n")
 
             dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n)\n')
             generate_gosqllite_funcs(dbFd, directory, gofilename, objects)
@@ -188,7 +188,7 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
         else:
             fd.write("""%s, """ % m )
 
-    for i, (m, (t, key)) in enumerate(goMemberTypeDict[structName].iteritems()):
+    for i in range(len(goMemberTypeDict[structName])):
         if i == len(goMemberTypeDict[structName]) - 1:
             fd.write("""%v);\",\n\t\t""")
         else:
@@ -237,15 +237,32 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
     fd.write('\tobj, err := ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn obj, err\n}\n')
 
-def createGetKey(fd, structName, goMemberTypeDict):
-    fd.write("\nfunc (obj %s) GetKey() (string, error) {" % structName)
-    keys = sorted([(m, key) for m, (t, key) in goMemberTypeDict[structName].iteritems() if key], key=lambda i: i[1])
-    objKey = ' + "#" + '.join(['string(obj.%s)' % (m) for m, key in keys])
-    if objKey:
-        fd.write('\n\tkey := ')
-        fd.write(objKey)
+def createGetKeyObjFromDb(fd, structName, goMemberTypeDict):
+    keyList = []
 
-    fd.write("\n\treturn key, nil\n}\n")
+    for m, t in goMemberTypeDict[structName].iteritems():
+        if 'Key' in m and "PRIMARY" not in m:
+            keyList.append((m, t))
+
+    storfuncline = "\nfunc (obj %s) GetKey() (string, error) {\n" % structName
+    fd.write(storfuncline)
+    if len(keyList) > 0:
+
+        fd.write("""key := """)
+        #print structName, keyList
+        for i, (m, t) in enumerate(keyList):
+            fd.write(""""%s = " + string(obj.%s) """ % (m, m))
+            if i == len(keyList) - 1:
+                fd.write("""
+                return key, nil\n""")
+            else:
+                fd.write(""" + "and" + """)
+
+        fd.write("""}\n""")
+    else:
+        fd.write(""" return "", nil
+        }""")
+
     
 def createGetSqlKey(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetSqlKey(objKey string) (string, error) {\n" % structName)
@@ -265,7 +282,7 @@ def createCommonDbFunc(generatePath):
 
     fd = open(generatePath + "common_db.go", "w")
 
-    fd.write("package genmodels\n")
+    fd.write("package models\n")
 
     fd.write("""import (
              "database/sql"
@@ -296,6 +313,7 @@ def createCommonDbFunc(generatePath):
     return fd
 
 def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
+
     goMemberTypeDict = {}
 
     path = os.path.join(directory, gofilename)
@@ -323,8 +341,8 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createDBTable(fd, currentStruct, goMemberTypeDict)
                 createStoreObjInDb(fd, currentStruct, goMemberTypeDict)
                 createDeleteObjFromDb(fd, currentStruct, goMemberTypeDict)
+                createGetKeyObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
-                createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKey(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
