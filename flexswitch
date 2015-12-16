@@ -46,6 +46,7 @@ if __name__=="__main__":
 
     parser.add_option("-o", "--op", 
                       dest="op",
+                      default="start",
                       action='store',
                       help="Operation (start/stop) ")
 
