@@ -250,7 +250,7 @@ def createGetKey(fd, structName, goMemberTypeDict):
 
     fd.write("\n\treturn key, nil\n}\n")
 
-def createGetSqlKey(fd, structName, goMemberTypeDict):
+def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetSqlKeyStr(objKey string) (string, error) {\n" % structName)
     fd.write('\tkeys := strings.Split(objKey, "#")')
     #print "struct dict =", goMemberTypeDict[structName]
@@ -329,7 +329,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createDeleteObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
-                createGetSqlKey(fd, currentStruct, goMemberTypeDict)
+                createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments
