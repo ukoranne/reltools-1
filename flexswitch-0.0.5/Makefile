@@ -1,6 +1,6 @@
 MKDIR=mkdir -p
 RMDIRFORCE=rm -rf
-PKG_BUILD=FALSE
+PKG_BUILD=TRUE
 PROD_NAME=flexswitch
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	EXT_INSTALL_PATH=
@@ -8,7 +8,7 @@ ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	ALL_DEPS=installdir ipc exe
 else
 	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
-	BUILD_DIR=flexswitch-0.0.1
+	BUILD_DIR=flexswitch-0.0.5
 	ALL_DEPS=installdir ipc exe install
 endif
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
@@ -62,7 +62,6 @@ install:installdir copy
 	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/lacpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
 clean: $(COMPS)
