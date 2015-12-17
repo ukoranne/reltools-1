@@ -139,7 +139,7 @@ def build_gosqllite_from_go(files, generatePath, objects):
             dbFd = open(dbFileName, 'w')
             dbFd.write("package models\n")
 
-            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n)\n')
+            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n\t"utils/dbutils"\n)\n')
             generate_gosqllite_funcs(dbFd, directory, gofilename, obj)
 
             dbFd.close()
@@ -151,28 +151,28 @@ def createDBTable(fd, structName, goMemberTypeDict):
     createfuncline = '\nfunc (obj %s) CreateDBTable(dbHdl *sql.DB) error {\n' % structName
     fd.write(createfuncline)
     fd.write('\tdbCmd := "CREATE TABLE IF NOT EXISTS %s " +\n' % structName)
-    fd.write('\t\t"( " +\n')
+    fd.write('\t\t"( " +')
     keyList = []
     # loop through member and type
-    for m, (t, key) in goMemberTypeDict[structName].iteritems():
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         #print "createDBTable key:", m, "value:", t, "key:", key
         if 'Key' in m or key > 0:
             keyList.append((m, key))
         if "LIST" in t:
-            fd.write('\t\t" %s TEXT " +\n' %(m,))
+            fd.write('\n\t\t"%s TEXT, " +' %(m,))
         else:
-            fd.write('\t\t" %s %s " +\n' %(m, t))
+            fd.write('\n\t\t"%s %s, " +' %(m, t))
 
     keyList = sorted(keyList, key=lambda i: i[1])
-    fd.write('\t\t "PRIMARY KEY(')
+    fd.write('\n\t\t"PRIMARY KEY(')
     for i, (k, l) in enumerate(keyList):
         if i == len(keyList) - 1:
-            fd.write('%s)' % k)
+            fd.write('%s) " +' % k)
         else:
             fd.write('%s, ' % k)
-    fd.write(' ) "\n')
+    fd.write('\n\t")"\n')
 
-    fd.write('\n\t_, err := ExecuteSQLStmt(dbCmd, dbHdl)\n')
+    fd.write('\n\t_, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n')
     fd.write('\treturn err\n')
     fd.write('}\n')
 
@@ -182,7 +182,7 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
     fd.write('\tvar objectId int64\n')
     fd.write('\tdbCmd := fmt.Sprintf("INSERT INTO %s (' % structName)
     # loop through member and type
-    for i, (m, (t, key)) in enumerate(goMemberTypeDict[structName].iteritems()):
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         if i == len(goMemberTypeDict[structName]) - 1:
             fd.write("""%s) VALUES (""" % m)
         else:
@@ -194,7 +194,7 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
         else:
             fd.write("""%v, """ )
 
-    for i, (m, (t, key)) in enumerate(goMemberTypeDict[structName].iteritems()):
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         if i == len(goMemberTypeDict[structName]) - 1:
             fd.write("""obj.%s)\n""" % m )
         else:
@@ -202,7 +202,7 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 
     fd.write("""\tfmt.Println("**** Create Object called with ", obj)
 
-	result, err := ExecuteSQLStmt(dbCmd, dbHdl)
+	result, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
 	if err != nil {
 		fmt.Println("**** Failed to Create table", err)
 	}\n
@@ -223,24 +223,26 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t}\n\n')
     fd.write('\tdbCmd := "delete from %s where " + sqlKey\n' %(structName))
     fd.write('\tfmt.Println("### DB Deleting %s\\n")\n' % structName)
-    fd.write('\t_, err = ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
+    fd.write('\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
     storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (%s, error) {\n" % (structName, structName)
     fd.write(storefuncline)
+    fd.write('\tvar object %s\n' % (structName))
     fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
     fd.write('\tif err != nil {\n')
     fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
-    fd.write('\t\treturn %s{}, err\n' %structName)
+    fd.write('\t\treturn object, err\n')
     fd.write('\t}\n\n')
     fd.write('\tdbCmd := "query from %s where " + sqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
-    fd.write('\tsqlobj, err2 := ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn sqlobj, err2\n}\n')
+    fd.write('\terr = dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
+    fd.write('\treturn object, err\n}\n')
 
     
 def createGetKey(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetKey() (string, error) {" % structName)
-    keys = sorted([(m, key) for m, (t, key) in goMemberTypeDict[structName].iteritems() if key], key=lambda i: i[1])
+    keys = sorted([(m, key) for m, t, key in goMemberTypeDict[structName] if key], key=lambda i: i[1])
     objKey = ' + "#" + '.join(['string(obj.%s)' % (m) for m, key in keys])
     if objKey:
         fd.write('\n\tkey := ')
@@ -252,7 +254,7 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetSqlKeyStr(objKey string) (string, error) {\n" % structName)
     fd.write('\tkeys := strings.Split(objKey, "#")')
     #print "struct dict =", goMemberTypeDict[structName]
-    keys = sorted([(m, key) for m, (t, key) in goMemberTypeDict[structName].iteritems() if key], key=lambda i: i[1])
+    keys = sorted([(m, key) for m, t, key in goMemberTypeDict[structName] if key], key=lambda i: i[1])
 
     firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
     #print "firstKey =", firstKey
@@ -314,7 +316,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
 
                 lineSplit = line.split(" ")
                 currentStruct = lineSplit[1]
-                goMemberTypeDict[currentStruct] = {}
+                goMemberTypeDict[currentStruct] = []
                 foundStruct = True
                 keyIdx = 0
 
@@ -356,12 +358,12 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                     elemtype = elemtype.lstrip("[]")
                     # lets make all list an unordered list
                     nativetype = "LIST " + goToSqlliteTypeMap[elemtype]["native_type"]
-                    goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
-                                                            (nativetype, key)})
+                    goMemberTypeDict[currentStruct].append((lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'),
+                                                            nativetype, key))
                 else:
                     if elemtype in goToSqlliteTypeMap.keys():
-                        goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
-                                                                    (goToSqlliteTypeMap[elemtype]["native_type"], key)})
+                        goMemberTypeDict[currentStruct].append((lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'),
+                                                                    goToSqlliteTypeMap[elemtype]["native_type"], key))
 
         else:
             if "*/" in line:
