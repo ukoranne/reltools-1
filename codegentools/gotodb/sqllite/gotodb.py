@@ -129,18 +129,18 @@ def build_gosqllite_from_go(files, generatePath, objects):
         if gofilename in IGNORE_GO_FILE_LIST:
             continue
 
-        for obj in (itertools.permutations(objects) if objects else [[]]):
+        for obj in (itertools.combinations(objects, 1) if objects else [[]]):
             dbFileName = generatePath + (obj[0].lower() if obj else gofilename.rstrip('.go')) + "dbif.go"
             if not os.path.exists(generatePath):
                 os.makedirs(generatePath)
 
-            #print "generate file name =", dbFileName
+            #print "generate file name =", dbFileName, "path =", generatePath
 
             dbFd = open(dbFileName, 'w')
             dbFd.write("package models\n")
 
             dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n)\n')
-            generate_gosqllite_funcs(dbFd, directory, gofilename, objects)
+            generate_gosqllite_funcs(dbFd, directory, gofilename, obj)
 
             dbFd.close()
             executeGoFmtCommand(dbFd, ["gofmt -w %s" % dbFd.name], GO_MODEL_BASE_PATH)
