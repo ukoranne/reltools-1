@@ -216,26 +216,26 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     storefuncline = "\nfunc (obj %s) DeleteObjectFromDb(objKey string, dbHdl *sql.DB) error {\n" % structName
     fd.write(storefuncline)
-    fd.write('\tsqlKey, err := obj.GetSqlKey(objKey)\n')
+    fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
     fd.write('\tif err != nil {\n')
     fd.write('\t\tfmt.Println("GetSqlKeyStr for %s with key", objKey, "failed with error", err)\n' % (structName))
-    fd.write('\t\treturn nil, err\n')
+    fd.write('\t\treturn err\n')
     fd.write('\t}\n\n')
     fd.write('\tdbCmd := "delete from %s where " + sqlKey\n' %(structName))
     fd.write('\tfmt.Println("### DB Deleting %s\\n")\n' % structName)
-    fd.write('\t_, err := ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
+    fd.write('\t_, err = ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
     storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (%s, error) {\n" % (structName, structName)
     fd.write(storefuncline)
-    fd.write('\tsqlKey, err := obj.GetSqlKey(objKey)\n')
+    fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
     fd.write('\tif err != nil {\n')
     fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
-    fd.write('\t\treturn nil, err\n')
+    fd.write('\t\treturn %s{}, err\n' %structName)
     fd.write('\t}\n\n')
     fd.write('\tdbCmd := "query from %s where " + sqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
-    fd.write('\tobj, err := ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn obj, err\n}\n')
+    fd.write('\tsqlobj, err2 := ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn sqlobj, err2\n}\n')
 
     
 def createGetKey(fd, structName, goMemberTypeDict):
@@ -248,8 +248,8 @@ def createGetKey(fd, structName, goMemberTypeDict):
 
     fd.write("\n\treturn key, nil\n}\n")
 
-def createGetSqlKey(fd, structName, goMemberTypeDict):
-    fd.write("\nfunc (obj %s) GetSqlKey(objKey string) (string, error) {\n" % structName)
+def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
+    fd.write("\nfunc (obj %s) GetSqlKeyStr(objKey string) (string, error) {\n" % structName)
     fd.write('\tkeys := strings.Split(objKey, "#")')
     #print "struct dict =", goMemberTypeDict[structName]
     keys = sorted([(m, key) for m, (t, key) in goMemberTypeDict[structName].iteritems() if key], key=lambda i: i[1])
@@ -327,7 +327,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createDeleteObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
-                createGetSqlKey(fd, currentStruct, goMemberTypeDict)
+                createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments

@@ -971,7 +971,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
       var Obj %s
       var err error
       if err = json.Unmarshal(body, &Obj); err != nil  {
-          fmt.Println("### %s create called, unmarshal failed", Obj)
+          fmt.Println("### %s create called, unmarshal failed", Obj, err)
       }
       return Obj, err
       }\n""" %(structName, structName, structName))
