@@ -226,7 +226,7 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
-    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (%s, error) {\n" % (structName, structName)
+    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
     fd.write(storefuncline)
     fd.write('\tvar object %s\n' % (structName))
     fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
