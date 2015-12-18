@@ -11,7 +11,7 @@ GO_MODEL_BASE_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
 JSON_MODEL_REGISTRAION_PATH = srBase + "/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
-CLIENTIF_CODE_GENERATION_PATH = srBase + "/snaproute/src/config/"
+CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
 OBJMAP_CODE_GENERATION_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
 THRIFT_CODE_GENERATION_PATH = srBase + "/generated/src/gorpc/"
 
