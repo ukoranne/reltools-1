@@ -190,9 +190,9 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 
     for i in range(len(goMemberTypeDict[structName])):
         if i == len(goMemberTypeDict[structName]) - 1:
-            fd.write("""%v);\",\n\t\t""")
+            fd.write("""'%v') ;\",\n\t\t""")
         else:
-            fd.write("""%v, """ )
+            fd.write("""'%v', """ )
 
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         if i == len(goMemberTypeDict[structName]) - 1:
@@ -226,7 +226,7 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
-    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (%s, error) {\n" % (structName, structName)
+    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
     fd.write(storefuncline)
     fd.write('\tvar object %s\n' % (structName))
     fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
