@@ -234,7 +234,7 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
     fd.write('\t\treturn object, err\n')
     fd.write('\t}\n\n')
-    fd.write('\tdbCmd := "query from %s where " + sqlKey\n' % (structName))
+    fd.write('\tdbCmd := "SELECT * from %s where " + sqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
     fd.write('\terr = dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
     fd.write('\treturn object, err\n}\n')
@@ -258,7 +258,7 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
 
     firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
     #print "firstKey =", firstKey
-    sqlKey = ' + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
+    sqlKey = ' + "and" + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
     fd.write('\n\tsqlKey := ')
     fd.write(sqlKey)
 
