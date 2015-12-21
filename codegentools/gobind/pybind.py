@@ -965,7 +965,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     nfd.write("\t\t}\n")
     nfd.write("\treturn new\n}\n\n")
 
-    # TODO: write unmarshalObject function
+    # write unmarshalObject function
     if structName.endswith("Config"):
       nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
       var Obj %s
@@ -992,6 +992,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
   childNameList = []
   for i in elements:
     childNameList.append(i["name"][:1].upper() + i["name"][1:])
+
+  # lets add the default interface functions from the BaseObj
+  elements_str += "\tBaseObj\n"
 
   for name, elemtype in parentChildrenLeaf.iteritems():
     # is key?
