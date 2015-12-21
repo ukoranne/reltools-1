@@ -946,7 +946,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     nfd.write("func New%s() *%s {\n" % (structName, structName))
 
     # Generic NewFunc, set up the path_helper if asked to.
-    nfd.write("\tnew := &%s{\n" % (structName))
+    nfd.write("\tnewObj := &%s{\n" % (structName))
     # Write out the classes that are stored locally as self.__foo where
     # foo is the safe YANG name.
 
@@ -963,18 +963,17 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
         nfd.write("\t\t%s : %s%s,\n" % (classes[c]["name"],
                                         classes[c]["base"], default))
     nfd.write("\t\t}\n")
-    nfd.write("\treturn new\n}\n\n")
+    nfd.write("\treturn newObj\n}\n\n")
 
     # write unmarshalObject function
-    if structName.endswith("Config"):
-      nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
-      var Obj %s
-      var err error
-      if err = json.Unmarshal(body, &Obj); err != nil  {
-          fmt.Println("### %s create called, unmarshal failed", Obj, err)
-      }
-      return Obj, err
-      }\n""" %(structName, structName, structName))
+    nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
+    var Obj %s
+    var err error
+    if err = json.Unmarshal(body, &Obj); err != nil  {
+        fmt.Println("### %s create called, unmarshal failed", Obj, err)
+    }
+    return Obj, err
+    }\n""" %(structName, structName, structName))
 
   return structName
 
