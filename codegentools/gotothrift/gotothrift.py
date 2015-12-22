@@ -5,15 +5,15 @@ import pprint
 
 OBJECT_MAP_NAME = "objectmap.go"
 
-HOME = os.getenv("HOME")
-MODEL_NAME = 'genmodels'
-GO_MODEL_BASE_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
-JSON_MODEL_REGISTRAION_PATH = HOME + "/git/snaproute/src/models/"
+MODEL_NAME = 'models'
+srBase = os.environ.get('SR_CODE_BASE', None)
+GO_MODEL_BASE_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
+JSON_MODEL_REGISTRAION_PATH = srBase + "/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
-CODE_GENERATION_PATH = HOME + "/git/reltools/codegentools/gotothrift/"
-CLIENTIF_CODE_GENERATION_PATH = HOME + "/git/snaproute/src/config/"
-OBJMAP_CODE_GENERATION_PATH = HOME + "/git/generated/src/%s/" % MODEL_NAME
-THRIFT_CODE_GENERATION_PATH = HOME + "/git/generated/src/gorpc/"
+CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
+CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
+OBJMAP_CODE_GENERATION_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
+THRIFT_CODE_GENERATION_PATH = srBase + "/generated/src/gorpc/"
 
 goToThirftTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -43,10 +43,10 @@ def executeGoFmtCommand (fd, command, dstPath) :
             # create a go format version, at this point the fd is still
             # open so this is a .tmp file, lets strip this for the new
             # file
-            print out, err
+            #print out, err
             dir = CODE_GENERATION_PATH
             fmt_name_with_dir = dir + fd.name
-            print fmt_name_with_dir
+            #print fmt_name_with_dir
             if not os.path.exists(dir):
               os.makedirs(dir)
             #nfd = open(fmt_name_with_dir, 'w+')
@@ -57,12 +57,11 @@ def executeGoFmtCommand (fd, command, dstPath) :
             #out,err = process.communicate()
             #print out, err
 
-            renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
-            process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            print out, err
+            #renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
+            #process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
+            #out,err = process.communicate()
+            #print out, err
 
-            out = executeCopyCommand(dir+fd.name, dstPath)
 
         return out
 
@@ -75,7 +74,7 @@ def executeCopyCommand (name, dstPath) :
     process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
     out,err = process.communicate()
 
-    print out, err
+    #print out, err
 
     return out
 
@@ -86,7 +85,7 @@ def executeLocalCleanup():
             cmd = "rm %s" %(CODE_GENERATION_PATH+name,)
             process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
             out,err = process.communicate()
-            print out, err
+            #print out, err
 
 
 def scan_dir_for_go_files(dir):
@@ -118,26 +117,24 @@ def build_thrift_from_go():
     # lets determine from the json file the structs and associated listeners
     deamons = get_listeners_from_json(goStructToListersDict)
 
-    pprint.pprint(goStructToListersDict)
+    #pprint.pprint(goStructToListersDict)
 
     allCrudStructList = []
     # lets create the clientIf and .thrift files for each listener deamon
     for d in deamons:
         clientIfName = "gen" + d + "clientif.go"
-        clientIfFd = open(clientIfName, 'w')
+        clientIfFd = open(CLIENTIF_CODE_GENERATION_PATH + clientIfName, 'w+')
         clientIfFd.write("package main\n")
         thriftFileName = d + ".thrift"
-        thriftfd = open(thriftFileName, 'w')
-        thriftfd.write("namespace go %s\n" %(d))
+        thriftfd = open(THRIFT_CODE_GENERATION_PATH + thriftFileName, 'w+')
+        thriftfd.write("namespace go %sServices\n" %(d))
         thriftfd.write("""typedef i32 int
 typedef i16 uint16
 """)
 
         # create the thrift file info
-        (goMemberTypeDict, crudStructsList) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
+        (goMemberTypeDict, crudStructsList, goStructDict) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
         thriftfd.close()
-        # copy the thrift files to appropriate dir
-        executeCopyCommand(CODE_GENERATION_PATH+thriftfd.name, THRIFT_CODE_GENERATION_PATH)
 
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
 
@@ -153,7 +150,7 @@ def get_listeners_from_json(goStructToListersDict):
     for dir, jsonfilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
         path = os.path.join(dir, jsonfilename)
         if jsonfilename.endswith(".json"):
-            print path
+            #print path
             with open(path, 'r') as f:
                 data = json.load(f)
 
@@ -173,9 +170,10 @@ def get_listeners_from_json(goStructToListersDict):
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     goMemberTypeDict = {}
+    goStructDict = {}
     crudStructsList = []
     for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
-        print dir, gofilename, dir.split('/')[-1]
+        #print dir, gofilename, dir.split('/')[-1]
 
         path = os.path.join(dir, gofilename)
         gofd = open(path, 'r')
@@ -192,6 +190,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         # print "found line now checking deamon", d, goStructToListersDict[lineSplit[1]]
                         if d in goStructToListersDict[lineSplit[1]]:
                             goMemberTypeDict[lineSplit[1]] = {}
+                            goStructDict[lineSplit[1]] = {}
                             currentStruct = lineSplit[1]
                             thriftfd.write(structLine)
                             crudStructsList.append(lineSplit[1])
@@ -222,6 +221,8 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         nativetype = "set<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
                         goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                 nativetype})
+                        goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
+                                                            elemtype + "[]"})
 
                         thriftfd.write("\t%s : %s %s\n" % (memberCnt,
                                                            nativetype,
@@ -230,6 +231,9 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                         if elemtype in goToThirftTypeMap.keys():
                             goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                         goToThirftTypeMap[elemtype]["native_type"]})
+                            goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
+                                                                elemtype})
+
                             thriftfd.write("\t%s : %s %s\n" % (memberCnt,
                                                                goToThirftTypeMap[elemtype]["native_type"],
                                                                lineSplit[0]))
@@ -238,22 +242,28 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                 if "*/" in line:
                     deletingComment = False
 
-    print crudStructsList
-    thriftfd.write("service %sServer {\n" % (d.upper()))
+    #print crudStructsList
+    thriftfd.write("service %sServices {\n" % (d.upper()))
     for s in crudStructsList:
         thriftfd.write(
             """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
     thriftfd.write("}")
-    return goMemberTypeDict, crudStructsList
+    return goMemberTypeDict, crudStructsList, goStructDict
 
 
 def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
-    newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
+    #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
+    newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     # BELOW CODE WILL BE FORMATED BY GOFMT
+    clientIfFd.write("""import (
+    "%sServices"
+    "models"
+    "database/sql"
+    )\n""" % lowerDeamonName)
     clientIfFd.write("""type %sClient struct {
 	                        IPCClientBase
-	                        ClientHdl *%sServices.%sServiceClient
+	                        ClientHdl *%sServices.%sServicesClient
                             }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
     clientIfFd.write("""
                         func (clnt *%sClient) Initialize(name string, address string) {
@@ -264,55 +274,62 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
 
 	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
 	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
-		                clnt.ClientHdl = %sServices.New%sServiceClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
+		                clnt.ClientHdl = %sServices.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
 	                    }
 	                    return true
                         }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
     clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 	                    return true
                         }\n""" % (newDeamonName,))
-    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj) bool {
+    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
         clientIfFd.write("""
                             case models.%s :
                             data := obj.(models.%s)
-                            conf := %s.New%s()\n""" % (s, s, d, s))
+                            conf := %sServices.New%s()\n""" % (s, s, d, s))
         for k, v in goMemberTypeDict[s].iteritems():
-            print k.split(' ')
-            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, v, k))
+            #print k.split(' ')
+            cast = v
+            # lets convert thrift i8, i16, i32, i64 to int...
+            if cast.startswith('i'):
+                cast = 'int' + cast.lstrip('i')
+            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
         clientIfFd.write("""
                             _, err := clnt.ClientHdl.Create%s(conf)
                             if err != nil {
-                            return false
+                            return int64(0), false
                             }
                             break\n""" % (s,))
     clientIfFd.write("""default:
 		                break
 	                    }
 
-	                    return true
+	                    return int64(0), true
                         }\n""")
+
+    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId string, dbHdl *sql.DB) bool {
+    return true
+    }""" % (newDeamonName,))
     clientIfFd.close()
 
     # lets beautify the the client if code
     executeGoFmtCommand(clientIfFd, ["gofmt -w %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
 
 def generate_objmap(allStructList):
-    print allStructList
-    fd = open(OBJECT_MAP_NAME, 'w+')
+    #print allStructList
+    fd = open(OBJMAP_CODE_GENERATION_PATH + OBJECT_MAP_NAME, 'w+')
     fd.write("""package %s\n\n""" % MODEL_NAME)
-    fd.write("""import \"models\"\n""")
-    fd.write("""var ConfigObjectMap = map[string] models.ConfigObj{\n""")
+    fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
 
     # lets temporarily add the manual objects
-    fd.write(""" "IPV4Route":    &models.IPV4Route{},    // manually merged from originional
-	"Vlan":         &models.Vlan{},         // manually added, no YANG defined
-	"IPv4Intf":     &models.IPv4Intf{},     // manually added, no YANG defined
-	"IPv4Neighbor": &models.IPv4Neighbor{}, // manually added, no YANG defined
-	"BGPGlobalConfig": &models.BGPGlobalConfig{}, //manually added, no YANG defined
-	"BGPNeighborConfig" : &models.BGPNeighborConfig{}, //manually added, no YANG defined\n""")
+    fd.write(""" "IPV4Route":    &IPV4Route{},    // manually merged from originional
+	"Vlan":         &Vlan{},         // manually added, no YANG defined
+	"IPv4Intf":     &IPv4Intf{},     // manually added, no YANG defined
+	"IPv4Neighbor": &IPv4Neighbor{}, // manually added, no YANG defined
+	"BGPGlobalConfig": &BGPGlobalConfig{}, //manually added, no YANG defined
+	"BGPNeighborConfig" : &BGPNeighborConfig{}, //manually added, no YANG defined\n""")
 
     length = len(allStructList)
     for i, s in enumerate(allStructList):
@@ -326,5 +343,12 @@ def generate_objmap(allStructList):
 
 if __name__ == "__main__":
 
+    for dirpath in [CODE_GENERATION_PATH,
+                    CLIENTIF_CODE_GENERATION_PATH,
+                    OBJMAP_CODE_GENERATION_PATH,
+                    THRIFT_CODE_GENERATION_PATH]:
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+
     build_thrift_from_go()
-    executeLocalCleanup()
+    #executeLocalCleanup()

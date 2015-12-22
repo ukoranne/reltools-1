@@ -21,11 +21,13 @@ endif
 COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/config\
 		$(SR_CODE_BASE)/snaproute/src/infra\
-		$(SR_CODE_BASE)/snaproute/src/l3
+		$(SR_CODE_BASE)/snaproute/src/l3\
+		$(SR_CODE_BASE)/snaproute/src/l2
 
-COMPS_WITH_IPC=$(SRCDIR)/asicd\
-				$(SRCDIR)/l3\
-				$(SRCDIR)/infra
+COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
+		$(SR_CODE_BASE)/snaproute/src/l3\
+		$(SR_CODE_BASE)/snaproute/src/l2\
+		$(SR_CODE_BASE)/snaproute/src/infra
 
 #FIXME: Add codegen once things are stable
 #all: codegen installdir ipc exe install
@@ -60,6 +62,7 @@ install:installdir copy
 	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/lacpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
 clean: $(COMPS)
