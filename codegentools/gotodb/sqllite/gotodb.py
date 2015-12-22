@@ -139,7 +139,7 @@ def build_gosqllite_from_go(files, generatePath, objects):
             dbFd = open(dbFileName, 'w')
             dbFd.write("package models\n")
 
-            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n\t"utils/dbutils"\n)\n')
+            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n\t"utils/dbutils"\n\t"reflect"\n)\n')
             generate_gosqllite_funcs(dbFd, directory, gofilename, obj)
 
             dbFd.close()
@@ -264,6 +264,84 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
 
     fd.write("\n\treturn sqlKey, nil\n}\n")
 
+def createUpdateObjInDb(fd, structName, goMemberTypeDict):
+    fd.write("""
+    func (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {
+	dbV4Route := dbObj.(%s)
+	objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	dbObjVal := reflect.ValueOf(dbV4Route)
+	attrIds := make([]byte, objTyp.NumField())
+	for i:=0; i<objTyp.NumField(); i++ {
+		objVal := objVal.Field(i)
+		dbObjVal := dbObjVal.Field(i)
+		if objVal.Kind() == reflect.Int {
+			if int(objVal.Int()) != 0 && int(objVal.Int()) != int(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else {
+			if objVal.String() != "" && objVal.String() != dbObjVal.String() {
+				attrIds[i] = 1
+			}
+		}
+	}
+	return attrIds, nil
+}\n""" %( structName, structName))
+
+    fd.write("""
+    func (obj %s) MergeDbAndConfigObj(dbObj ConfigObj, attrSet []byte) (ConfigObj, error) {
+	var merged%s %s
+	objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	dbObjVal := reflect.ValueOf(dbObj)
+	mergedObjVal := reflect.ValueOf(&merged%s)
+	for i:=1; i<objTyp.NumField(); i++ {
+		objField := objVal.Field(i)
+		dbObjField := dbObjVal.Field(i)
+		if  attrSet[i] ==1 {
+			if dbObjField.Kind() == reflect.Int {
+				mergedObjVal.Elem().Field(i).SetInt(objField.Int())
+			} else {
+				mergedObjVal.Elem().Field(i).SetString(objField.String())
+			}
+		} else {
+			if dbObjField.Kind() == reflect.Int {
+				mergedObjVal.Elem().Field(i).SetInt(dbObjField.Int())
+			} else {
+				mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
+			}
+		}
+	}
+	return merged%s, nil
+}\n""" %(structName, structName, structName, structName, structName))
+
+    fd.write("""
+    func (obj %s) UpdateObjectInDb(dbObj ConfigObj, attrSet []byte, dbHdl *sql.DB) error {
+	var fieldSqlStr string
+	db%s := dbObj.(%s)
+	objKey, err := db%s.GetKey()
+	objSqlKey, err := db%s.GetSqlKeyStr(objKey)
+	dbCmd := "update " + "%s" + " set"\n""" %(structName, structName, structName, structName, structName, structName))
+
+    fd.write("""objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	for i:=0; i<objTyp.NumField(); i++ {
+		if attrSet[i] == 1 {
+			fieldTyp := objTyp.Field(i)
+			fieldVal := objVal.Field(i)
+			if fieldVal.Kind() == reflect.Int {
+				fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Int()))
+			} else {
+				fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
+			}
+			dbCmd += fieldSqlStr
+		}
+	}
+	dbCmd += " where " + objSqlKey
+	_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
+	return err
+}\n""")
+
 def createCommonDbFunc(generatePath):
 
     fd = open(generatePath + "common_db.go", "w")
@@ -330,6 +408,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
+                createUpdateObjInDb(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments
