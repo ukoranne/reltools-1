@@ -49,6 +49,11 @@ if __name__=="__main__":
                       action='store',
                       help="Operation (start/stop) ")
 
+    parser.add_option("-b", "--boot",
+                      dest="boot",
+                      action='store',
+                      help="Type of subsequent boot operation (cold/warm) ")
+
     (opts, args) = parser.parse_args()
     localBld = False
     if opts.directory != None:
@@ -61,7 +66,20 @@ if __name__=="__main__":
         parser.print_usage()
         sys.exit(0)
 
+    if opts.boot != None and opts.boot not in ['cold', 'warm']:
+        parser.print_usage()
+        sys.exit(0)
+
+    if opts.op != 'stop' and opts.boot != None:
+        parser.print_usage()
+        sys.exit(0)
+
     pidFileDir = baseDir+'/bin/pids/'
+    asicdBootModeFile = baseDir + '/params/asicdBootMode.conf'
+    if opts.boot != None and opts.boot == 'cold':
+        asicdBootMode = '0'
+    else:
+        asicdBootMode = '1'
 
     if opts.op == 'start':
         if ((not os.path.exists(pidFileDir))):
@@ -95,7 +113,18 @@ if __name__=="__main__":
                     os.remove(pidFile)
                     continue
                 #Process matching pid exists, perform cleanup
-                os.kill(pid, signal.SIGHUP)
+                if dmn['name'] == 'asicd':
+                    if os.path.exists(asicdBootModeFile):
+                        os.remove(asicdBootModeFile)
+                    if opts.boot == 'cold':
+                        os.kill(pid, signal.SIGUSR1)
+                    else:
+                        os.kill(pid, signal.SIGHUP)
+                    f = open(asicdBootModeFile, 'w')
+                    f.write(asicdBootMode)
+                    f.close()
+                else:
+                    os.kill(pid, signal.SIGHUP)
             except:
                 print '*** Failed to stop process [%s]' %(dmn['name'])
         time.sleep(10)
