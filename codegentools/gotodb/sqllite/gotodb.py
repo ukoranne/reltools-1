@@ -234,7 +234,7 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
     fd.write('\t\treturn object, err\n')
     fd.write('\t}\n\n')
-    fd.write('\tdbCmd := "SELECT * from %s where " + sqlKey\n' % (structName))
+    fd.write('\tdbCmd := "select * from %s where " + sqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
     fd.write('\terr = dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
     fd.write('\treturn object, err\n}\n')
@@ -264,83 +264,78 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
 
     fd.write("\n\treturn sqlKey, nil\n}\n")
 
-def createUpdateObjInDb(fd, structName, goMemberTypeDict):
-    fd.write("""
-    func (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {
-	dbV4Route := dbObj.(%s)
-	objTyp := reflect.TypeOf(obj)
-	objVal := reflect.ValueOf(obj)
-	dbObjVal := reflect.ValueOf(dbV4Route)
-	attrIds := make([]byte, objTyp.NumField())
-	for i:=0; i<objTyp.NumField(); i++ {
-		objVal := objVal.Field(i)
-		dbObjVal := dbObjVal.Field(i)
-		if objVal.Kind() == reflect.Int {
-			if int(objVal.Int()) != 0 && int(objVal.Int()) != int(dbObjVal.Int()) {
-				attrIds[i] = 1
-			}
-		} else {
-			if objVal.String() != "" && objVal.String() != dbObjVal.String() {
-				attrIds[i] = 1
-			}
-		}
-	}
-	return attrIds, nil
-}\n""" %( structName, structName))
+def createCompareObjectsAndDiff(fd, structName, goMemberTypeDict):
+    fd.write("\nfunc (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {\n" % (structName))
+    fd.write("\tdbStruct := dbObj.(%s)\n" % (structName))
+    fd.write("\tobjTyp := reflect.TypeOf(obj)\n")
+    fd.write("\tobjVal := reflect.ValueOf(obj)\n")
+    fd.write("\tdbObjVal := reflect.ValueOf(dbStruct)\n")
+    fd.write("\tattrIds := make([]byte, objTyp.NumField())\n")
+    fd.write("\tfor i:=0; i<objTyp.NumField(); i++ {\n")
+    fd.write("\t\tobjVal := objVal.Field(i)\n")
+    fd.write("\t\tdbObjVal := dbObjVal.Field(i)\n")
+    fd.write("\t\tif objVal.Kind() == reflect.Int {\n")
+    fd.write("\t\t\tif ((int(objVal.Int()) != 0) && (int(objVal.Int()) != int(dbObjVal.Int()))) {\n")
+    fd.write("\t\t\t\tattrIds[i] = 1\n")
+    fd.write("\t\t\t}\n")
+    fd.write("\t\t} else {\n")
+    fd.write('\t\t\tif objVal.String() != "" && objVal.String() != dbObjVal.String() {\n')
+    fd.write("\t\t\t\tattrIds[i] = 1\n")
+    fd.write("\t\t\t}\n")
+    fd.write("\t\t}\n")
+    fd.write("\t}\n")
+    fd.write("\treturn attrIds, nil\n}\n")
 
-    fd.write("""
-    func (obj %s) MergeDbAndConfigObj(dbObj ConfigObj, attrSet []byte) (ConfigObj, error) {
-	var merged%s %s
-	objTyp := reflect.TypeOf(obj)
-	objVal := reflect.ValueOf(obj)
-	dbObjVal := reflect.ValueOf(dbObj)
-	mergedObjVal := reflect.ValueOf(&merged%s)
-	for i:=1; i<objTyp.NumField(); i++ {
-		objField := objVal.Field(i)
-		dbObjField := dbObjVal.Field(i)
-		if  attrSet[i] ==1 {
-			if dbObjField.Kind() == reflect.Int {
-				mergedObjVal.Elem().Field(i).SetInt(objField.Int())
-			} else {
-				mergedObjVal.Elem().Field(i).SetString(objField.String())
-			}
-		} else {
-			if dbObjField.Kind() == reflect.Int {
-				mergedObjVal.Elem().Field(i).SetInt(dbObjField.Int())
-			} else {
-				mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
-			}
-		}
-	}
-	return merged%s, nil
-}\n""" %(structName, structName, structName, structName, structName))
+def createMergeDbAndConfigObj(fd, structName, goMemberTypeDict):
+    fd.write("func (obj %s) MergeDbAndConfigObj(dbObj ConfigObj, attrSet []byte) (ConfigObj, error) {\n" % (structName))
+    fd.write("\tvar mergedStruct %s\n" % (structName)) 
+    fd.write("\tobjTyp := reflect.TypeOf(obj)\n")
+    fd.write("\tobjVal := reflect.ValueOf(obj)\n")
+    fd.write("\tdbObjVal := reflect.ValueOf(dbObj)\n")
+    fd.write("\tmergedObjVal := reflect.ValueOf(&mergedStruct)\n")
+    fd.write("\tfor i:=1; i<objTyp.NumField(); i++ {\n")
+    fd.write("\t\tobjField := objVal.Field(i)\n")
+    fd.write("\t\tdbObjField := dbObjVal.Field(i)\n")
+    fd.write("\t\tif  attrSet[i] ==1 {\n")
+    fd.write("\t\t\tif dbObjField.Kind() == reflect.Int {\n")
+    fd.write("\t\t\t\tmergedObjVal.Elem().Field(i).SetInt(objField.Int())\n")
+    fd.write("\t\t\t} else {\n")
+    fd.write("\t\t\t\tmergedObjVal.Elem().Field(i).SetString(objField.String())\n")
+    fd.write("\t\t\t}\n")
+    fd.write("\t\t} else {\n")
+    fd.write("\t\t\tif dbObjField.Kind() == reflect.Int {\n")
+    fd.write("\t\t\t\tmergedObjVal.Elem().Field(i).SetInt(dbObjField.Int())\n")
+    fd.write("\t\t\t} else {\n")
+    fd.write("\t\t\t\tmergedObjVal.Elem().Field(i).SetString(dbObjField.String())\n")
+    fd.write("\t\t\t}\n")
+    fd.write("\t\t}\n")
+    fd.write("\t}\n")
+    fd.write("\treturn mergedStruct, nil\n}\n")
 
-    fd.write("""
-    func (obj %s) UpdateObjectInDb(dbObj ConfigObj, attrSet []byte, dbHdl *sql.DB) error {
-	var fieldSqlStr string
-	db%s := dbObj.(%s)
-	objKey, err := db%s.GetKey()
-	objSqlKey, err := db%s.GetSqlKeyStr(objKey)
-	dbCmd := "update " + "%s" + " set"\n""" %(structName, structName, structName, structName, structName, structName))
-
-    fd.write("""objTyp := reflect.TypeOf(obj)
-	objVal := reflect.ValueOf(obj)
-	for i:=0; i<objTyp.NumField(); i++ {
-		if attrSet[i] == 1 {
-			fieldTyp := objTyp.Field(i)
-			fieldVal := objVal.Field(i)
-			if fieldVal.Kind() == reflect.Int {
-				fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Int()))
-			} else {
-				fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
-			}
-			dbCmd += fieldSqlStr
-		}
-	}
-	dbCmd += " where " + objSqlKey
-	_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
-	return err
-}\n""")
+def createUpdateObjectInDb(fd, structName, goMemberTypeDict):
+    fd.write("func (obj %s) UpdateObjectInDb(dbObj ConfigObj, attrSet []byte, dbHdl *sql.DB) error {\n" % (structName))
+    fd.write("\tvar fieldSqlStr string\n")
+    fd.write("\tdbStruct := dbObj.(%s)\n" % (structName))
+    fd.write("\tobjKey, err := dbStruct.GetKey()\n")
+    fd.write("\tobjSqlKey, err := dbStruct.GetSqlKeyStr(objKey)\n")
+    fd.write('\tdbCmd := "update " + "%s" + " set"\n' % (structName))
+    fd.write("\tobjTyp := reflect.TypeOf(obj)\n")
+    fd.write("\tobjVal := reflect.ValueOf(obj)\n")
+    fd.write("\tfor i:=0; i<objTyp.NumField(); i++ {\n")
+    fd.write("\t\tif attrSet[i] == 1 {\n")
+    fd.write("\t\t\tfieldTyp := objTyp.Field(i)\n")
+    fd.write("\t\t\tfieldVal := objVal.Field(i)\n")
+    fd.write("\t\t\tif fieldVal.Kind() == reflect.Int {\n")
+    fd.write('\t\t\t\tfieldSqlStr = fmt.Sprintf(" %s = %d ", fieldTyp.Name, int(fieldVal.Int()))\n')
+    fd.write("\t\t\t} else {\n")
+    fd.write('\t\t\t\tfieldSqlStr = fmt.Sprintf(" %s = %s ", fieldTyp.Name, fieldVal.String())\n')
+    fd.write("\t\t\t}\n")
+    fd.write("\t\t\tdbCmd += fieldSqlStr\n")
+    fd.write("\t\t}\n")
+    fd.write("\t}\n")
+    fd.write('\tdbCmd += " where " + objSqlKey\n')
+    fd.write("\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n")
+    fd.write("\treturn err\n}\n")
 
 def createCommonDbFunc(generatePath):
 
@@ -408,7 +403,9 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
-                createUpdateObjInDb(fd, currentStruct, goMemberTypeDict)
+                createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
+                createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
+                createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments
