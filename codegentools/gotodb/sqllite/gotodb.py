@@ -139,7 +139,7 @@ def build_gosqllite_from_go(files, generatePath, objects):
             dbFd = open(dbFileName, 'w')
             dbFd.write("package models\n")
 
-            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n\t"utils/dbutils"\n)\n')
+            dbFd.write('\nimport (\n\t"database/sql"\n\t"fmt"\n\t"strings"\n\t"utils/dbutils"\n\t"reflect"\n)\n')
             generate_gosqllite_funcs(dbFd, directory, gofilename, obj)
 
             dbFd.close()
@@ -190,9 +190,9 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 
     for i in range(len(goMemberTypeDict[structName])):
         if i == len(goMemberTypeDict[structName]) - 1:
-            fd.write("""%v);\",\n\t\t""")
+            fd.write("""'%v') ;\",\n\t\t""")
         else:
-            fd.write("""%v, """ )
+            fd.write("""'%v', """ )
 
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         if i == len(goMemberTypeDict[structName]) - 1:
@@ -258,7 +258,7 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
 
     firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
     #print "firstKey =", firstKey
-    sqlKey = ' + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
+    sqlKey = ' + "and" + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
     fd.write('\n\tsqlKey := ')
     fd.write(sqlKey)
 
@@ -275,11 +275,11 @@ def createCompareObjectsAndDiff(fd, structName, goMemberTypeDict):
     fd.write("\t\tobjVal := objVal.Field(i)\n")
     fd.write("\t\tdbObjVal := dbObjVal.Field(i)\n")
     fd.write("\t\tif objVal.Kind() == reflect.Int {\n")
-    fd.write("\t\t\tif int(objVal.Int()) != 0 && int(objVal.Int()) != int(dbObjVal.Int()) {\n")
+    fd.write("\t\t\tif ((int(objVal.Int()) != 0) && (int(objVal.Int()) != int(dbObjVal.Int()))) {\n")
     fd.write("\t\t\t\tattrIds[i] = 1\n")
     fd.write("\t\t\t}\n")
     fd.write("\t\t} else {\n")
-    fd.write("\t\t\tif objVal.String() != "" && objVal.String() != dbObjVal.String() {\n")
+    fd.write('\t\t\tif objVal.String() != "" && objVal.String() != dbObjVal.String() {\n')
     fd.write("\t\t\t\tattrIds[i] = 1\n")
     fd.write("\t\t\t}\n")
     fd.write("\t\t}\n")
@@ -310,7 +310,7 @@ def createMergeDbAndConfigObj(fd, structName, goMemberTypeDict):
     fd.write("\t\t\t}\n")
     fd.write("\t\t}\n")
     fd.write("\t}\n")
-    fd.write("\treturn mergedV4Route, nil\n}\n")
+    fd.write("\treturn mergedStruct, nil\n}\n")
 
 def createUpdateObjectInDb(fd, structName, goMemberTypeDict):
     fd.write("func (obj %s) UpdateObjectInDb(dbObj ConfigObj, attrSet []byte, dbHdl *sql.DB) error {\n" % (structName))
@@ -318,7 +318,7 @@ def createUpdateObjectInDb(fd, structName, goMemberTypeDict):
     fd.write("\tdbStruct := dbObj.(%s)\n" % (structName))
     fd.write("\tobjKey, err := dbStruct.GetKey()\n")
     fd.write("\tobjSqlKey, err := dbStruct.GetSqlKeyStr(objKey)\n")
-    fd.write("\tdbCmd := "'update '" + %s + "' set'"\n" % (structName))
+    fd.write('\tdbCmd := "update " + "%s" + " set"\n' % (structName))
     fd.write("\tobjTyp := reflect.TypeOf(obj)\n")
     fd.write("\tobjVal := reflect.ValueOf(obj)\n")
     fd.write("\tfor i:=0; i<objTyp.NumField(); i++ {\n")
@@ -326,14 +326,14 @@ def createUpdateObjectInDb(fd, structName, goMemberTypeDict):
     fd.write("\t\t\tfieldTyp := objTyp.Field(i)\n")
     fd.write("\t\t\tfieldVal := objVal.Field(i)\n")
     fd.write("\t\t\tif fieldVal.Kind() == reflect.Int {\n")
-    fd.write("\t\t\t\tfieldSqlStr = fmt.Sprintf("' %s = ''%d '", fieldTyp.Name, int(fieldVal.Int()))\n")
+    fd.write('\t\t\t\tfieldSqlStr = fmt.Sprintf(" %s = %d ", fieldTyp.Name, int(fieldVal.Int()))\n')
     fd.write("\t\t\t} else {\n")
-    fd.write("\t\t\t\tfieldSqlStr = fmt.Sprintf("' %s = ''%s '", fieldTyp.Name, fieldVal.String())\n")
+    fd.write('\t\t\t\tfieldSqlStr = fmt.Sprintf(" %s = %s ", fieldTyp.Name, fieldVal.String())\n')
     fd.write("\t\t\t}\n")
     fd.write("\t\t\tdbCmd += fieldSqlStr\n")
     fd.write("\t\t}\n")
     fd.write("\t}\n")
-    fd.write("\tdbCmd += "' where '" + objSqlKey\n")
+    fd.write('\tdbCmd += " where " + objSqlKey\n')
     fd.write("\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n")
     fd.write("\treturn err\n}\n")
 
@@ -403,6 +403,9 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
+                createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
+                createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
+                createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
 
             # lets skip all blank lines
             # skip comments
