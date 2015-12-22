@@ -967,13 +967,14 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     # write unmarshalObject function
     nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
-    var Obj %s
     var err error
-    if err = json.Unmarshal(body, &Obj); err != nil  {
-        fmt.Println("### %s create called, unmarshal failed", Obj, err)
+    if len(body) > 0 {
+        if err = json.Unmarshal(body, &obj); err != nil  {
+            fmt.Println("### %s called, unmarshal failed", obj, err)
+        }
     }
-    return Obj, err
-    }\n""" %(structName, structName, structName))
+    return obj, err
+    }\n""" %(structName, structName))
 
   return structName
 
