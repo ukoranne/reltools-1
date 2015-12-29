@@ -227,19 +227,13 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
-    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
+    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objSqlKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
     fd.write(storefuncline)
     fd.write('\tvar object %s\n' % (structName))
-    fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
-    fd.write('\tif err != nil {\n')
-    fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
-    fd.write('\t\treturn object, err\n')
-    fd.write('\t}\n\n')
-    fd.write('\tdbCmd := "select * from %s where " + sqlKey\n' % (structName))
+    fd.write('\tdbCmd := "select * from %s where " + objSqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
-    fd.write('\terr = dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
+    fd.write('\terr := dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
     fd.write('\treturn object, err\n}\n')
-
     
 def createGetKey(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetKey() (string, error) {" % structName)
@@ -563,8 +557,8 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
                 #createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
                 #createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
-                createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
-
+                #createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
+                createUpdateObjInDb(fd, currentStruct, goMemberTypeDict)
             # lets skip all blank lines
             # skip comments
             elif line == '\n' or \
