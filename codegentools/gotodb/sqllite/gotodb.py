@@ -164,12 +164,13 @@ def createDBTable(fd, structName, goMemberTypeDict):
             fd.write('\n\t\t"%s %s, " +' %(m, t))
 
     keyList = sorted(keyList, key=lambda i: i[1])
-    fd.write('\n\t\t"PRIMARY KEY(')
-    for i, (k, l) in enumerate(keyList):
-        if i == len(keyList) - 1:
-            fd.write('%s) " +' % k)
-        else:
-            fd.write('%s, ' % k)
+    if keyList:
+        fd.write('\n\t\t"PRIMARY KEY(')
+        for i, (k, l) in enumerate(keyList):
+            if i == len(keyList) - 1:
+                fd.write('%s) " +' % k)
+            else:
+                fd.write('%s, ' % k)
     fd.write('\n\t")"\n')
 
     fd.write('\n\t_, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n')
@@ -226,19 +227,13 @@ def createDeleteObjFromDb(fd, structName, goMemberTypeDict):
     fd.write('\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n\treturn err\n}\n')
 
 def createGetObjFromDb(fd, structName, goMemberTypeDict):
-    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
+    storefuncline = "\nfunc (obj %s) GetObjectFromDb(objSqlKey string, dbHdl *sql.DB) (ConfigObj, error) {\n" % (structName)
     fd.write(storefuncline)
     fd.write('\tvar object %s\n' % (structName))
-    fd.write('\tsqlKey, err := obj.GetSqlKeyStr(objKey)\n')
-    fd.write('\tif err != nil {\n')
-    fd.write('\t\tfmt.Println("GetSqlKeyStr for object key", objKey, "failed with error", err)\n')
-    fd.write('\t\treturn object, err\n')
-    fd.write('\t}\n\n')
-    fd.write('\tdbCmd := "select * from %s where " + sqlKey\n' % (structName))
+    fd.write('\tdbCmd := "select * from %s where " + objSqlKey\n' % (structName))
     fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
-    fd.write('\terr = dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
+    fd.write('\terr := dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
     fd.write('\treturn object, err\n}\n')
-
     
 def createGetKey(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetKey() (string, error) {" % structName)
@@ -252,18 +247,175 @@ def createGetKey(fd, structName, goMemberTypeDict):
 
 def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetSqlKeyStr(objKey string) (string, error) {\n" % structName)
-    fd.write('\tkeys := strings.Split(objKey, "#")')
     #print "struct dict =", goMemberTypeDict[structName]
     keys = sorted([(m, key) for m, t, key in goMemberTypeDict[structName] if key], key=lambda i: i[1])
+    if keys:
+        fd.write('\tkeys := strings.Split(objKey, "#")')
+        firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
+        #print "firstKey =", firstKey
+        sqlKey = ' + "and" + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
+        fd.write('\n\tsqlKey := ')
+        fd.write(sqlKey)
+        fd.write("\n\treturn sqlKey, nil\n}\n")
+    else:
+        fd.write("""\n\treturn "", nil\n}\n""")
 
-    firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
-    #print "firstKey =", firstKey
-    sqlKey = ' + "and" + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
-    fd.write('\n\tsqlKey := ')
-    fd.write(sqlKey)
 
-    fd.write("\n\treturn sqlKey, nil\n}\n")
 
+def createUpdateObjInDb(fd, structName, goMemberTypeDict):
+    fd.write("""
+    func (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {
+	dbV4Route := dbObj.(%s)
+	objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	dbObjVal := reflect.ValueOf(dbV4Route)
+	attrIds := make([]byte, objTyp.NumField())
+	for i:=0; i<objTyp.NumField(); i++ {
+		objVal := objVal.Field(i)
+		dbObjVal := dbObjVal.Field(i)
+		if objVal.Kind() == reflect.Int {
+		    if int(objVal.Int()) != 0 && int(objVal.Int()) != int(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Int8 {
+		    if int8(objVal.Int()) != 0 && int8(objVal.Int()) != int8(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Int16 {
+		    if int16(objVal.Int()) != 0 && int16(objVal.Int()) != int16(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Int32 {
+		    if int32(objVal.Int()) != 0 && int32(objVal.Int()) != int32(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Int64 {
+			if int64(objVal.Int()) != 0 && int64(objVal.Int()) != int64(dbObjVal.Int()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Uint {
+			if uint(objVal.Uint()) != 0 && uint(objVal.Uint()) != uint(dbObjVal.Uint()) {
+				attrIds[i] = 1
+			}
+        } else if objVal.Kind() == reflect.Uint8 {
+			if uint8(objVal.Uint()) != 0 && uint8(objVal.Uint()) != uint8(dbObjVal.Uint()) {
+				attrIds[i] = 1
+			}
+        } else if objVal.Kind() == reflect.Uint16 {
+        	if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+				attrIds[i] = 1
+			}
+        } else if objVal.Kind() == reflect.Uint32 {
+			if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+				attrIds[i] = 1
+			}
+        } else if objVal.Kind() == reflect.Uint64 {
+			if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+				attrIds[i] = 1
+			}
+		} else if objVal.Kind() == reflect.Bool {
+		    if bool(objVal.Bool()) != bool(dbObjVal.Bool()) {
+		        attrIds[i] = 1
+		    }
+		} else {
+			if objVal.String() != "" && objVal.String() != dbObjVal.String() {
+				attrIds[i] = 1
+			}
+		}
+	}
+	return attrIds, nil
+}\n""" %( structName, structName))
+
+    fd.write("""
+    func (obj %s) MergeDbAndConfigObj(dbObj ConfigObj, attrSet []byte) (ConfigObj, error) {
+	var merged%s %s
+	objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	dbObjVal := reflect.ValueOf(dbObj)
+	mergedObjVal := reflect.ValueOf(&merged%s)
+	for i:=1; i<objTyp.NumField(); i++ {
+		objField := objVal.Field(i)
+		dbObjField := dbObjVal.Field(i)
+		if  attrSet[i] ==1 {
+			if dbObjField.Kind() == reflect.Int ||
+			   dbObjField.Kind() == reflect.Int8 ||
+			   dbObjField.Kind() == reflect.Int16 ||
+			   dbObjField.Kind() == reflect.Int32 ||
+			   dbObjField.Kind() == reflect.Int64 {
+				mergedObjVal.Elem().Field(i).SetInt(objField.Int())
+			} else if dbObjField.Kind() == reflect.Uint ||
+			   dbObjField.Kind() == reflect.Uint8 ||
+			   dbObjField.Kind() == reflect.Uint16 ||
+			   dbObjField.Kind() == reflect.Uint32 ||
+			   dbObjField.Kind() == reflect.Uint64 {
+			    mergedObjVal.Elem().Field(i).SetUint(objField.Uint())
+			} else if dbObjField.Kind() == reflect.Bool {
+			    mergedObjVal.Elem().Field(i).SetBool(objField.Bool())
+			} else {
+				mergedObjVal.Elem().Field(i).SetString(objField.String())
+			}
+		} else {
+			if dbObjField.Kind() == reflect.Int ||
+			   dbObjField.Kind() == reflect.Int8 ||
+			   dbObjField.Kind() == reflect.Int16 ||
+			   dbObjField.Kind() == reflect.Int32 ||
+			   dbObjField.Kind() == reflect.Int64 {
+				mergedObjVal.Elem().Field(i).SetInt(dbObjField.Int())
+			} else if dbObjField.Kind() == reflect.Uint ||
+			   dbObjField.Kind() == reflect.Uint ||
+			   dbObjField.Kind() == reflect.Uint8 ||
+			   dbObjField.Kind() == reflect.Uint16 ||
+			   dbObjField.Kind() == reflect.Uint32 {
+			    mergedObjVal.Elem().Field(i).SetUint(dbObjField.Uint())
+			} else if dbObjField.Kind() == reflect.Bool {
+			    mergedObjVal.Elem().Field(i).SetBool(dbObjField.Bool())
+			} else {
+				mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
+			}
+		}
+	}
+	return merged%s, nil
+}\n""" %(structName, structName, structName, structName, structName))
+
+    fd.write("""
+    func (obj %s) UpdateObjectInDb(dbObj ConfigObj, attrSet []byte, dbHdl *sql.DB) error {
+	var fieldSqlStr string
+	db%s := dbObj.(%s)
+	objKey, err := db%s.GetKey()
+	objSqlKey, err := db%s.GetSqlKeyStr(objKey)
+	dbCmd := "update " + "%s" + " set"\n""" %(structName, structName, structName, structName, structName, structName))
+
+    fd.write("""objTyp := reflect.TypeOf(obj)
+	objVal := reflect.ValueOf(obj)
+	for i:=0; i<objTyp.NumField(); i++ {
+		if attrSet[i] == 1 {
+			fieldTyp := objTyp.Field(i)
+			fieldVal := objVal.Field(i)
+			if fieldVal.Kind() == reflect.Int ||
+			   fieldVal.Kind() == reflect.Int8 ||
+			   fieldVal.Kind() == reflect.Int16 ||
+			   fieldVal.Kind() == reflect.Int32 ||
+			   fieldVal.Kind() == reflect.Int64 {
+				fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Int()))
+			} else if fieldVal.Kind() == reflect.Uint ||
+			   fieldVal.Kind() == reflect.Uint8 ||
+			   fieldVal.Kind() == reflect.Uint16 ||
+			   fieldVal.Kind() == reflect.Uint32 ||
+			   fieldVal.Kind() == reflect.Uint64 {
+			    fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Uint()))
+			} else if objVal.Kind() == reflect.Bool {
+			    fieldSqlStr = fmt.Sprintf(" %s = '%t' ", fieldTyp.Name, bool(fieldVal.Bool()))
+			} else {
+				fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
+			}
+			dbCmd += fieldSqlStr
+		}
+	}
+	dbCmd += " where " + objSqlKey
+	_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
+	return err
+}\n""")
+'''
 def createCompareObjectsAndDiff(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {\n" % (structName))
     fd.write("\tdbStruct := dbObj.(%s)\n" % (structName))
@@ -336,7 +488,7 @@ def createUpdateObjectInDb(fd, structName, goMemberTypeDict):
     fd.write('\tdbCmd += " where " + objSqlKey\n')
     fd.write("\t_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)\n")
     fd.write("\treturn err\n}\n")
-
+'''
 def createCommonDbFunc(generatePath):
 
     fd = open(generatePath + "common_db.go", "w")
@@ -349,7 +501,7 @@ def createCommonDbFunc(generatePath):
              "fmt"
              )\n""")
 
-    fd.write("""func ExecuteSQLStmt(dbCmd string, dbHdl *sql.DB) (driver.Result, error) {
+    fd.write("""func Depreciated_ExecuteSQLStmt(dbCmd string, dbHdl *sql.DB) (driver.Result, error) {
 	var result driver.Result
 	txn, err := dbHdl.Begin()
 	if err != nil {
@@ -403,10 +555,10 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
-                createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
-                createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
-                createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
-
+                #createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
+                #createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
+                #createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
+                createUpdateObjInDb(fd, currentStruct, goMemberTypeDict)
             # lets skip all blank lines
             # skip comments
             elif line == '\n' or \
