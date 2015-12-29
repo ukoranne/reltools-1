@@ -250,7 +250,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     for s in crudStructsList:
         if 'Config' in s:
             thriftfd.write(
-                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
+                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<byte> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
         else: # read only objects Counters/State
             thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
     thriftfd.write("}")
@@ -262,7 +262,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
     lowerDeamonName = d.lower()
     servicesName = d + "Services"
     clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
-
+                        var objId int64
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
         if 'Config' in s:
@@ -282,19 +282,47 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
                                 if err != nil {
                                 return int64(0), false
                                 }
+                                objId, _ = data.StoreObjectInDb(dbHdl)
                                 break\n""" % (s,))
     clientIfFd.write("""default:
 		                break
 	                    }
 
-	                    return int64(0), true
+	                    return objId, true
                         }\n""")
 
 def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict):
     newDeamonName = d.upper()
-    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId string, dbHdl *sql.DB) bool {
-    return true
-    }\n""" % (newDeamonName,))
+    servicesName = d + "Services"
+    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
+
+	                    switch obj.(type) {\n""" % (newDeamonName,))
+    for s in crudStructsList:
+        if 'Config' in s:
+            clientIfFd.write("""
+                                case models.%s :
+                                data := obj.(models.%s)
+                                conf := %s.New%s()\n""" % (s, s, servicesName, s))
+            for k, v in goMemberTypeDict[s].iteritems():
+                #print k.split(' ')
+                cast = v
+                # lets convert thrift i8, i16, i32, i64 to int...
+                if cast.startswith('i'):
+                    cast = 'int' + cast.lstrip('i')
+                clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
+            clientIfFd.write("""
+                                _, err := clnt.ClientHdl.Delete%s(conf)
+                                if err != nil {
+                                return false
+                                }
+                                data.DeleteObjectFromDb(objKey, dbHdl)
+                                break\n""" % (s,))
+    clientIfFd.write("""default:
+		                break
+	                    }
+
+	                    return true
+                        }\n""")
 
 def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
     newDeamonName = d.upper()
@@ -341,6 +369,62 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
 
             }\n""")
 
+def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
+    newDeamonName = d.upper()
+    lowerDeamonName = d.lower()
+    servicesName = d + "Services"
+
+    clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []byte, objKey string, dbHdl *sql.DB) bool {
+
+	logger.Println("### Update Object called %s", attrSet, objKey)
+	ok := false
+	switch obj.(type) {
+    """ %(newDeamonName, newDeamonName))
+    for s in crudStructsList:
+        if 'State' not in s and 'Counters' not in s:
+
+            clientIfFd.write("""\ncase models.%s :""" % (s,))
+            clientIfFd.write("""\n// cast original object
+            origdata := dbObj.(models.%s)
+            updatedata := obj.(models.%s)\n""" %(s, s) )
+            clientIfFd.write("""// create new thrift objects
+            origconf := %s.New%s()\nupdateconf := %s.New%s()\n""" %(servicesName, s, servicesName, s))
+            for i in range(2):
+                clientIfFd.write("\n")
+                for k, v in goMemberTypeDict[s].iteritems():
+                    cast = v
+                    # lets convert thrift i8, i16, i32, i64 to int...
+                    if cast.startswith('i'):
+                        cast = 'int' + cast.lstrip('i')
+                    if i == 0:
+                        clientIfFd.write("""origconf.%s = %s(origdata.%s)\n""" % (k, cast, k))
+                    else:
+                        clientIfFd.write("""updateconf.%s = %s(updatedata.%s)\n""" % (k, cast, k))
+
+            clientIfFd.write("""\n//convert attrSet to uint8 list
+            newattrset := make([]int8, len(attrSet))
+            for i, v := range(attrSet) {
+                newattrset[i] = int8(v)
+            }""")
+
+            clientIfFd.write("""
+                if clnt.ClientHdl != nil {
+                    ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, newattrset)
+                    if ok {
+                        updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
+                    } else {
+                        panic(err)
+                    }
+                }
+                break\n""" %(s))
+
+    clientIfFd.write("""\ndefault:
+		                break
+	                    }
+                return ok
+
+            }\n""")
+
 
 
 
@@ -378,6 +462,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
     createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
     createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
+    createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
     clientIfFd.close()
 
     # lets beautify the the client if code
