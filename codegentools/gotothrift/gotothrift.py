@@ -139,7 +139,7 @@ typedef i16 uint16
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
 
         # create a client if info
-        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict)
+        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
 
     # create teh object map file
     generate_objmap(allCrudStructList)
@@ -197,6 +197,8 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                             writingStruct = True
                 elif "}" in line and writingStruct:
                     thriftfd.write("}\n")
+                    if 'State' in currentStruct or "Counter" in currentStruct:
+                        thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
                     writingStruct = False
                     memberCnt = 1
                 # lets skip all blank lines
@@ -204,7 +206,8 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                 elif line == '\n' or \
                     "//" in line or \
                     "#" in line or \
-                    "package" in line:
+                    "package" in line or \
+                    "BaseObj" in line:
                     continue
                 elif "/*" in line:
                     deletingComment = True
@@ -245,13 +248,103 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     #print crudStructsList
     thriftfd.write("service %sServices {\n" % (d.upper()))
     for s in crudStructsList:
-        thriftfd.write(
-            """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
+        if 'Config' in s:
+            thriftfd.write(
+                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s config);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s))
+        else: # read only objects Counters/State
+            thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
     thriftfd.write("}")
     return goMemberTypeDict, crudStructsList, goStructDict
 
 
-def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
+def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict):
+    newDeamonName = d.upper()
+    lowerDeamonName = d.lower()
+    servicesName = d + "Services"
+    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
+
+	                    switch obj.(type) {\n""" % (newDeamonName,))
+    for s in crudStructsList:
+        if 'Config' in s:
+            clientIfFd.write("""
+                                case models.%s :
+                                data := obj.(models.%s)
+                                conf := %s.New%s()\n""" % (s, s, servicesName, s))
+            for k, v in goMemberTypeDict[s].iteritems():
+                #print k.split(' ')
+                cast = v
+                # lets convert thrift i8, i16, i32, i64 to int...
+                if cast.startswith('i'):
+                    cast = 'int' + cast.lstrip('i')
+                clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
+            clientIfFd.write("""
+                                _, err := clnt.ClientHdl.Create%s(conf)
+                                if err != nil {
+                                return int64(0), false
+                                }
+                                break\n""" % (s,))
+    clientIfFd.write("""default:
+		                break
+	                    }
+
+	                    return int64(0), true
+                        }\n""")
+
+def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict):
+    newDeamonName = d.upper()
+    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId string, dbHdl *sql.DB) bool {
+    return true
+    }\n""" % (newDeamonName,))
+
+def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
+    newDeamonName = d.upper()
+    lowerDeamonName = d.lower()
+    servicesName = d + "Services"
+    clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
+	                                objCount int64,
+	                                nextMarker int64,
+	                                more bool,
+	                                objs []models.ConfigObj) {
+
+	logger.Println("### Get Bulk request called with", currMarker, count)
+	switch obj.(type) {
+    \n""" %(newDeamonName))
+    for s in crudStructsList:
+        if 'State' in s or 'Counters' in s:
+
+            clientIfFd.write("""\ncase models.%s :\n""" % (s,))
+
+            clientIfFd.write("""
+                if clnt.ClientHdl != nil {
+                	var ret_obj models.%s
+                    bulkInfo, _ := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
+                    if bulkInfo.Count != 0 {
+                        objCount = int64(bulkInfo.Count)
+                        more = bool(bulkInfo.More)
+                        nextMarker = int64(bulkInfo.EndIdx)
+                        for i := 0; i < int(bulkInfo.Count); i++ {
+                            if len(objs) == 0 {
+                                objs = make([]models.ConfigObj, 0)
+                            }""" %(s, s, servicesName, servicesName))
+            for k, v in goStructDict[s].iteritems():
+                clientIfFd.write("""
+                            ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, v, s, k))
+            clientIfFd.write("""\nobjs = append(objs, ret_obj)
+			            }
+			}
+		}
+		break\n""")
+    clientIfFd.write("""\ndefault:
+		                break
+	                    }
+                return nil, objCount, nextMarker, more, objs
+
+            }\n""")
+
+
+
+
+def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
     #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
@@ -281,37 +374,10 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict):
     clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 	                    return true
                         }\n""" % (newDeamonName,))
-    clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 
-	                    switch obj.(type) {\n""" % (newDeamonName,))
-    for s in crudStructsList:
-        clientIfFd.write("""
-                            case models.%s :
-                            data := obj.(models.%s)
-                            conf := %sServices.New%s()\n""" % (s, s, d, s))
-        for k, v in goMemberTypeDict[s].iteritems():
-            #print k.split(' ')
-            cast = v
-            # lets convert thrift i8, i16, i32, i64 to int...
-            if cast.startswith('i'):
-                cast = 'int' + cast.lstrip('i')
-            clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
-        clientIfFd.write("""
-                            _, err := clnt.ClientHdl.Create%s(conf)
-                            if err != nil {
-                            return int64(0), false
-                            }
-                            break\n""" % (s,))
-    clientIfFd.write("""default:
-		                break
-	                    }
-
-	                    return int64(0), true
-                        }\n""")
-
-    clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objId string, dbHdl *sql.DB) bool {
-    return true
-    }""" % (newDeamonName,))
+    createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
+    createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
+    createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
     clientIfFd.close()
 
     # lets beautify the the client if code

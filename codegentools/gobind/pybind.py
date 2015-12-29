@@ -946,7 +946,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     nfd.write("func New%s() *%s {\n" % (structName, structName))
 
     # Generic NewFunc, set up the path_helper if asked to.
-    nfd.write("\tnew := &%s{\n" % (structName))
+    nfd.write("\tnewObj := &%s{\n" % (structName))
     # Write out the classes that are stored locally as self.__foo where
     # foo is the safe YANG name.
 
@@ -963,18 +963,18 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
         nfd.write("\t\t%s : %s%s,\n" % (classes[c]["name"],
                                         classes[c]["base"], default))
     nfd.write("\t\t}\n")
-    nfd.write("\treturn new\n}\n\n")
+    nfd.write("\treturn newObj\n}\n\n")
 
-    # TODO: write unmarshalObject function
-    if structName.endswith("Config"):
-      nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
-      var Obj %s
-      var err error
-      if err = json.Unmarshal(body, &Obj); err != nil  {
-          fmt.Println("### %s create called, unmarshal failed", Obj, err)
-      }
-      return Obj, err
-      }\n""" %(structName, structName, structName))
+    # write unmarshalObject function
+    nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
+    var err error
+    if len(body) > 0 {
+        if err = json.Unmarshal(body, &obj); err != nil  {
+            fmt.Println("### %s called, unmarshal failed", obj, err)
+        }
+    }
+    return obj, err
+    }\n""" %(structName, structName))
 
   return structName
 
@@ -992,6 +992,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
   childNameList = []
   for i in elements:
     childNameList.append(i["name"][:1].upper() + i["name"][1:])
+
+  # lets add the default interface functions from the BaseObj
+  elements_str += "\tBaseObj\n"
 
   for name, elemtype in parentChildrenLeaf.iteritems():
     # is key?
