@@ -196,10 +196,16 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
             fd.write("""'%v', """ )
 
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
-        if i == len(goMemberTypeDict[structName]) - 1:
-            fd.write("""obj.%s)\n""" % m )
+        if t != "bool":
+            if i == len(goMemberTypeDict[structName]) - 1:
+                fd.write("""obj.%s)\n""" % m )
+            else:
+                fd.write("""obj.%s, """ % m )
         else:
-            fd.write("""obj.%s, """ % m )
+            if i == len(goMemberTypeDict[structName]) - 1:
+                fd.write("""dbutils.ConvertBoolToInt(obj.%s))\n""" % m )
+            else:
+                fd.write("""dbutils.ConvertBoolToInt(obj.%s), """ % m )
 
     fd.write("""\tfmt.Println("**** Create Object called with ", obj)
 
@@ -265,64 +271,70 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
 
 def createUpdateObjInDb(fd, structName, goMemberTypeDict):
     fd.write("""
-    func (obj %s) CompareObjectsAndDiff(dbObj ConfigObj) ([]byte, error) {
+    func (obj %s) CompareObjectsAndDiff(updateKeys map[string]bool, dbObj ConfigObj) ([]byte, error) {
 	dbV4Route := dbObj.(%s)
 	objTyp := reflect.TypeOf(obj)
 	objVal := reflect.ValueOf(obj)
 	dbObjVal := reflect.ValueOf(dbV4Route)
 	attrIds := make([]byte, objTyp.NumField())
 	for i:=0; i<objTyp.NumField(); i++ {
+	    fieldTyp := objTyp.Field(i)
 		objVal := objVal.Field(i)
 		dbObjVal := dbObjVal.Field(i)
-		if objVal.Kind() == reflect.Int {
-		    if int(objVal.Int()) != 0 && int(objVal.Int()) != int(dbObjVal.Int()) {
-				attrIds[i] = 1
+		if _, ok := updateKeys[fieldTyp.Name]; ok {
+            if objVal.Kind() == reflect.Int {
+                if int(objVal.Int()) != int(dbObjVal.Int()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Int8 {
+                if int8(objVal.Int()) != int8(dbObjVal.Int()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Int16 {
+                if int16(objVal.Int()) != int16(dbObjVal.Int()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Int32 {
+                if int32(objVal.Int()) != int32(dbObjVal.Int()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Int64 {
+                if int64(objVal.Int()) != int64(dbObjVal.Int()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Uint {
+                if uint(objVal.Uint()) != uint(dbObjVal.Uint()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Uint8 {
+                if uint8(objVal.Uint()) != uint8(dbObjVal.Uint()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Uint16 {
+                if uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Uint32 {
+                if uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Uint64 {
+                if uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
+                    attrIds[i] = 1
+                }
+            } else if objVal.Kind() == reflect.Bool {
+                if bool(objVal.Bool()) != bool(dbObjVal.Bool()) {
+                    attrIds[i] = 1
+                }
+            } else {
+                if objVal.String() != dbObjVal.String() {
+                    attrIds[i] = 1
+                }
+            }
+            if attrIds[i] == 1 {
+				fmt.Println("attribute changed ", fieldTyp.Name)
 			}
-		} else if objVal.Kind() == reflect.Int8 {
-		    if int8(objVal.Int()) != 0 && int8(objVal.Int()) != int8(dbObjVal.Int()) {
-				attrIds[i] = 1
-			}
-		} else if objVal.Kind() == reflect.Int16 {
-		    if int16(objVal.Int()) != 0 && int16(objVal.Int()) != int16(dbObjVal.Int()) {
-				attrIds[i] = 1
-			}
-		} else if objVal.Kind() == reflect.Int32 {
-		    if int32(objVal.Int()) != 0 && int32(objVal.Int()) != int32(dbObjVal.Int()) {
-				attrIds[i] = 1
-			}
-		} else if objVal.Kind() == reflect.Int64 {
-			if int64(objVal.Int()) != 0 && int64(objVal.Int()) != int64(dbObjVal.Int()) {
-				attrIds[i] = 1
-			}
-		} else if objVal.Kind() == reflect.Uint {
-			if uint(objVal.Uint()) != 0 && uint(objVal.Uint()) != uint(dbObjVal.Uint()) {
-				attrIds[i] = 1
-			}
-        } else if objVal.Kind() == reflect.Uint8 {
-			if uint8(objVal.Uint()) != 0 && uint8(objVal.Uint()) != uint8(dbObjVal.Uint()) {
-				attrIds[i] = 1
-			}
-        } else if objVal.Kind() == reflect.Uint16 {
-        	if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
-				attrIds[i] = 1
-			}
-        } else if objVal.Kind() == reflect.Uint32 {
-			if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
-				attrIds[i] = 1
-			}
-        } else if objVal.Kind() == reflect.Uint64 {
-			if uint16(objVal.Uint()) != 0 && uint16(objVal.Uint()) != uint16(dbObjVal.Uint()) {
-				attrIds[i] = 1
-			}
-		} else if objVal.Kind() == reflect.Bool {
-		    if bool(objVal.Bool()) != bool(dbObjVal.Bool()) {
-		        attrIds[i] = 1
-		    }
-		} else {
-			if objVal.String() != "" && objVal.String() != dbObjVal.String() {
-				attrIds[i] = 1
-			}
-		}
+        }
 	}
 	return attrIds, nil
 }\n""" %( structName, structName))
@@ -405,7 +417,7 @@ def createUpdateObjInDb(fd, structName, goMemberTypeDict):
 			   fieldVal.Kind() == reflect.Uint64 {
 			    fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Uint()))
 			} else if objVal.Kind() == reflect.Bool {
-			    fieldSqlStr = fmt.Sprintf(" %s = '%t' ", fieldTyp.Name, bool(fieldVal.Bool()))
+			    fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, dbutils.ConvertBoolToInt(bool(fieldVal.Bool())))
 			} else {
 				fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
 			}
@@ -501,6 +513,13 @@ def createCommonDbFunc(generatePath):
              "database/sql/driver"
              "fmt"
              )\n""")
+
+    fd.write("""func ConvertBoolToInt(val bool) int {
+    if val {
+        return 1
+    }
+    return 0
+    }\n""")
 
     fd.write("""func Depreciated_ExecuteSQLStmt(dbCmd string, dbHdl *sql.DB) (driver.Result, error) {
 	var result driver.Result
