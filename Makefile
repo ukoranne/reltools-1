@@ -20,14 +20,12 @@ else
 endif
 COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/config\
-		$(SR_CODE_BASE)/snaproute/src/infra\
 		$(SR_CODE_BASE)/snaproute/src/l3\
 		$(SR_CODE_BASE)/snaproute/src/l2
 
 COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/l3\
 		$(SR_CODE_BASE)/snaproute/src/l2\
-		$(SR_CODE_BASE)/snaproute/src/infra
 
 #FIXME: Add codegen once things are stable
 #all: codegen installdir ipc exe install
@@ -61,7 +59,6 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 	install $(SRCDIR)/$(BUILD_DIR)/arpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/bgpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/ribd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/portd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/asicd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/lacpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 endif

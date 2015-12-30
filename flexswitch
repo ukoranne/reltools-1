@@ -12,9 +12,6 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'asicd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'portd',
-                     'params': '-params=' + baseDir + '/params'},
-
                     {'name': 'ribd',
                      'params': '-params=' + baseDir + '/params'},
 
