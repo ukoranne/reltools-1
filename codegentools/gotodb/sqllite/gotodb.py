@@ -206,11 +206,12 @@ def createStoreObjInDb(fd, structName, goMemberTypeDict):
 	result, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
 	if err != nil {
 		fmt.Println("**** Failed to Create table", err)
-	}\n
-	objectId, err = result.LastInsertId()
-	if err != nil {
-		fmt.Println("### Failed to return last object id", err)
-	}\n
+	} else {
+	    objectId, err = result.LastInsertId()
+	    if err != nil {
+		    fmt.Println("### Failed to return last object id", err)
+	    }\n
+	}
 	return objectId, err
 }\n""")
 
