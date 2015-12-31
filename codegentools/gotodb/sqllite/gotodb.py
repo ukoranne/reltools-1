@@ -260,8 +260,25 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     fd.write(storefuncline)
     fd.write('\tvar object %s\n' % (structName))
     fd.write('\tdbCmd := "select * from %s where " + objSqlKey\n' % (structName))
-    fd.write('\tfmt.Println("### DB Get %s\\n")\n' % structName)
-    fd.write('\terr := dbHdl.QueryRow(dbCmd).Scan(%s)\n' % (', '.join(['&object.%s' % (m) for m, t, key in goMemberTypeDict[structName]])))
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            fd.write('\tvar tmp%s string\n' %(i))
+
+    fd.write('\terr := dbHdl.QueryRow(dbCmd).Scan(')
+    strList = ''
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            strList += '&tmp%s, ' %(i)
+        else:
+            strList += '&object.%s, ' %(m)
+
+    strList = strList.rstrip(',')
+    fd.write('%s)\n' %(strList))
+    fd.write('\tfmt.Println("### DB Get %s\\n", err)\n' % structName)
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            fd.write('\tobject.%s = dbutils.ConvertStrBoolIntToBool(tmp%s)\n' %(m, i))
+
     fd.write('\treturn object, err\n}\n')
     
 def createGetKey(fd, structName, goMemberTypeDict):
@@ -541,6 +558,15 @@ def createCommonDbFunc(generatePath):
         return 1
     }
     return 0
+    }\n""")
+
+    fd.write("""func ConvertStrBoolIntToBool(val int) bool {
+    if val == "true" {
+        return true
+    } else if val == "True" {
+        return true
+    }
+    return false
     }\n""")
 
     fd.write("""func Depreciated_ExecuteSQLStmt(dbCmd string, dbHdl *sql.DB) (driver.Result, error) {
