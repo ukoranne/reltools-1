@@ -21,6 +21,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'bgpd',
                      'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'ospfd',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'lacpd',
                     'params': '-params=' + baseDir + '/params'},
 
