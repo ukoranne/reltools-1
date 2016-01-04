@@ -121,7 +121,7 @@ def build_thrift_from_go():
     goStructToListersDict = {}
 
     # lets determine from the json file the structs and associated listeners
-    deamons = get_listeners_from_json(goStructToListersDict)
+    deamons, accessDict = get_listeners_and_access_from_json(goStructToListersDict)
 
     #pprint.pprint(goStructToListersDict)
 
@@ -139,20 +139,21 @@ typedef i16 uint16
 """)
 
         # create the thrift file info
-        (goMemberTypeDict, crudStructsList, goStructDict) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict)
+        (goMemberTypeDict, crudStructsList, goStructDict) = generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict)
         thriftfd.close()
 
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
 
         # create a client if info
-        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
+        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
 
     # create teh object map file
     generate_objmap(allCrudStructList)
 
 
-def get_listeners_from_json(goStructToListersDict):
+def get_listeners_and_access_from_json(goStructToListersDict):
     deamons = []
+    accessDict = {}
     for dir, jsonfilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
         path = os.path.join(dir, jsonfilename)
         if jsonfilename.endswith(".json"):
@@ -161,6 +162,7 @@ def get_listeners_from_json(goStructToListersDict):
                 data = json.load(f)
 
                 for k, v in data.iteritems():
+                    accessDict[k] = v["access"]
                     if v["Owner"]:
                         goStructToListersDict.setdefault(k, [])
                         goStructToListersDict[k].append(v["Owner"])
@@ -172,9 +174,9 @@ def get_listeners_from_json(goStructToListersDict):
                         for d in v["Listeners"]:
                             if d not in deamons:
                                 deamons.append(d)
-    return deamons
+    return deamons, accessDict
 
-def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
+def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict):
     goMemberTypeDict = {}
     goStructDict = {}
     crudStructsList = []
@@ -203,7 +205,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                             writingStruct = True
                 elif "}" in line and writingStruct:
                     thriftfd.write("}\n")
-                    if 'State' in currentStruct or "Counter" in currentStruct:
+                    if currentStruct in accessDict and 'w' in accessDict[currentStruct]:
                         thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
                     writingStruct = False
                     memberCnt = 1
@@ -213,7 +215,8 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
                     "//" in line or \
                     "#" in line or \
                     "package" in line or \
-                    "BaseObj" in line:
+                    "BaseObj" in line or \
+                    "/*" in line and "*/" in line:
                     continue
                 elif "/*" in line:
                     deletingComment = True
@@ -254,7 +257,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     #print crudStructsList
     thriftfd.write("service %sServices {\n" % (d.upper()))
     for s in crudStructsList:
-        if 'Config' in s:
+        if s in accessDict and 'w' in accessDict[s]:
             thriftfd.write(
                 """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<byte> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
         else: # read only objects Counters/State
@@ -263,7 +266,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     return goMemberTypeDict, crudStructsList, goStructDict
 
 
-def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict):
+def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     servicesName = d + "Services"
@@ -271,7 +274,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
                         var objId int64
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
-        if 'Config' in s:
+        if s in accessDict and 'w' in accessDict[s]:
             clientIfFd.write("""
                                 case models.%s :
                                 data := obj.(models.%s)
@@ -297,14 +300,14 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
 	                    return objId, true
                         }\n""")
 
-def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict):
+def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):
     newDeamonName = d.upper()
     servicesName = d + "Services"
     clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
-        if 'Config' in s:
+        if s in accessDict and 'w' in accessDict[s]:
             clientIfFd.write("""
                                 case models.%s :
                                 data := obj.(models.%s)
@@ -330,7 +333,7 @@ def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
 	                    return true
                         }\n""")
 
-def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
+def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     servicesName = d + "Services"
@@ -344,8 +347,7 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
 	switch obj.(type) {
     \n""" %(newDeamonName))
     for s in crudStructsList:
-        if 'State' in s or 'Counters' in s:
-
+        if s in accessDict and 'r' in accessDict[s]:
             clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
             clientIfFd.write("""
@@ -375,7 +377,7 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
 
             }\n""")
 
-def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
+def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     servicesName = d + "Services"
@@ -387,8 +389,7 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
 	switch obj.(type) {
     """ %(newDeamonName, newDeamonName))
     for s in crudStructsList:
-        if 'State' not in s and 'Counters' not in s:
-
+        if s in accessDict and 'w' in accessDict[s]:
             clientIfFd.write("""\ncase models.%s :""" % (s,))
             clientIfFd.write("""\n// cast original object
             origdata := dbObj.(models.%s)
@@ -434,10 +435,13 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
 
 
 
-def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict):
+def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
     #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
+
+    print crudStructsList
+
     # BELOW CODE WILL BE FORMATED BY GOFMT
     clientIfFd.write("""import (
     "%sServices"
@@ -465,10 +469,10 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
 	                    return true
                         }\n""" % (newDeamonName,))
 
-    createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
-    createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict)
-    createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
-    createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict)
+    createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
+    createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
+    createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
+    createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
     clientIfFd.close()
 
     # lets beautify the the client if code
