@@ -7,7 +7,8 @@ OBJECT_MAP_NAME = "objectmap.go"
 
 MODEL_NAME = 'models'
 srBase = os.environ.get('SR_CODE_BASE', None)
-GO_MODEL_BASE_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
+GO_MODEL_BASE_PATH_LIST = [srBase + "/generated/src/%s/" % MODEL_NAME,
+                           srBase + "/snaproute/src/models/"]
 JSON_MODEL_REGISTRAION_PATH = srBase + "/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
@@ -88,26 +89,31 @@ def executeLocalCleanup():
             #print out, err
 
 
-def scan_dir_for_go_files(dir):
-    for name in os.listdir(dir):
-        #print "x", dir, name
-        path = os.path.join(dir, name)
-        if name.endswith('.go'):
-            if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
-                yield (dir, name)
-        elif not "." in name:
-            for d, f  in scan_dir_for_go_files(path):
-                yield (d, f)
+def scan_dir_for_go_files(dirList):
+    for dir in dirList:
+        for name in os.listdir(dir):
+            #print "x", dir, name
+            path = os.path.join(dir, name)
+            if name.endswith('.go'):
+                if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
+                    yield (dir, name)
+            # dir
+            #elif not "." in name:
+            elif os.path.isdir(path):
+                for d, f  in scan_dir_for_go_files([path]):
+                    yield (d, f)
 
 def scan_dir_for_json_files(dir):
+
     for name in os.listdir(dir):
         #print "x", dir, name
         path = os.path.join(dir, name)
         if name.endswith('.json'):
             if os.path.isfile(path):
                 yield (dir, name)
-        elif not "." in name:
-            for d, f  in scan_dir_for_go_files(path):
+        #elif not "." in name:
+        elif os.path.isdir(path):
+            for d, f  in scan_dir_for_go_files([path]):
                 yield (d, f)
 
 def build_thrift_from_go():
@@ -172,7 +178,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict):
     goMemberTypeDict = {}
     goStructDict = {}
     crudStructsList = []
-    for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH):
+    for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH_LIST):
         #print dir, gofilename, dir.split('/')[-1]
 
         path = os.path.join(dir, gofilename)
