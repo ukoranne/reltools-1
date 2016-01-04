@@ -196,7 +196,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                     structLine = "struct " + lineSplit[1] + "{\n"
                     if lineSplit[1] in goStructToListersDict:
                         # print "found line now checking deamon", d, goStructToListersDict[lineSplit[1]]
-                        if d in goStructToListersDict[lineSplit[1]]:
+                        if d in goStructToListersDict[lineSplit[1]] and lineSplit[1] not in crudStructsList:
                             goMemberTypeDict[lineSplit[1]] = {}
                             goStructDict[lineSplit[1]] = {}
                             currentStruct = lineSplit[1]
@@ -216,7 +216,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                     "#" in line or \
                     "package" in line or \
                     "BaseObj" in line or \
-                    "/*" in line and "*/" in line:
+                    ("/*" in line and "*/" in line):
                     continue
                 elif "/*" in line:
                     deletingComment = True
