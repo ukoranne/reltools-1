@@ -560,7 +560,7 @@ def createCommonDbFunc(generatePath):
     return 0
     }\n""")
 
-    fd.write("""func ConvertStrBoolIntToBool(val int) bool {
+    fd.write("""func ConvertStrBoolIntToBool(val string) bool {
     if val == "true" {
         return true
     } else if val == "True" {
