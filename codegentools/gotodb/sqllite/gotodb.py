@@ -608,10 +608,10 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
             break
         if not deletingComment:
             if "struct" in line:
-                if objectNames and len([obj for obj in objectNames if obj in line]) == 0:
+                lineSplit = line.split(" ")
+                if objectNames and len([obj for obj in objectNames if obj == lineSplit[1]]) == 0:
                     continue
 
-                lineSplit = line.split(" ")
                 currentStruct = lineSplit[1]
                 goMemberTypeDict[currentStruct] = []
                 foundStruct = True
