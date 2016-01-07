@@ -205,7 +205,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                             writingStruct = True
                 elif "}" in line and writingStruct:
                     thriftfd.write("}\n")
-                    if currentStruct in accessDict and 'w' in accessDict[currentStruct]:
+                    if currentStruct in accessDict and 'r' in accessDict[currentStruct]:
                         thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
                     writingStruct = False
                     memberCnt = 1
