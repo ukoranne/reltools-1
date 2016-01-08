@@ -230,7 +230,7 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
     dirLocation      = gHomeDir + SNAP_ROUTE_SRC
 
     if not gitReposToClone :
-        gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors'] # (URL, DIR)
+        gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors', 'controller'] # (URL, DIR)
     for repo in gitReposToClone:
         cloneGitRepo ( userRepoPrefix + repo, repo, dirLocation)
         os.chdir(repo)
