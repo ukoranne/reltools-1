@@ -15,6 +15,16 @@ CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
 OBJMAP_CODE_GENERATION_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
 THRIFT_CODE_GENERATION_PATH = srBase + "/generated/src/gorpc/"
+DBUTIL_CODE_GENERATION_PATH = THRIFT_CODE_GENERATION_PATH + "dbutils/"
+
+daemonThriftNameChangeDict = {
+    "arpd" : "arpd",
+    "asicd" : "asicdServices",
+    "bgpd"  : "bgpd",
+    "lacpd"  : "lacpd",
+    "portd" : "portdServices",
+}
+
 
 goToThirftTypeMap = {
   'bool':          {"native_type": "bool"},
@@ -132,8 +142,9 @@ def build_thrift_from_go():
         clientIfFd = open(CLIENTIF_CODE_GENERATION_PATH + clientIfName, 'w+')
         clientIfFd.write("package main\n")
         thriftFileName = d + ".thrift"
+        servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
         thriftfd = open(THRIFT_CODE_GENERATION_PATH + thriftFileName, 'w+')
-        thriftfd.write("namespace go %sServices\n" %(d))
+        thriftfd.write("namespace go %s\n" %(servicesName))
         thriftfd.write("""typedef i32 int
 typedef i16 uint16
 """)
@@ -143,6 +154,8 @@ typedef i16 uint16
         thriftfd.close()
 
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
+
+        createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
 
         # create a client if info
         generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
@@ -168,18 +181,21 @@ def get_listeners_and_access_from_json(goStructToListersDict):
                         goStructToListersDict[k].append(v["Owner"])
                         if v["Owner"] not in deamons:
                             deamons.append(v["Owner"])
+
                     if v["Listeners"]:
                         goStructToListersDict.setdefault(k, [])
                         goStructToListersDict[k] += v["Listeners"]
                         for d in v["Listeners"]:
                             if d not in deamons:
                                 deamons.append(d)
+
     return deamons, accessDict
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict):
     goMemberTypeDict = {}
     goStructDict = {}
     crudStructsList = []
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
     for dir, gofilename in scan_dir_for_go_files(GO_MODEL_BASE_PATH_LIST):
         #print dir, gofilename, dir.split('/')[-1]
 
@@ -259,7 +275,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
     for s in crudStructsList:
         if s in accessDict and 'w' in accessDict[s]:
             thriftfd.write(
-                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<byte> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
         else: # read only objects Counters/State
             thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
     thriftfd.write("}")
@@ -269,7 +285,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
 def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
-    servicesName = d + "Services"
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
     clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                         var objId int64
 	                    switch obj.(type) {\n""" % (newDeamonName,))
@@ -279,6 +295,8 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                                 case models.%s :
                                 data := obj.(models.%s)
                                 conf := %s.New%s()\n""" % (s, s, servicesName, s))
+            clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
+            '''
             for k, v in goMemberTypeDict[s].iteritems():
                 #print k.split(' ')
                 cast = v
@@ -286,6 +304,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                 if cast.startswith('i'):
                     cast = 'int' + cast.lstrip('i')
                 clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
+            '''
             clientIfFd.write("""
                                 _, err := clnt.ClientHdl.Create%s(conf)
                                 if err != nil {
@@ -302,7 +321,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
 
 def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):
     newDeamonName = d.upper()
-    servicesName = d + "Services"
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
     clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
 	                    switch obj.(type) {\n""" % (newDeamonName,))
@@ -312,6 +331,8 @@ def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                                 case models.%s :
                                 data := obj.(models.%s)
                                 conf := %s.New%s()\n""" % (s, s, servicesName, s))
+            clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
+            '''
             for k, v in goMemberTypeDict[s].iteritems():
                 #print k.split(' ')
                 cast = v
@@ -319,6 +340,7 @@ def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                 if cast.startswith('i'):
                     cast = 'int' + cast.lstrip('i')
                 clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
+            '''
             clientIfFd.write("""
                                 _, err := clnt.ClientHdl.Delete%s(conf)
                                 if err != nil {
@@ -336,7 +358,7 @@ def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
 def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
-    servicesName = d + "Services"
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
     clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
 	                                objCount int64,
 	                                nextMarker int64,
@@ -361,9 +383,14 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
                         for i := 0; i < int(bulkInfo.Count); i++ {
                             if len(objs) == 0 {
                                 objs = make([]models.ConfigObj, 0)
-                            }""" %(s, s, servicesName, servicesName))
+                            }\n""" %(s, s, servicesName, servicesName))
             for k, v in goStructDict[s].iteritems():
-                clientIfFd.write("""
+                if "[]" in v:
+                    clientIfFd.write("""for _, data := range bulkInfo.%sList[i].%s {
+                            ret_obj.%s = %s(data)
+                            }\n""" %(s, k, k, v.rstrip('[]')))
+                else:
+                    clientIfFd.write("""
                             ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, v, s, k))
             clientIfFd.write("""\nobjs = append(objs, ret_obj)
 			            }
@@ -377,10 +404,47 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
 
             }\n""")
 
+def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
+
+    thriftdbutilFileName = d + "dbthriftutil.go"
+    thriftdbutilfd = open(DBUTIL_CODE_GENERATION_PATH + thriftdbutilFileName, 'w+')
+
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
+    thriftdbutilfd.write("package models\n")
+    thriftdbutilfd.write("""import (
+                         //"models"
+                         "%s"
+                         )""" %(servicesName))
+
+
+    for s in crudStructsList:
+        if s in accessDict and 'w' in accessDict[s]:
+            thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, servicesName, s))
+            for k, v in goMemberTypeDict[s].iteritems():
+                #print k.split(' ')
+                cast = v
+                # lets convert thrift i8, i16, i32, i64 to int...
+                if cast.startswith('i'):
+                    cast = 'int' + cast.lstrip('i')
+                thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, cast, k))
+            thriftdbutilfd.write("""}\n""")
+
+            thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
+            for k, v in goStructDict[s].iteritems():
+                #print k.split(' ')
+                cast = v
+                # lets convert thrift i8, i16, i32, i64 to int...
+                thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
+            thriftdbutilfd.write("""}\n""")
+
+    thriftdbutilfd.close()
+    executeGoFmtCommand(thriftdbutilfd, ["gofmt -w %s" %(thriftdbutilfd.name,)], DBUTIL_CODE_GENERATION_PATH)
+
+
 def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
-    servicesName = d + "Services"
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
 
     clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
@@ -396,24 +460,20 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
             updatedata := obj.(models.%s)\n""" %(s, s) )
             clientIfFd.write("""// create new thrift objects
             origconf := %s.New%s()\nupdateconf := %s.New%s()\n""" %(servicesName, s, servicesName, s))
-            for i in range(2):
-                clientIfFd.write("\n")
-                for k, v in goMemberTypeDict[s].iteritems():
-                    cast = v
-                    # lets convert thrift i8, i16, i32, i64 to int...
-                    if cast.startswith('i'):
-                        cast = 'int' + cast.lstrip('i')
-                    if i == 0:
-                        clientIfFd.write("""origconf.%s = %s(origdata.%s)\n""" % (k, cast, k))
-                    else:
-                        clientIfFd.write("""updateconf.%s = %s(updatedata.%s)\n""" % (k, cast, k))
-
-            '''clientIfFd.write("""\n//convert attrSet to uint8 list
-            newattrset := make([]int8, len(attrSet))
-            for i, v := range(attrSet) {
-                newattrset[i] = int8(v)
-            }""")'''
-
+            #for i in range(2):
+            clientIfFd.write("""models.Convert%s%sObjToThrift(&origdata, origconf)
+            models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
+            '''
+            for k, v in goMemberTypeDict[s].iteritems():
+                cast = v
+                # lets convert thrift i8, i16, i32, i64 to int...
+                if cast.startswith('i'):
+                    cast = 'int' + cast.lstrip('i')
+                if i == 0:
+                    clientIfFd.write("""origconf.%s = %s(origdata.%s)\n""" % (k, cast, k))
+                else:
+                    clientIfFd.write("""updateconf.%s = %s(updatedata.%s)\n""" % (k, cast, k))
+            '''
             clientIfFd.write("""
                 if clnt.ClientHdl != nil {
                     ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
@@ -439,19 +499,20 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
+    servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
 
     print crudStructsList
 
     # BELOW CODE WILL BE FORMATED BY GOFMT
     clientIfFd.write("""import (
-    "%sServices"
+    "%s"
     "models"
     "database/sql"
-    )\n""" % lowerDeamonName)
+    )\n""" % servicesName)
     clientIfFd.write("""type %sClient struct {
 	                        IPCClientBase
-	                        ClientHdl *%sServices.%sServicesClient
-                            }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
+	                        ClientHdl *%s.%sServicesClient
+                            }\n""" % (newDeamonName, servicesName, newDeamonName))
     clientIfFd.write("""
                         func (clnt *%sClient) Initialize(name string, address string) {
 	                    clnt.Address = address
@@ -461,10 +522,10 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
 
 	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
 	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
-		                clnt.ClientHdl = %sServices.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
+		                clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
 	                    }
 	                    return true
-                        }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
+                        }\n""" % (newDeamonName, servicesName, newDeamonName))
     clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 	                    return true
                         }\n""" % (newDeamonName,))
@@ -507,7 +568,8 @@ if __name__ == "__main__":
     for dirpath in [CODE_GENERATION_PATH,
                     CLIENTIF_CODE_GENERATION_PATH,
                     OBJMAP_CODE_GENERATION_PATH,
-                    THRIFT_CODE_GENERATION_PATH]:
+                    THRIFT_CODE_GENERATION_PATH,
+                    DBUTIL_CODE_GENERATION_PATH]:
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
 
