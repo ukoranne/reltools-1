@@ -205,7 +205,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                             writingStruct = True
                 elif "}" in line and writingStruct:
                     thriftfd.write("}\n")
-                    if currentStruct in accessDict and 'w' in accessDict[currentStruct]:
+                    if currentStruct in accessDict and 'r' in accessDict[currentStruct]:
                         thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
                     writingStruct = False
                     memberCnt = 1
@@ -382,7 +382,7 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
     lowerDeamonName = d.lower()
     servicesName = d + "Services"
 
-    clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []byte, objKey string, dbHdl *sql.DB) bool {
+    clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
 	logger.Println("### Update Object called %s", attrSet, objKey)
 	ok := false
@@ -408,15 +408,15 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                     else:
                         clientIfFd.write("""updateconf.%s = %s(updatedata.%s)\n""" % (k, cast, k))
 
-            clientIfFd.write("""\n//convert attrSet to uint8 list
+            '''clientIfFd.write("""\n//convert attrSet to uint8 list
             newattrset := make([]int8, len(attrSet))
             for i, v := range(attrSet) {
                 newattrset[i] = int8(v)
-            }""")
+            }""")'''
 
             clientIfFd.write("""
                 if clnt.ClientHdl != nil {
-                    ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, newattrset)
+                    ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
                     if ok {
                         updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
                     } else {
