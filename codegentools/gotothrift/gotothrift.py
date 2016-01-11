@@ -462,11 +462,16 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
 	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
 	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
 		                clnt.ClientHdl = %sServices.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
+		                if clnt.ClientHdl != nil {
+		                    clnt.IsConnected = true
+		                } else {
+		                    clnt.IsConnected = false
+		                }
 	                    }
 	                    return true
                         }\n""" % (newDeamonName, lowerDeamonName, newDeamonName))
     clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
-	                    return true
+	                    return clnt.IsConnected
                         }\n""" % (newDeamonName,))
 
     createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
