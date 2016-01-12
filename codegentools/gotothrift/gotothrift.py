@@ -508,9 +508,10 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     "%s"
     "models"
     "database/sql"
+    "utils/ipcutils"
     )\n""" % servicesName)
     clientIfFd.write("""type %sClient struct {
-	                        IPCClientBase
+	                        ipcutils.IPCClientBase
 	                        ClientHdl *%s.%sServicesClient
                             }\n""" % (newDeamonName, servicesName, newDeamonName))
     clientIfFd.write("""
@@ -520,9 +521,9 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
                         }\n""" % (newDeamonName,))
     clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
 
-	                    clnt.Transport, clnt.PtrProtocolFactory = CreateIPCHandles(clnt.Address)
-	                    if clnt.Transport != nil && clnt.PtrProtocolFactory != nil {
-		                clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.Transport, clnt.PtrProtocolFactory)
+	                    clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
+	                    if clnt.TTransport != nil && clnt.PtrProtocolFactory != nil {
+		                clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.TTransport, clnt.PtrProtocolFactory)
 		                if clnt.ClientHdl != nil {
 		                    clnt.IsConnected = true
 		                } else {
