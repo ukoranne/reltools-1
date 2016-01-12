@@ -299,7 +299,7 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
         fd.write('\tkeys := strings.Split(objKey, "#")')
         firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
         #print "firstKey =", firstKey
-        sqlKey = ' + "and" + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
+        sqlKey = ' + " and " + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
         fd.write('\n\tsqlKey := ')
         fd.write(sqlKey)
         fd.write("\n\treturn sqlKey, nil\n}\n")
