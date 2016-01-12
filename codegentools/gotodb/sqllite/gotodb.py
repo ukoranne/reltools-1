@@ -263,7 +263,6 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         if t == "bool":
             fd.write('\tvar tmp%s string\n' %(i))
-
     fd.write('\terr := dbHdl.QueryRow(dbCmd).Scan(')
     strList = ''
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
@@ -306,6 +305,43 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
     else:
         fd.write("""\n\treturn "", nil\n}\n""")
 
+def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
+    fd.write("""\nfunc (obj *%s) GetAllObjFromDb(dbHdl *sql.DB) (objList []*%s, e error) {
+	dbCmd := "select * from %s"
+	rows, err := dbHdl.Query(dbCmd)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("DB method Query failed for '%s' with error %s", dbCmd, err))
+		return objList, err
+	}
+
+	defer rows.Close()
+    \n""" %(structName, structName, structName, structName, structName))
+
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            fd.write('\tvar tmp%s string\n' %(i))
+    fd.write("""\tfor rows.Next() {\n
+             object := new(%s)
+             if err = rows.Scan(""" %(structName))
+    strList = ''
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            strList += '&tmp%s, ' %(i)
+        else:
+            strList += '&object.%s, ' %(m)
+
+    strList = strList.rstrip(',')
+    fd.write("""%s); err != nil {\n
+             fmt.Println("Db method Scan failed when interating over %s")
+             }\n""" %(strList, structName))
+    for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool":
+            fd.write('\tobject.%s = dbutils.ConvertStrBoolIntToBool(tmp%s)\n' %(m, i))
+
+    fd.write("""\tobjList = append(objList, object)
+    }
+    return objList, nil
+    }""")
 
 
 def createUpdateObjInDb(fd, structName, goMemberTypeDict):
@@ -647,6 +683,7 @@ def generate_gosqllite_funcs(fd, directory, gofilename, objectNames=[]):
                 createGetObjFromDb(fd, currentStruct, goMemberTypeDict)
                 createGetKey(fd, currentStruct, goMemberTypeDict)
                 createGetSqlKeyStr(fd, currentStruct, goMemberTypeDict)
+                createGetAllObjFromDb(fd, currentStruct, goMemberTypeDict)
                 #createCompareObjectsAndDiff(fd, currentStruct, goMemberTypeDict)
                 #createMergeDbAndConfigObj(fd, currentStruct, goMemberTypeDict)
                 #createUpdateObjectInDb(fd, currentStruct, goMemberTypeDict)
