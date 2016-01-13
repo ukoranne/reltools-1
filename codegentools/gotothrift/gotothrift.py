@@ -375,8 +375,8 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
             clientIfFd.write("""
                 if clnt.ClientHdl != nil {
                 	var ret_obj models.%s
-                    bulkInfo, _ := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
-                    if bulkInfo.Count != 0 {
+                    bulkInfo, err := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
+                    if bulkInfo != nil &&bulkInfo.Count != 0 {
                         objCount = int64(bulkInfo.Count)
                         more = bool(bulkInfo.More)
                         nextMarker = int64(bulkInfo.EndIdx)
@@ -394,6 +394,9 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
                             ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, v, s, k))
             clientIfFd.write("""\nobjs = append(objs, ret_obj)
 			            }
+
+			} else {
+			    fmt.Println(err)
 			}
 		}
 		break\n""")
@@ -506,6 +509,7 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     # BELOW CODE WILL BE FORMATED BY GOFMT
     clientIfFd.write("""import (
     "%s"
+    "fmt"
     "models"
     "database/sql"
     "utils/ipcutils"
