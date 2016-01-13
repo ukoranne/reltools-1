@@ -105,9 +105,16 @@ def installThriftDependencies ():
     executeCommand(command)
 
 def installPythonDependencies ():
-    command = []
-    command.append('sudo apt-get install python-dev python-bitarray')
-    executeCommand(command)
+    pythonPackages = ['python-dev',
+                      'python-bitarray',
+                      'python-paramiko',
+                      'python-netaddr'
+                     ]
+    for pkg in pythonPackages:
+        command = []
+        command.append('sudo apt-get install ' + pkg)
+        executeCommand(command)
+
 
 def installPkgDependencies ():
     command = []
@@ -258,6 +265,11 @@ if __name__ == '__main__':
                       action='store_false',
                       help="Only Snaproute repos")
 
+    parser.add_option("-p", "--python", 
+                      dest="py_pkgs",
+                      action='store_true',
+                      help="Only Python Modules")
+
     parser.add_option("-e", "--external", 
                       dest="ex_repos",
                       action='store_true',
@@ -269,17 +281,21 @@ if __name__ == '__main__':
     gHomeDir = os.path.dirname(os.getcwd())
     print '### Anchor Directory is %s' %(gHomeDir)
 
-    todo = ['external', 'snaproute', 'specific_repo']
+    todo = ['external', 'snaproute', 'specific_repo', 'python']
     if options.sr_repos or options.specific_repo:
         todo = ['snaproute']
 
     if options.ex_repos:
         todo = ['external']
 
+    if options.py_pkgs:
+        todo = ['python']
+
     createDirectoryStructure()
     setupMakefileLink()
 
-    installPythonDependencies()
+    if 'python' in todo:
+        installPythonDependencies()
     installPkgDependencies()
 
     if False == verifyThriftInstallation():
