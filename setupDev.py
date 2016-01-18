@@ -252,6 +252,12 @@ def setupGitCredentialCache ():
     cmd = 'git config --global credential.helper \"cache --timeout=3600\"'
     os.system(cmd)
 
+def setupOpenNslLibLink ():
+    libLocation = gHomeDir + SNAP_ROUTE_SRC + 'asicd/pluginManager/opennsl/'
+    if not os.path.isfile(libLocation + 'libopennsl.so'):
+        cmd = 'ln -s ' + libLocation + 'libopennsl.so.1 ' + libLocation + 'libopennsl.so'
+        executeCommand(cmd)
+
 if __name__ == '__main__':
     parser = OptionParser()
 
@@ -315,3 +321,5 @@ if __name__ == '__main__':
 
     if 'external' in todo:
         getExternalGoDeps()
+
+    setupOpenNslLibLink()
