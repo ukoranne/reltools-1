@@ -23,6 +23,7 @@ daemonThriftNameChangeDict = {
     "bgpd"  : "bgpd",
     "lacpd"  : "lacpd",
     "portd" : "portdServices",
+    "dhcprelayd" : "dhcprelayd"
 }
 
 
@@ -181,14 +182,15 @@ def get_listeners_and_access_from_json(goStructToListersDict):
                         goStructToListersDict[k].append(v["Owner"])
                         if v["Owner"] not in deamons:
                             deamons.append(v["Owner"])
-
+                    '''
+                    NOTE: as of 1/18/2016 not being used
                     if v["Listeners"]:
                         goStructToListersDict.setdefault(k, [])
                         goStructToListersDict[k] += v["Listeners"]
                         for d in v["Listeners"]:
                             if d not in deamons:
                                 deamons.append(d)
-
+                    '''
     return deamons, accessDict
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict):
@@ -386,7 +388,7 @@ def createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict
                             }\n""" %(s, s, servicesName, servicesName))
             for k, v in goStructDict[s].iteritems():
                 if "[]" in v:
-                    clientIfFd.write("""for _, data := range bulkInfo.%sList[i].%s {
+                    clientIfFd.write("""\nfor _, data := range bulkInfo.%sList[i].%s {
                             ret_obj.%s = %s(data)
                             }\n""" %(s, k, k, v.rstrip('[]')))
                 else:
@@ -436,10 +438,17 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
             for k, v in goStructDict[s].iteritems():
                 #print k.split(' ')
                 cast = v
+
                 # lets convert thrift i8, i16, i32, i64 to int...
                 thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
-            thriftdbutilfd.write("""}\n""")
+                if cast.endswith("[]"):
+                    thriftdbutilfd.write("""\nfor i,_ := range len(dbobj) {
+                    dbobj.%s[i] = thriftobj.%s[i]
+                    }\n""" %(k, k))
+                else:
+                    thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
 
+            thriftdbutilfd.write("""}\n""")
     thriftdbutilfd.close()
     executeGoFmtCommand(thriftdbutilfd, ["gofmt -w %s" %(thriftdbutilfd.name,)], DBUTIL_CODE_GENERATION_PATH)
 

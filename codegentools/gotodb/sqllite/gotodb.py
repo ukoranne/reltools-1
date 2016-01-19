@@ -176,7 +176,7 @@ def createDBTable(fd, structName, goMemberTypeDict):
     # loop through member and type
     for i, (m, t, key) in enumerate(goMemberTypeDict[structName]):
         #print "createDBTable key:", m, "value:", t, "key:", key
-        if 'Key' in m or key > 0:
+        if key > 0:
             keyList.append((m, key))
         if "LIST" in t:
             fd.write('\n\t\t"%s TEXT, " +' %(m,))
