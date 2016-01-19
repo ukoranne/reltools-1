@@ -987,7 +987,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
   if keyname not in class_bool_map and \
      type(keyname) not in [type(1), bool]:
-    keyname = append(keyname[:1].upper() + keyname[1:])
+    keyname = keyname[:1].upper() + keyname[1:]
 
   childNameList = []
   for i in elements:
@@ -996,7 +996,13 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
   # lets add the default interface functions from the BaseObj
   elements_str += "\tBaseObj\n"
 
+  elementList = []
+
   for name, elemtype in parentChildrenLeaf.iteritems():
+
+    if safe_name(name) in elementList:
+      continue
+
     # is key?
     if elemtype[1]:
       elements_str += "\t// parent %s\n" % elemtype[0][0]
@@ -1004,6 +1010,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         elements_str += "\t%sKey []%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
       else:
         elements_str += "\t%sKey %s %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+      elementList.append(safe_name(name))
     elif safe_name(name) not in childNameList:
       if elemtype[0] is None:
         print name, elemtype
@@ -1013,6 +1020,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
           elements_str += "\t%s []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0])
         else:
           elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
+        elementList.append(safe_name(name))
       else:
         for subtype in elemtype[0][1]:
           # name just needs to be unique, choosing yang_type as postfix to the
@@ -1020,6 +1028,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
           subname = safe_name(subtype[1]["yang_type"])
 
           elemName = name + "_" + subname
+          if elemName in elementList:
+            continue
+
           membertype = subtype[1]["native_type"]
           if isinstance(membertype, list):
             membertype = "[]%s" % membertype[0]
@@ -1029,12 +1040,17 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
           else:
             elements_str += "\t%s %s\n" % (elemName, membertype)
 
+          elementList.append(elemName)
+
   for i in elements:
       #print '******************************************'
       #print "GO STRUCT", elements
       #print '******************************************'
 
     elemName = i["name"][:1].upper() + i["name"][1:]
+
+    if elemName in elementList:
+      continue
 
     elements_str += "\t//yang_name: %s class: %s\n" % (i['yang_name'], i['class'])
     if i["class"] == "leaf-list":
@@ -1051,10 +1067,17 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
               varname = varname[0]
 
             elemName = elemName + '_' + subsubname
+
+            if elemName in elementList:
+              continue
+
             if keyname == i["name"]:
               elements_str += "\t%sKey %s  %s\n" % (elemName, varname, LIST_KEY_STR)
             else:
               elements_str += "\t%s %s\n" % (elemName, varname)
+
+            elementList.append(elemName)
+
         else:
           varname = i["type"]["native_type"]
           if isinstance(varname, list):
@@ -1074,6 +1097,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         else:
           elements_str += "\t%s []%s\n" % (elemName, varname)
 
+        elementList.append(elemName)
+
+
     elif i["class"] == "list":
       #print '******************************************'
       #print "GO-STRUCT list %s %s %s %s" % (elemName, i["class"], i["type"], i["key"])
@@ -1084,6 +1110,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         elements_str += "\t%sKey []%s  %s\n" % (elemName, listType, LIST_KEY_STR)
       else:
         elements_str += "\t%s []%s" % (elemName, listType)
+
+      elementList.append(elemName)
 
     elif i["class"] == "union" or i["class"] == "leaf-union":
       #print '******************************************'
@@ -1096,6 +1124,10 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         subname = safe_name(subtype[1]["yang_type"])
 
         elemName = elemName + "_" + subname
+
+        if elemName in elementList:
+          continue
+
         membertype = subtype[1]["native_type"]
         if isinstance(membertype, list):
           membertype = "[]%s" % membertype[0]
@@ -1104,6 +1136,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
           elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
         else:
           elements_str += "\t%s %s\n" % (elemName, membertype)
+
+        elementList.append(elemName)
+
     else:
       #print '******************************************'
       #print "GO-STRUCT element %s %s %s %s" % (elemName, i["class"], i["type"], i["name"],)
@@ -1116,6 +1151,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
       else:
         elements_str += "\t%s %s\n" % (elemName, membertype)
+
+      elementList.append(elemName)
+
   elements_str += "}\n"
   nfd.write(elements_str + "\n")
 
