@@ -440,7 +440,6 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                 cast = v
 
                 # lets convert thrift i8, i16, i32, i64 to int...
-                thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
                 if cast.endswith("[]"):
                     thriftdbutilfd.write("""\nfor i,_ := range len(dbobj) {
                     dbobj.%s[i] = thriftobj.%s[i]
