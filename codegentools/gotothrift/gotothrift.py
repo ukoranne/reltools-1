@@ -429,9 +429,18 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                 #print k.split(' ')
                 cast = v
                 # lets convert thrift i8, i16, i32, i64 to int...
-                if cast.startswith('i'):
-                    cast = 'int' + cast.lstrip('i')
-                thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, cast, k))
+                if cast.startswith("set"):
+                    cast = cast[4:-1]
+                    if cast.startswith('i'):
+                        cast = 'int' + cast.lstrip('i')
+                    thriftdbutilfd.write("""\nfor _, data := range dbobj.%s {
+                    thriftobj.%s = append(thriftobj.%s, %s(data))
+                    }\n""" %(k, k, k, cast))
+                else:
+                    if cast.startswith('i'):
+                        cast = 'int' + cast.lstrip('i')
+
+                    thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, cast, k))
             thriftdbutilfd.write("""}\n""")
 
             thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
@@ -441,9 +450,9 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
 
                 # lets convert thrift i8, i16, i32, i64 to int...
                 if cast.endswith("[]"):
-                    thriftdbutilfd.write("""\nfor i,_ := range len(dbobj) {
-                    dbobj.%s[i] = thriftobj.%s[i]
-                    }\n""" %(k, k))
+                    thriftdbutilfd.write("""\nfor _, data := range thriftobj.%s {
+                    dbobj.%s = append(dbobj.%s, %s(data))
+                    }\n""" %(k, k, k, cast.rstrip('[]')))
                 else:
                     thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
 
@@ -513,15 +522,23 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
 
     print crudStructsList
-
-    # BELOW CODE WILL BE FORMATED BY GOFMT
-    clientIfFd.write("""import (
-    "%s"
-    "fmt"
-    "models"
-    "database/sql"
-    "utils/ipcutils"
-    )\n""" % servicesName)
+    if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
+        # BELOW CODE WILL BE FORMATED BY GOFMT
+        clientIfFd.write("""import (
+        "%s"
+        "fmt"
+        "models"
+        "database/sql"
+        "utils/ipcutils"
+        )\n""" % servicesName)
+    else:
+        # BELOW CODE WILL BE FORMATED BY GOFMT
+        clientIfFd.write("""import (
+        "%s"
+        "models"
+        "database/sql"
+        "utils/ipcutils"
+        )\n""" % servicesName)
     clientIfFd.write("""type %sClient struct {
 	                        ipcutils.IPCClientBase
 	                        ClientHdl *%s.%sServicesClient
