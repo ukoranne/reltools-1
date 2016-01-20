@@ -26,6 +26,9 @@ def getDaemonsInfo (baseDir) :
 
                     {'name': 'lacpd',
                     'params': '-params=' + baseDir + '/params'},
+                    
+                    {'name': 'dhcprelayd',
+                    'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
