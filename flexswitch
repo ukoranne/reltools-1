@@ -88,8 +88,8 @@ if __name__=="__main__":
     if opts.op == 'start':
         if ((not os.path.exists(pidFileDir))):
             os.makedirs(pidFileDir)
-        for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
-            print "Starting Daemon %s" %( dmn['name'])
+        for dmn in getDaemonsInfo(baseDir):
+            print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
             pidFile = pidFileDir + dmn['name']+'.pid'
             cmd = baseDir +'/bin/'+ dmn['name']
             pargs = (cmd, dmn['params'])
@@ -102,7 +102,7 @@ if __name__=="__main__":
                                         verbose=2)
                 dmn.start(pargs)
     else:
-        for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
+        for dmn in getDaemonsInfo(baseDir):
             try:
                 print "Stopping Daemon %s" %( dmn['name'])
                 pidFile = pidFileDir + dmn['name']+'.pid'
