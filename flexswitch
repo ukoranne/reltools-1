@@ -30,6 +30,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'dhcprelayd',
                     'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'stpd',
+                    'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
                     ]

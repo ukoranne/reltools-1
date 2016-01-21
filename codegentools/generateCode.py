@@ -8,11 +8,11 @@ PYANG = 'external/src/pyang/bin/pyang'
 PLUGIN_DIR = 'reltools/codegentools/gobind'
 GEN_OUT_BASE = 'generated/src/models'
 modelsToBuild = [
-                 {'srcs'   : 'openconfig/release/models/interfaces/*.yang',
+                 {'srcs'   : '/external/src/openconfig/release/models/interfaces/*.yang',
                   'output' : 'genInterface.go'},
 
-                 #{'srcs'   : 'openconfig/release/models/vlan/*.yang',
-                 # 'output' : 'genVlan.go'},
+                 {'srcs'   : '/snaproute/src/models/yangmodel/stp/*.yang',
+                  'output' : 'stp.go'},
 
                  #{'srcs'   : 'openconfig/release/models/bgp/*.yang',
                  # 'output' : 'genBgp.go'},
@@ -35,15 +35,17 @@ if __name__=="__main__":
     for src in modelsToBuild:
         cmd  = srBase + '/' + PYANG + ' --plugindir ' + srBase + '/' + 'reltools/codegentools/gobind/ -f pybind -o ' + \
                srBase + '/' + GEN_OUT_BASE + '/' + src['output'] + ' '  +\
-               srBase + '/external/src/' + src['srcs']
+               srBase + src['srcs']
 
         pyangDir =  srBase + "/external/src/pyang/"
         openConfigDir =  srBase + "/external/src/openconfig/release"
         os.putenv("PYTHONPATH", os.getenv("PYTHONPATH","")+":"+pyangDir)
-        os.putenv("YANG_MODPATH", pyangDir +\
+        yangpath = pyangDir +\
                                  "/modules" + ":" + \
-                                 openConfigDir + "/models" +\
+                                 openConfigDir + "/models" + ":" + \
+                                 srBase + src['srcs'].rstrip('*.yang') + ":" +\
                                  os.getenv("YANG_MODPATH","")
-                                 )
+        print yangpath
+        os.putenv("YANG_MODPATH",yangpath)
 
         os.system(cmd)
