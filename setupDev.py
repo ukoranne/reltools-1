@@ -204,6 +204,10 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'gouuid',
                        'renamedst'   : 'github.com/nu7hatch/gouuid'
                      },
+                     { 'repo'        : 'net',
+                       'renamesrc'   : 'net',
+                       'renamedst'   : 'golang.org/x'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
