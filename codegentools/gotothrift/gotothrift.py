@@ -426,7 +426,7 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
     for s in crudStructsList:
         if s in accessDict and 'w' in accessDict[s]:
             thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, servicesName, s))
-            for k, v in goMemberTypeDict[s].iteritems():
+            for i, (k, v) in enumerate(goMemberTypeDict[s].iteritems()):
                 #print k.split(' ')
                 cast = v
                 # lets convert thrift i8, i16, i32, i64 to int...
@@ -434,9 +434,14 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                     cast = cast[4:-1]
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
-                    thriftdbutilfd.write("""\nfor _, data := range dbobj.%s {
-                    thriftobj.%s = append(thriftobj.%s, %s(data))
-                    }\n""" %(k, k, k, cast))
+                    if cast == "bool":
+                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                      thriftobj.%s[fmt.Println("\%t", data)] = true
+                                                  }\n""" %(i, k, k, cast, i))
+                    else:
+                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                      thriftobj.%s[%s(data%s)] = true
+                                                  }\n""" %(i, k, k, cast, i))
                 else:
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
@@ -445,15 +450,16 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
             thriftdbutilfd.write("""}\n""")
 
             thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
-            for k, v in goStructDict[s].iteritems():
+            for i, (k, v) in enumerate(goStructDict[s].iteritems()):
                 #print k.split(' ')
                 cast = v
 
                 # lets convert thrift i8, i16, i32, i64 to int...
                 if cast.endswith("[]"):
-                    thriftdbutilfd.write("""\nfor _, data := range thriftobj.%s {
-                    dbobj.%s = append(dbobj.%s, %s(data))
-                    }\n""" %(k, k, k, cast.rstrip('[]')))
+                    cast = cast[:-2]
+                    thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
+                                                  dbobj.%s = append(dbobj.%s, %s(data%s))
+                                              }\n""" %(i, k, k, k, cast, i))
                 else:
                     thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
 
