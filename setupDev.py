@@ -206,7 +206,7 @@ def getExternalGoDeps() :
                      },
                      { 'repo'        : 'net',
                        'renamesrc'   : 'net',
-                       'renamedst'   : 'golang.org/x'
+                       'renamedst'   : 'golang.org/x/net'
                      },
                      ]
 
