@@ -16,3 +16,10 @@ json:
 	python $(SR_CODE_BASE)/reltools/codegentools/gotojson/gotojson.py
 thriftclient:
 	python $(SR_CODE_BASE)/reltools/codegentools/gotothrift/gotothrift.py
+
+clean:
+	rm -rf $(SR_CODE_BASE)/generated/src/models/
+	rm -rf $(SR_CODE_BASE)/generated/src/config/
+	rm -rf $(SR_CODE_BASE)/generated/src/gorpc/
+	
+	
