@@ -24,7 +24,8 @@ daemonThriftNameChangeDict = {
     "lacpd"  : "lacpd",
     "portd" : "portdServices",
     "dhcprelayd" : "dhcprelayd",
-    "stpd" : "stpd"
+    "stpd" : "stpd",
+    "bfdd" : "bfdd"
 }
 
 
