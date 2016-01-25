@@ -2,6 +2,7 @@ import os
 import subprocess
 from optparse import OptionParser
 import sys
+import json 
 
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
@@ -241,7 +242,12 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
     dirLocation      = gHomeDir + SNAP_ROUTE_SRC
 
     if not gitReposToClone :
-        gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors', 'controller'] # (URL, DIR)
+        gitReposToClone = []
+        with open('setupInfo.json') as data_file:
+            data = json.load(data_file)                                                                                 
+            gitReposToClone = data['repos']['snaproute']
+
+        #gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors', 'controller'] # (URL, DIR)
     for repo in gitReposToClone:
         cloneGitRepo ( userRepoPrefix + repo, repo, dirLocation)
         os.chdir(repo)
