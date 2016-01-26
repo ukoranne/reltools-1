@@ -33,6 +33,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'stpd',
                     'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'bfdd',
+                    'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
                     ]
