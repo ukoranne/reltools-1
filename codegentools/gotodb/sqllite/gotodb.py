@@ -339,6 +339,9 @@ def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
 
 	defer rows.Close()
     \n""" %(structName, structName, structName, structName, structName))
+    for i, (m, t, gt, key) in enumerate(goMemberTypeDict[structName]):
+        if t == "bool" or 'LIST' in t:
+            fd.write('\tvar tmp%s string\n' %(i))
 
     for i, (m, t, gt, key) in enumerate(goMemberTypeDict[structName]):
         if t == "bool":
