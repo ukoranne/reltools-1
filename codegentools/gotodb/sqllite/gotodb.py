@@ -343,9 +343,6 @@ def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
         if t == "bool" or 'LIST' in t:
             fd.write('\tvar tmp%s string\n' %(i))
 
-    for i, (m, t, gt, key) in enumerate(goMemberTypeDict[structName]):
-        if t == "bool":
-            fd.write('\tvar tmp%s string\n' %(i))
     fd.write("""\tfor rows.Next() {\n
              object := new(%s)
              if err = rows.Scan(""" %(structName))
