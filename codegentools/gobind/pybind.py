@@ -815,8 +815,8 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
             structName = CreateStructSkeleton(module, fdDict["struct"], parent, path)
             if structName != '':
                 #print 'creating unique class name', structName
-
-                addStructDescription(module, fdDict["struct"], parent, path)
+                pass
+                #addStructDescription(module, fdDict["struct"], parent, path)
             else:
                 return None
         else:
@@ -890,9 +890,9 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
         # create NEW and Set methods
         # TODO: create get methods as well
         structName = createGONewStructMethod(ctx, module, classes, fdDict["func"], parent, path)
-        if structName != '' and not structName.endswith('State') and not structName.endswith('Counters'):
+        #if structName != '' and not structName.endswith('State') and not structName.endswith('Counters'):
             # TODO need to add support for parentChildrenLeaf
-            createGOStructMethods(elements, fdDict["func"], structName)
+        #    createGOStructMethods(elements, fdDict["func"], structName)
 
     return None
 
@@ -943,27 +943,27 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     structName = CreateStructSkeleton(module, nfd, parent, path, write=False)
     if structName != '':
-        nfd.write("func New%s() *%s {\n" % (structName, structName))
+        #nfd.write("func New%s() *%s {\n" % (structName, structName))
 
         # Generic NewFunc, set up the path_helper if asked to.
-        nfd.write("\tnewObj := &%s{\n" % (structName))
+        #nfd.write("\tnewObj := &%s{\n" % (structName))
         # Write out the classes that are stored locally as self.__foo where
         # foo is the safe YANG name.
 
-        for c in classes:
-            if classes[c]["default"] != 0:
-                default = classes[c]["default"]
-                if default not in class_bool_map.keys() and type(default) != type(1):
-                    default = c + "_" + default
-                    default = safe_name(default)
-                    # TODO need to handle enumeration types
-                    continue
-                    #if "REJECT" in default:
-                    #  print "DEFAULT", c, classes[c]
-                nfd.write("\t\t%s : %s%s,\n" % (classes[c]["name"],
-                                                classes[c]["base"], default))
-        nfd.write("\t\t}\n")
-        nfd.write("\treturn newObj\n}\n\n")
+        #for c in classes:
+        #    if classes[c]["default"] != 0:
+        #        default = classes[c]["default"]
+        #        if default not in class_bool_map.keys() and type(default) != type(1):
+        #            default = c + "_" + default
+        #            default = safe_name(default)
+        #            # TODO need to handle enumeration types
+        #            continue
+        #            #if "REJECT" in default:
+        #            #  print "DEFAULT", c, classes[c]
+        #        nfd.write("\t\t%s : %s%s,\n" % (classes[c]["name"],
+        #                                        classes[c]["base"], default))
+        #nfd.write("\t\t}\n")
+        #nfd.write("\treturn newObj\n}\n\n")
 
         # write unmarshalObject function
         nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
@@ -979,6 +979,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     return structName
 
 def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
+    attrDescriptionDict = {}
     elements_str = "\n"
 
     keyname = keyval
@@ -992,6 +993,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
     childNameList = []
     for i in elements:
         childNameList.append(i["name"][:1].upper() + i["name"][1:])
+        attrDescriptionDict[i['name']] =  i['description']
+
 
     # lets add the default interface functions from the BaseObj
     elements_str += "\tBaseObj\n"
@@ -1005,21 +1008,23 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
         # is key?
         if elemtype[1]:
-            elements_str += "\t// parent %s\n" % elemtype[0][0]
+            #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if isinstance(elemtype[0][1]["native_type"], list):
-                elements_str += "\t%sKey []%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+                elements_str += "\t%sKey []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
             else:
-                elements_str += "\t%sKey %s %s\n" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+                elements_str += "\t%sKey %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+            elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
             elementList.append(safe_name(name))
         elif safe_name(name) not in childNameList:
             if elemtype[0] is None:
                 print name, elemtype
-            elements_str += "\t// parent %s\n" % elemtype[0][0]
+            #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if elemtype[0][0] != 'leaf-union':
                 if isinstance(elemtype[0][1]["native_type"], list):
-                    elements_str += "\t%s []%s\n" % (safe_name(name), elemtype[0][1]["native_type"][0])
+                    elements_str += "\t%s []%s" % (safe_name(name), elemtype[0][1]["native_type"][0])
                 else:
-                    elements_str += "\t%s %s\n" % (safe_name(name), elemtype[0][1]["native_type"])
+                    elements_str += "\t%s %s" % (safe_name(name), elemtype[0][1]["native_type"])
+                elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
                 elementList.append(safe_name(name))
             else:
                 for subtype in elemtype[0][1]:
@@ -1036,10 +1041,11 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         membertype = "[]%s" % membertype[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
+                        elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
                     else:
-                        elements_str += "\t%s %s\n" % (elemName, membertype)
+                        elements_str += "\t%s %s" % (elemName, membertype)
 
+                    elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
                     elementList.append(elemName)
 
     for i in elements:
@@ -1052,7 +1058,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         if elemName in elementList:
             continue
 
-        elements_str += "\t//yang_name: %s class: %s\n" % (i['yang_name'], i['class'])
+        #elements_str += "\t//yang_name: %s class: %s\n" % (i['yang_name'], i['class'])
+        #elements_str += "\t//%s\n" % (i['description'].replace('\n', ' '))
         if i["class"] == "leaf-list":
             #print '******************************************'
             #print "GO-STRUCT %s %s %s %s %s" % (elemName, i["class"], i["type"]["native_names"], i["type"]["native_type"], type(i["type"]["native_names"]))
@@ -1072,10 +1079,11 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                             continue
 
                         if keyname == i["name"]:
-                            elements_str += "\t%sKey %s  %s\n" % (elemName, varname, LIST_KEY_STR)
+                            elements_str += "\t%sKey %s  %s" % (elemName, varname, LIST_KEY_STR)
                         else:
-                            elements_str += "\t%s %s\n" % (elemName, varname)
+                            elements_str += "\t%s %s" % (elemName, varname)
 
+                        elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                         elementList.append(elemName)
 
                 else:
@@ -1084,19 +1092,21 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         varname = varname[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
+                        elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
                     else:
-                        elements_str += "\t%s []%s\n" % (elemName, varname)
+                        elements_str += "\t%s []%s" % (elemName, varname)
+                    elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             else:
                 varname = i["type"]["native_type"]
                 if isinstance(varname, list):
                     varname = varname[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey []%s  %s\n" % (elemName, varname, LIST_KEY_STR)
+                    elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
                 else:
-                    elements_str += "\t%s []%s\n" % (elemName, varname)
+                    elements_str += "\t%s []%s" % (elemName, varname)
 
+                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                 elementList.append(elemName)
 
 
@@ -1107,10 +1117,11 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             listType = i["type"]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey []%s  %s\n" % (elemName, listType, LIST_KEY_STR)
+                elements_str += "\t%sKey []%s  %s" % (elemName, listType, LIST_KEY_STR)
             else:
                 elements_str += "\t%s []%s" % (elemName, listType)
 
+            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             elementList.append(elemName)
 
         elif i["class"] == "union" or i["class"] == "leaf-union":
@@ -1133,10 +1144,11 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     membertype = "[]%s" % membertype[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
+                    elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
                 else:
-                    elements_str += "\t%s %s\n" % (elemName, membertype)
+                    elements_str += "\t%s %s" % (elemName, membertype)
 
+                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                 elementList.append(elemName)
 
         else:
@@ -1148,10 +1160,11 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 membertype = "[]%s" % membertype[0]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey %s  %s\n" % (elemName, membertype, LIST_KEY_STR)
+                elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
             else:
-                elements_str += "\t%s %s\n" % (elemName, membertype)
+                elements_str += "\t%s %s" % (elemName, membertype)
 
+            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             elementList.append(elemName)
 
     elements_str += "}\n"
