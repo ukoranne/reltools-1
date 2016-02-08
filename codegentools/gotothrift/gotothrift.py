@@ -250,7 +250,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                     if elemtype.startswith("[]"):
                         elemtype = elemtype.lstrip("[]")
                         # lets make all list an unordered list
-                        nativetype = "set<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
+                        nativetype = "list<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
                         goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                 nativetype})
                         goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
@@ -431,17 +431,17 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                 #print k.split(' ')
                 cast = v
                 # lets convert thrift i8, i16, i32, i64 to int...
-                if cast.startswith("set"):
-                    cast = cast[4:-1]
+                if cast.startswith("list"):
+                    cast = cast[5:-1]
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
                     if cast == "bool":
-                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                      thriftobj.%s[fmt.Println("\%t", data)] = true
+                        thriftdbutilfd.write("""\nfor idx, data%s := range dbobj.%s {
+                                                      thriftobj.%s[idx] = %s(data%s)
                                                   }\n""" %(i, k, k, cast, i))
                     else:
-                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                      thriftobj.%s[%s(data%s)] = true
+                        thriftdbutilfd.write("""\nfor idx, data%s := range dbobj.%s {
+                                                      thriftobj.%s[idx] = %s(data%s)
                                                   }\n""" %(i, k, k, cast, i))
                 else:
                     if cast.startswith('i'):

@@ -51,20 +51,6 @@ def executeGoFmtCommand (fd, command, dstPath) :
             print fmt_name_with_dir
             if not os.path.exists(directory):
               os.makedirs(directory)
-            #nfd = open(fmt_name_with_dir, 'w+')
-            #nfd.write(out)
-            #nfd.close()
-
-            #process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
-            #out,err = process.communicate()
-            #print out, err
-
-            #renameCmd = "mv %s %s" %(fmt_name_with_dir, fd.name)
-            #process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
-            #out,err = process.communicate()
-            #print out, err
-
-            #out = executeCopyCommand(fd.name, dstPath)
 
         return out
 
