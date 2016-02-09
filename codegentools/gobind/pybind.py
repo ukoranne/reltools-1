@@ -689,6 +689,7 @@ def GetParentChildrenLeafs(ctx, i_module, parent, parentChildrenLeaf=None):
             childLeaf += 1
             if ch.arg not in parentChildrenLeaf:
                 t = ch.search_one('type')
+                des = ch.search_one('description')
                 et = None
                 if t is not None:
                     et = build_elemtype(ctx, t)
@@ -697,7 +698,7 @@ def GetParentChildrenLeafs(ctx, i_module, parent, parentChildrenLeaf=None):
                 # print ch.__dict__
                 if hasattr(ch, "i_is_key"):
                     isKey = ch.i_is_key
-                parentChildrenLeaf.update({ch.arg: (et, isKey)})
+                parentChildrenLeaf.update({ch.arg: (et, isKey, des.arg)})
 
 
     if parent.parent not in ({}, None, ''):
@@ -999,6 +1000,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         childNameList.append(i["name"][:1].upper() + i["name"][1:])
         attrDescriptionDict[i['name']] =  i['description']
 
+    for name, elemtype in parentChildrenLeaf.iteritems():
+        attrDescriptionDict[name] = elemtype[2]
 
     # lets add the default interface functions from the BaseObj
     elements_str += "\tBaseObj\n"
@@ -1017,7 +1020,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 elements_str += "\t%sKey []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
             else:
                 elements_str += "\t%sKey %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
-            elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+            if name in attrDescriptionDict:
+                elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
             elementList.append(safe_name(name))
         elif safe_name(name) not in childNameList:
             if elemtype[0] is None:
@@ -1028,7 +1032,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     elements_str += "\t%s []%s" % (safe_name(name), elemtype[0][1]["native_type"][0])
                 else:
                     elements_str += "\t%s %s" % (safe_name(name), elemtype[0][1]["native_type"])
-                elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+                if name in attrDescriptionDict:
+                    elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
                 elementList.append(safe_name(name))
             else:
                 for subtype in elemtype[0][1]:
@@ -1049,7 +1054,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     else:
                         elements_str += "\t%s %s" % (elemName, membertype)
 
-                    elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+                    if name in attrDescriptionDict:
+                        elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
                     elementList.append(elemName)
 
     for i in elements:
@@ -1086,8 +1092,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                             elements_str += "\t%sKey %s  %s" % (elemName, varname, LIST_KEY_STR)
                         else:
                             elements_str += "\t%s %s" % (elemName, varname)
-
-                        elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                        if elemName in attrDescriptionDict:
+                            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                         elementList.append(elemName)
 
                 else:
@@ -1099,7 +1105,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
                     else:
                         elements_str += "\t%s []%s" % (elemName, varname)
-                    elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                    if elemName in attrDescriptionDict:
+                        elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             else:
                 varname = i["type"]["native_type"]
                 if isinstance(varname, list):
@@ -1110,7 +1117,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 else:
                     elements_str += "\t%s []%s" % (elemName, varname)
 
-                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                if elemName in attrDescriptionDict:
+                    elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                 elementList.append(elemName)
 
 
@@ -1125,7 +1133,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             else:
                 elements_str += "\t%s []%s" % (elemName, listType)
 
-            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+            if elemName in attrDescriptionDict:
+                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             elementList.append(elemName)
 
         elif i["class"] == "union" or i["class"] == "leaf-union":
@@ -1152,7 +1161,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 else:
                     elements_str += "\t%s %s" % (elemName, membertype)
 
-                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                if elemName in attrDescriptionDict:
+                    elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
                 elementList.append(elemName)
 
         else:
@@ -1168,7 +1178,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             else:
                 elements_str += "\t%s %s" % (elemName, membertype)
 
-            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+            if elemName in attrDescriptionDict:
+                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
             elementList.append(elemName)
 
     elements_str += "}\n"

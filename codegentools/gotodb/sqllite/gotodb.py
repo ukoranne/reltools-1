@@ -705,6 +705,10 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
         if done:
             break
         if not deletingComment:
+            if "//" in line:
+                line = line.split("//")[0]
+            if len(line) == 0:
+                continue
             if "struct" in line:
                 lineSplit = line.split(" ")
                 if objectNames and len([obj for obj in objectNames if obj == lineSplit[1]]) == 0:
@@ -735,7 +739,6 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
             # lets skip all blank lines
             # skip comments
             elif line == '\n' or \
-                "//" in line or \
                 "#" in line or \
                 "package" in line or \
                 ("/*" in line and "*/" in line):
