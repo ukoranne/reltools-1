@@ -436,13 +436,13 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
                     if cast == "bool":
-                        thriftdbutilfd.write("""\nfor idx, data%s := range dbobj.%s {
-                                                      thriftobj.%s[idx] = %s(data%s)
-                                                  }\n""" %(i, k, k, cast, i))
+                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                      thriftobj.%s = append(thriftobj.%s, %s(data%s))
+                                                  }\n""" %(i, k, k, k, cast, i))
                     else:
-                        thriftdbutilfd.write("""\nfor idx, data%s := range dbobj.%s {
-                                                      thriftobj.%s[idx] = %s(data%s)
-                                                  }\n""" %(i, k, k, cast, i))
+                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                      thriftobj.%s = append(thriftobj.%s, %s(data%s))
+                                                  }\n""" %(i, k, k, k, cast, i))
                 else:
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
