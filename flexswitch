@@ -4,6 +4,7 @@ import signal
 import sys
 import time
 import daemon 
+import datetime
 from optparse import OptionParser
 
 def getDaemonsInfo (baseDir) :
@@ -97,19 +98,28 @@ if __name__=="__main__":
     if opts.op == 'start':
         if ((not os.path.exists(pidFileDir))):
             os.makedirs(pidFileDir)
+
+        start = datetime.datetime.now()
+        dmnCount = 0
         for dmn in getDaemonsInfo(baseDir):
             print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
+            dmnCount += 1
             pidFile = pidFileDir + dmn['name']+'.pid'
             cmd = baseDir +'/bin/'+ dmn['name']
             pargs = (cmd, dmn['params'])
-            time.sleep(10)
+            time.sleep(2)
             pid = os.fork()
             if pid == 0:
                 dmn = FlexSwitchDaemon (pidFile,
-                                        stdout= baseDir+'/bin/'+'log.txt',
-                                        stderr= baseDir+'/bin/'+'log.txt',
+                                        #stdout= baseDir+'/bin/'+'log.txt',
+                                        #stderr= baseDir+'/bin/'+'log.txt',
+                                        stdout = '/var/log/syslog',
+                                        stderr = '/var/log/syslog',
+                                        #stderr= baseDir+'/bin/'+'log.txt',
                                         verbose=2)
                 dmn.start(pargs)
+        end = datetime.datetime.now()
+        print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:
         for dmn in getDaemonsInfo(baseDir):
             try:
