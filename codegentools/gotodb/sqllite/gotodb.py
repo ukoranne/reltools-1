@@ -16,13 +16,15 @@ GO_MODEL_BASE_PATH = srBase + "/snaproute/src/models/"
 CODE_GENERATION_PATH = srBase + "/generated/src/models/db/"
 
 goToSqlliteTypeMap = {
-  'bool':          {"native_type": "bool"},
+  'bool':             {"native_type": "bool"},
+  'uint':             {"native_type": "INTEGER", "unsigned": True},
   'uint8':            {"native_type": "INTEGER", "unsigned": True},
   'uint16':           {"native_type": "INTEGER", "unsigned": True},
   'uint32':           {"native_type": "INTEGER", "unsigned": True},
   'uint64':           {"native_type": "INTEGER", "unsigned": True},
   'string':           {"native_type": "TEXT","unsigned": None },
   'float64':          {"native_type": "REAL", "unsigned": False},
+  'int':              {"native_type": "INTEGER", "unsigned": False},
   'int8':             {"native_type": "INTEGER", "unsigned": False},
   'int16':            {"native_type": "INTEGER", "unsigned": False},
   'int32':            {"native_type": "INTEGER", "unsigned": False},
@@ -707,6 +709,10 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
         if done:
             break
         if not deletingComment:
+            if "//" in line:
+                line = line.split("//")[0]
+            if len(line) == 0:
+                continue
             if "struct" in line:
                 lineSplit = line.split(" ")
                 if objectNames and len([obj for obj in objectNames if obj == lineSplit[1]]) == 0:

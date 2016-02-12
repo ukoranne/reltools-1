@@ -211,6 +211,11 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
         currentStruct = None
         for line in gofd.readlines():
             if not deletingComment:
+                if "//" in line:
+                    line = line.split("//")[0]
+                if len(line) == 0:
+                    continue
+
                 if "struct" in line:
                     lineSplit = line.split(" ")
                     structLine = "struct " + lineSplit[1] + "{\n"
@@ -232,7 +237,6 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                 # lets skip all blank lines
                 # skip comments
                 elif line == '\n' or \
-                    "//" in line or \
                     "#" in line or \
                     "package" in line or \
                     "BaseObj" in line or \
@@ -242,7 +246,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                     deletingComment = True
                 elif writingStruct:  # found element in struct
                     # print "found element line", line
-                    lineSplit = line.split(' ')
+                    lineSplit = [ x for x in line.split(' ') if x != '']
                     # print lineSplit
                     elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
 
@@ -250,7 +254,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                     if elemtype.startswith("[]"):
                         elemtype = elemtype.lstrip("[]")
                         # lets make all list an unordered list
-                        nativetype = "set<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
+                        nativetype = "list<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
                         goMemberTypeDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t'):
                                                                 nativetype})
                         goStructDict[currentStruct].update({lineSplit[0].lstrip(' ').rstrip(' ').lstrip('\t') :
@@ -431,18 +435,18 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
                 #print k.split(' ')
                 cast = v
                 # lets convert thrift i8, i16, i32, i64 to int...
-                if cast.startswith("set"):
-                    cast = cast[4:-1]
+                if cast.startswith("list"):
+                    cast = cast[5:-1]
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
                     if cast == "bool":
                         thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                      thriftobj.%s[fmt.Println("\%t", data)] = true
-                                                  }\n""" %(i, k, k, cast, i))
+                                                      thriftobj.%s = append(thriftobj.%s, %s(data%s))
+                                                  }\n""" %(i, k, k, k, cast, i))
                     else:
                         thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                      thriftobj.%s[%s(data%s)] = true
-                                                  }\n""" %(i, k, k, cast, i))
+                                                      thriftobj.%s = append(thriftobj.%s, %s(data%s))
+                                                  }\n""" %(i, k, k, k, cast, i))
                 else:
                     if cast.startswith('i'):
                         cast = 'int' + cast.lstrip('i')
