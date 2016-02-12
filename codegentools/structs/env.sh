@@ -13,9 +13,5 @@ export PYTHONPATH=$PYTHONPATH:$PWD:$SR_CODE_BASE/external/src/pyang
 export YANG_MODPATH=$PWD/modules:$OPENCONFIG/models:$YANG_MODPATH
 export PYANG_XSLT_DIR=$PWD/xslt
 export PYANG_RNG_LIBDIR=$PWD/schema
-#export W=$PWD
 
 export YANG_MODPATH=$PYANGDIR/modules:$YANG_MODPATH
-#export PYANG_XSLT_DIR=$PYANGDIR/xslt
-#export PYANG_RNG_LIBDIR=$PYANGDIR/schema
-#export W=$p
