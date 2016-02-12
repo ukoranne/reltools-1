@@ -704,6 +704,8 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
     keyIdx = 0
     done = False
     for line in gofd.readlines():
+        if '//' in line and gofilename == 'ospf.go':
+            line = line.split('//')[0]
         if done:
             break
         if not deletingComment:

@@ -124,8 +124,8 @@ class Daemon(object):
         Start the daemon
         """
 
-        if self.verbose >= 1:
-            print "Starting..."
+        #if self.verbose >= 1:
+        #    print "Starting..."
 
         # Check for a pidfile to see if the daemon already runs
         try:
