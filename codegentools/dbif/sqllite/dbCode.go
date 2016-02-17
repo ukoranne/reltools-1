@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var fileHeader = `package models                                                                                                                                                                                                                                                                                                                                              
@@ -89,7 +90,7 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File) 
 			case *ast.Ident:
 				varName := fld.Names[0].String()
 				if fld.Tag != nil {
-					if fld.Tag.Value == "`SNAPROUTE: KEY`" {
+					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
 						keys = append(keys, varName)
 					}
 				}
@@ -185,7 +186,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 			case *ast.Ident:
 				varName := fld.Names[0].String()
 				if fld.Tag != nil {
-					if fld.Tag.Value == "`SNAPROUTE: KEY`" {
+					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
 						if multipleKeys == 0 {
 							keyStr = keyStr + " string (obj." + varName + ") "
 							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
