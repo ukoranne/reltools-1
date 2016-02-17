@@ -27,9 +27,9 @@ func main() {
 		fmt.Println(" Environment Variable SR_CODE_BASE has not been set")
 		return
 	}
-	jsonFile := base + "/snaproute/src/models/genOspfObjects.json"
+	jsonFile := base + "/snaproute/src/models/genObjectConfig.json"
 	fileBase := base + "/snaproute/src/models/"
-
+	listingFile := "dbIffiles.txt"
 	var objMap map[string]ObjectSrcInfo
 	bytes, err := ioutil.ReadFile(jsonFile)
 	if err != nil {
@@ -41,6 +41,12 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", jsonFile, err)
 	}
 
+	listingsFd, err := os.Create(listingFile)
+	if err != nil {
+		fmt.Println("Failed to open the file", listingFile)
+		return
+	}
+	defer listingsFd.Close()
 	for name, obj := range objMap {
 		//fmt.Println("### struct Name ", name)
 		obj.ObjName = name
@@ -65,8 +71,9 @@ func main() {
 						typ := spec.(*ast.TypeSpec)
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
-							fmt.Printf("%s \n", typ.Name.Name)
+							//fmt.Printf("%s \n", typ.Name.Name)
 							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
+							listingsFd.WriteString(obj.DbFileName + "\n")
 							obj.WriteDBFunctions(str)
 						}
 					}
