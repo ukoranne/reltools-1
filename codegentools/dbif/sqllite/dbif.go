@@ -136,6 +136,7 @@ func generateObjectsInformation(fileBase string, srcFile string, owner string) e
 
 	fset := token.NewFileSet() // positions are relative to fset
 
+	// Now read the contents of Hand coded Go structures
 	f, err := parser.ParseFile(fset,
 		fileBase+srcFile,
 		nil,
@@ -145,6 +146,8 @@ func generateObjectsInformation(fileBase string, srcFile string, owner string) e
 		fmt.Println("Failed to parse input file ", srcFile, err)
 		return err
 	}
+
+	var marshalFcnsLine []string
 
 	for _, dec := range f.Decls {
 		tk, ok := dec.(*ast.GenDecl)
@@ -158,6 +161,9 @@ func generateObjectsInformation(fileBase string, srcFile string, owner string) e
 					typ := spec.(*ast.TypeSpec)
 					str, ok := typ.Type.(*ast.StructType)
 					if ok == true {
+						marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
+						marshalFcnFile := fileBase + strings.Split(srcFile, ".")[0] + "_serializer.go"
+						//fmt.Println("marshalFcnFile ", marshalFcnFile)
 						for _, fld := range str.Fields.List {
 							if fld.Names != nil {
 								switch fld.Type.(type) {
@@ -179,7 +185,37 @@ func generateObjectsInformation(fileBase string, srcFile string, owner string) e
 								}
 							}
 						}
+						marshalFcnsLine = append(marshalFcnsLine, `
+													var err error                                                                                                           
+													if len(body) > 0 {                                                                                                      
+													    if err = json.Unmarshal(body, &obj); err != nil {                                                                    
+													         fmt.Println("###  called, unmarshal failed", obj, err)                                             
+													      }                                                                                                                    
+													   }                                                                                                                       
+													   return obj, err                                                                                                         
+													}
+													`)
 						objMap[typ.Name.Name] = obj
+
+						marshalFcnFd, err := os.Create(marshalFcnFile)
+						if err != nil {
+							fmt.Println("Failed to open the file", marshalFcnFile)
+							return err
+						}
+						defer marshalFcnFd.Close()
+						marshalFcnFd.WriteString(`package models                                                                                                                                                                                                                   
+													                                                                                                                           
+													import (                                                                                                                   
+													   "encoding/json"                                                                                                         
+													                                                                                                                           
+													   "fmt"                                                                                                                   
+													)`)
+
+						for _, marshalLine := range marshalFcnsLine {
+							marshalFcnFd.WriteString(string(marshalLine))
+						}
+						//marshalFcnFd.WriteString("}\n")
+
 					}
 				}
 			}
