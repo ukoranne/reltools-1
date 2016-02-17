@@ -5,11 +5,11 @@ PROD_NAME=flexswitch
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	EXT_INSTALL_PATH=
 	BUILD_DIR=out
-	ALL_DEPS=installdir ipc exe
+	ALL_DEPS=codegenv2 installdir ipc exe
 else
 	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
 	BUILD_DIR=flexswitch-0.0.1
-	ALL_DEPS=installdir ipc exe install
+	ALL_DEPS=codegenv2 installdir ipc exe install
 endif
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
@@ -39,6 +39,8 @@ installdir:
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/params
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
+codegenv2:
+	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
 codegen:
 	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
