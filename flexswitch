@@ -34,6 +34,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'stpd',
                     'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'vrrpd',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'bfdd',
                     'params': '-params=' + baseDir + '/params'},
 
