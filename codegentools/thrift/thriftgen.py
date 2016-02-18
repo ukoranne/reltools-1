@@ -50,6 +50,7 @@ class DaemonObjectsInfo (object) :
     def __init__ (self, name, location):
         self.name   =  name
         self.location =  location
+        self.thriftFileName = THRIFT_CODE_GENERATION_PATH + name + ".thrift"
         self.objectDict = {}
 
     def __str__(self):
@@ -58,92 +59,83 @@ class DaemonObjectsInfo (object) :
             print '\t%s  - %s' %(name, obj)
         return ''
 
+    def generateThriftInterfaces(self, objectNames):
+        thriftfd = open(self.thriftFileName, 'w+')
+        dmn = self.name
+        thriftfd.write("namespace go %s\n" %(dmn))                                                             
+        thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
+
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            srcFile = JSON_MODEL_REGISTRAION_PATH + structInfo['srcfile']
+            srcFileFd = open(srcFile, 'r')
+            deletingComment = False
+            writingStruct = False
+            memberCnt = 1
+            currentStruct = None
+            for line in srcFileFd.readlines():
+                if not deletingComment:
+                    if "//" in line:
+                        line = line.split("//")[0]
+                    if len(line) == 0:
+                        continue
+
+                    if "struct" in line:
+                        lineSplit = line.split(" ")
+                        structLine = "struct " + lineSplit[1] + "{\n"
+                        currentStruct = lineSplit[1]
+                        if structName in lineSplit and 'type' in lineSplit and 'struct' in lineSplit:
+                            writingStruct = True
+                            thriftfd.write(structLine)                                                                  
+                    elif "}" in line and writingStruct:
+                        thriftfd.write("}\n")
+                        if structInfo['access'] == 'r' and currentStruct == structName:
+                            thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
+                        writingStruct = False
+                        memberCnt = 1
+                    elif line == '\n' or \
+                        "#" in line or \
+                        "package" in line or \
+                        "BaseObj" in line or \
+                        ("/*" in line and "*/" in line):
+                        continue
+                    elif "/*" in line:
+                        deletingComment = True
+                    elif writingStruct:  # found element in struct
+                        lineSplit = [ re.sub(r'\W+', '',x) for x in line.split(' ') if x != '']
+                        elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
+                        if elemtype.startswith("[]"):
+                            elemtype = elemtype.lstrip("[]")
+                            nativetype = "list<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
+                            thriftfd.write("\t%s : %s %s\n" % (memberCnt,
+                                                            nativetype,
+                                                            lineSplit[0]))
+                        else:
+                            if elemtype in goToThirftTypeMap.keys():
+                                thriftfd.write("\t%s : %s %s\n" % (memberCnt,
+                                                                goToThirftTypeMap[elemtype]["native_type"],
+                                                                lineSplit[0]))
+                        memberCnt += 1
+                else:
+                    if "*/" in line:
+                        deletingComment = False
+
+        thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            s = structName
+            if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
+                thriftfd.write(
+                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+            else: # read only objects Counters/State
+                thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
+        thriftfd.write("}")
+        thriftfd.close()
+        print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
+        return 
+
+
+
 gDryRun =  False
-def executeGoFmtCommand (fd, command, dstPath) :
-    out = ''
-    if type(command) != list:
-        command = [ command]
-    for cmd in command:
-        if gDryRun :
-            print cmd
-        else:
-            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            # create a go format version, at this point the fd is still
-            # open so this is a .tmp file, lets strip this for the new
-            # file
-            #print out, err
-            dir = CODE_GENERATION_PATH
-            fmt_name_with_dir = dir + fd.name
-            #print fmt_name_with_dir
-            if not os.path.exists(dir):
-              os.makedirs(dir)
-            #nfd = open(fmt_name_with_dir, 'w+')
-            #nfd.write(out)
-            #nfd.close()
-
-            #process = subprocess.Popen("ls".split(), stdout=subprocess.PIPE)
-            #out,err = process.communicate()
-            #print out, err
-
-            #renameCmd = "mv %s %s" %(fmt_name_with_dir, dir+fd.name)
-            #process = subprocess.Popen(renameCmd.split(), stdout=subprocess.PIPE)
-            #out,err = process.communicate()
-            #print out, err
-
-
-        return out
-
-def executeCopyCommand (name, dstPath) :
-    dir = dstPath
-    if not os.path.exists(dir):
-      os.makedirs(dir)
-
-    copyCmd = "cp %s %s" %(name, dstPath,)
-    process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
-    out,err = process.communicate()
-
-    #print out, err
-
-    return out
-
-def executeLocalCleanup():
-
-    for name in os.listdir(CODE_GENERATION_PATH):
-        if name.endswith(".go") or name.endswith(".thrift"):
-            cmd = "rm %s" %(CODE_GENERATION_PATH+name,)
-            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            #print out, err
-
-
-def scan_dir_for_go_files(dirList):
-    for dir in dirList:
-        for name in os.listdir(dir):
-            #print "x", dir, name
-            path = os.path.join(dir, name)
-            if name.endswith('.go'):
-                if os.path.isfile(path) and "_enum" not in path and "_func" not in path and "_db" not in path:
-                    yield (dir, name)
-            # dir
-            #elif not "." in name:
-            elif os.path.isdir(path):
-                for d, f  in scan_dir_for_go_files([path]):
-                    yield (d, f)
-
-def scan_dir_for_json_files(dir):
-
-    for name in os.listdir(dir):
-        #print "x", dir, name
-        path = os.path.join(dir, name)
-        if name.endswith('.json'):
-            if os.path.isfile(path):
-                yield (dir, name)
-        #elif not "." in name:
-        elif os.path.isdir(path):
-            for d, f  in scan_dir_for_go_files([path]):
-                yield (d, f)
-
 def generateThriftAndClientIfs():
     # generate thrift code from go code
     genObjInfoJson = JSON_MODEL_REGISTRAION_PATH + 'genObjectConfig.json'
@@ -176,15 +168,11 @@ def generateThriftAndClientIfs():
     for dmn, entry in ownerToObjMap.iteritems():
         clientIfFileName = CLIENTIF_FILE_PATH + dmn + '/' +"clientif.go"
         thriftFileName = SRC_BASE + ownerDirsInfo[dmn] + '/' + dmn + ".thrift"
-        generate_thirft_structs_and_func(thriftFileName, dmn, ownerToObjMap[dmn])
+        entry.generateThriftInterfaces(ownerToObjMap[dmn])
 
     return
     goStructToListersDict = {}
 
-    # lets determine from the json file the structs and associated listeners
-    deamons, accessDict = get_listeners_and_access_from_json(goStructToListersDict)
-
-    #pprint.pprint(goStructToListersDict)
 
     allCrudStructList = []
     # lets create the clientIf and .thrift files for each listener deamon
@@ -201,7 +189,6 @@ typedef i16 uint16
 """)
 
         # create the thrift file info
-        generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict)
 
         allCrudStructList += list(set(crudStructsList).difference(set(allCrudStructList)))
 
@@ -212,109 +199,6 @@ typedef i16 uint16
 
     # create teh object map file
     generate_objmap(allCrudStructList)
-
-
-def get_listeners_and_access_from_json(goStructToListersDict):
-    deamons = []
-    accessDict = {}
-    for dir, jsonfilename in scan_dir_for_json_files(JSON_MODEL_REGISTRAION_PATH):
-        path = os.path.join(dir, jsonfilename)
-        if jsonfilename.endswith(".json"):
-            #print path
-            with open(path, 'r') as f:
-                data = json.load(f)
-
-                for k, v in data.iteritems():
-                    accessDict[k] = v["access"]
-                    if v["Owner"]:
-                        goStructToListersDict.setdefault(k, [])
-                        goStructToListersDict[k].append(v["Owner"])
-                        if v["Owner"] not in deamons:
-                            deamons.append(v["Owner"])
-                    '''
-                    NOTE: as of 1/18/2016 not being used
-                    if v["Listeners"]:
-                        goStructToListersDict.setdefault(k, [])
-                        goStructToListersDict[k] += v["Listeners"]
-                        for d in v["Listeners"]:
-                            if d not in deamons:
-                                deamons.append(d)
-                    '''
-    return deamons, accessDict
-
-def generate_thirft_structs_and_func(thriftFileName , dmn, objectNames, accessDict=None):
-    thriftfd = open(thriftFileName, 'w+')      
-    thriftfd.write("namespace go %s\n" %(dmn))                                                             
-    thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
-
-    for structName, structInfo in objectNames.objectDict.iteritems ():
-        structName = str(structName)
-        srcFile = JSON_MODEL_REGISTRAION_PATH + structInfo['srcfile']
-        srcFileFd = open(srcFile, 'r')
-        deletingComment = False
-        writingStruct = False
-        memberCnt = 1
-        currentStruct = None
-        for line in srcFileFd.readlines():
-            if writingStruct:
-                print line
-            if not deletingComment:
-                if "//" in line:
-                    line = line.split("//")[0]
-                if len(line) == 0:
-                    continue
-
-                if "struct" in line:
-                    lineSplit = line.split(" ")
-                    structLine = "struct " + lineSplit[1] + "{\n"
-                    if structName in lineSplit and 'type' in lineSplit and 'struct' in lineSplit:
-                        writingStruct = True
-                        thriftfd.write(structLine)                                                                  
-                elif "}" in line and writingStruct:
-                    thriftfd.write("}\n")
-                    if structInfo['srcfile'] == 'r' and currentStruct == structName:
-                        thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(currentStruct, currentStruct, currentStruct))
-                    writingStruct = False
-                    memberCnt = 1
-                elif line == '\n' or \
-                    "#" in line or \
-                    "package" in line or \
-                    "BaseObj" in line or \
-                    ("/*" in line and "*/" in line):
-                    continue
-                elif "/*" in line:
-                    deletingComment = True
-                elif writingStruct:  # found element in struct
-                    lineSplit = [ re.sub(r'\W+', '',x) for x in line.split(' ') if x != '']
-                    elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
-                    if elemtype.startswith("[]"):
-                        elemtype = elemtype.lstrip("[]")
-                        nativetype = "list<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
-                        thriftfd.write("\t%s : %s %s\n" % (memberCnt,
-                                                        nativetype,
-                                                        lineSplit[0]))
-                    else:
-                        if elemtype in goToThirftTypeMap.keys():
-                            thriftfd.write("\t%s : %s %s\n" % (memberCnt,
-                                                            goToThirftTypeMap[elemtype]["native_type"],
-                                                            lineSplit[0]))
-                    memberCnt += 1
-            else:
-                if "*/" in line:
-                    deletingComment = False
-
-    thriftfd.write("service %sServices {\n" % (dmn.upper()))
-    for structName, structInfo in objectNames.objectDict.iteritems ():
-        s = structName
-        if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
-            thriftfd.write(
-                """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
-        else: # read only objects Counters/State
-            thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
-    thriftfd.write("}")
-    thriftfd.close()
-    print 'Thrift file for %s is %s' %(dmn, thriftFileName)
-    return 
 
 
 def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):
@@ -497,7 +381,6 @@ def createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDi
 
             thriftdbutilfd.write("""}\n""")
     thriftdbutilfd.close()
-    executeGoFmtCommand(thriftdbutilfd, ["gofmt -w %s" %(thriftdbutilfd.name,)], DBUTIL_CODE_GENERATION_PATH)
 
 
 def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
@@ -555,7 +438,6 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
 
 
 def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict):
-    #newDeamonName = d[0].upper() + d[1:-1] + d[-1].upper()
     newDeamonName = d.upper()
     lowerDeamonName = d.lower()
     servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
@@ -611,7 +493,6 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     clientIfFd.close()
 
     # lets beautify the the client if code
-    executeGoFmtCommand(clientIfFd, ["gofmt -w %s" %(clientIfFd.name,)], CLIENTIF_CODE_GENERATION_PATH)
 
 def generate_objmap(allStructList):
     fd = open(OBJMAP_CODE_GENERATION_PATH + OBJECT_MAP_NAME, 'w+')
@@ -633,7 +514,6 @@ def generate_objmap(allStructList):
     fd.write("""}\n""")
     fd.close()
 
-    executeGoFmtCommand(fd, ["gofmt -w %s" %(fd.name,)], OBJMAP_CODE_GENERATION_PATH)
 
 
 if __name__ == "__main__":
