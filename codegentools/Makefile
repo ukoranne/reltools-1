@@ -6,7 +6,7 @@ installdir:
 	$(MKDIR) $(DESTDIR)
 
 all: codegen
-codegen: structs json thriftclient dbif
+codegen: structs json thriftclient dbifv1
 
 structs:
 	python $(SR_CODE_BASE)/reltools/codegentools/generateCode.py
