@@ -977,7 +977,7 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
             
         gYangObjInfo[structName] =  {'access': 'w',                                                                                                       
                                       'multiplicity':multiplicity, 
-                                      'Owner': owner['Owner'],
+                                      'owner': owner['owner'],
                                       'srcfile' : srcFile
                                     }
 
