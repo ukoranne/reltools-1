@@ -28,6 +28,12 @@ type ObjectInfoJson struct {
 	Multiplicity string `json:"multiplicity"`
 }
 
+// This structure represents the a golang Structure for a config object
+type ObjectMembersInfo struct {
+	VarType string `json:"type"`
+	IsKey   bool   `json:"isKey"`
+}
+
 // This structure represents the objects that are generated directly from go files instead of yang models
 type RawObjSrcInfo struct {
 	Owner string `json:"owner"`
@@ -44,6 +50,12 @@ func main() {
 	fileBase := base + "/snaproute/src/models/"
 	listingFile := "dbIffiles.txt"
 	var objMap map[string]ObjectSrcInfo
+
+	//
+	// Create a directory to store all the temporary files
+	//
+	dirStore := base + "/reltools/codegentools/._genInfo/"
+	os.Mkdir(dirStore, 0777)
 
 	//
 	// Files generated from yang models are already listed in right format in genObjectConfig.json
@@ -63,7 +75,7 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", goObjSources, err)
 	}
 	for goSrcFile, ownerName := range goSrcsMap {
-		generateObjectsInformation(fileBase, goSrcFile, ownerName.Owner)
+		generateHandCodedObjectsInformation(fileBase, goSrcFile, ownerName.Owner)
 	}
 
 	bytes, err = ioutil.ReadFile(jsonFile)
@@ -109,6 +121,7 @@ func main() {
 							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
 							listingsFd.WriteString(obj.DbFileName + "\n")
 							obj.WriteDBFunctions(str)
+							generateObjectMembersInfo(str, dirStore+typ.Name.Name+"Members.json")
 						}
 					}
 				}
@@ -116,8 +129,46 @@ func main() {
 		}
 	}
 }
+func generateObjectMembersInfo(str *ast.StructType, jsonFileName string) {
+	// Write Skeleton of the structure in json.
+	//This would help later python scripts to understand the structure
+	var objMembers map[string]ObjectMembersInfo
+	objMembers = make(map[string]ObjectMembersInfo, 1)
 
-func generateObjectsInformation(fileBase string, srcFile string, owner string) error {
+	fdHdl, err := os.Create(jsonFileName)
+	if err != nil {
+		fmt.Println("Failed to open the file", jsonFileName)
+		return
+	}
+	defer fdHdl.Close()
+
+	for _, fld := range str.Fields.List {
+		if fld.Names != nil {
+			switch fld.Type.(type) {
+			case *ast.Ident:
+				info := ObjectMembersInfo{}
+				varName := fld.Names[0].String()
+				if fld.Tag != nil {
+					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
+						info.IsKey = true
+					}
+				}
+				idntType := fld.Type.(*ast.Ident)
+				varType := idntType.String()
+				info.VarType = varType
+				objMembers[varName] = info
+			}
+		}
+	}
+	lines, err := json.MarshalIndent(objMembers, "", " ")
+	if err != nil {
+		fmt.Println("Error in converting to Json", err)
+	} else {
+		fdHdl.WriteString(string(lines))
+	}
+}
+
+func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner string) error {
 	var objMap map[string]ObjectInfoJson
 	objMap = make(map[string]ObjectInfoJson, 1)
 

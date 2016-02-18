@@ -8,7 +8,7 @@ installdir:
 all: codegen
 codegen: structs json thriftclient dbifv1
 
-structs:
+structsv1:
 	python $(SR_CODE_BASE)/reltools/codegentools/generateCode.py
 dbifv1:
 	python $(SR_CODE_BASE)/reltools/codegentools/gotodb/sqllite/gotodb.py
