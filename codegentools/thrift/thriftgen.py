@@ -50,7 +50,7 @@ class DaemonObjectsInfo (object) :
     def __init__ (self, name, location):
         self.name   =  name
         self.location =  location
-        self.thriftFileName = THRIFT_CODE_GENERATION_PATH + name + ".thrift"
+        self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_CODE_GENERATION_PATH + name + "dbthriftutil.go"
         self.objectDict = {}
 
@@ -121,7 +121,10 @@ class DaemonObjectsInfo (object) :
                         deletingComment = True
                     elif writingStruct:  # found element in struct
                         lineSplit = [ re.sub(r'\W+', '',x) for x in line.split(' ') if x != '']
-                        elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
+                        if 'KEY' in lineSplit:
+                            elemtype = lineSplit[lineSplit.index('KEY') -2]
+                        else:
+                            elemtype = lineSplit[-1].rstrip('\n')
                         if elemtype.startswith("[]"):
                             elemtype = elemtype.lstrip("[]")
                             nativetype = "list<" + goToThirftTypeMap[elemtype]["native_type"] + ">"
@@ -153,7 +156,7 @@ class DaemonObjectsInfo (object) :
 
 
     def createConvertObjToThriftObj(self, objectNames):
-        print '#ThriftUtils file is %s' %(self.thriftUtilsFileName)
+        #print '#ThriftUtils file is %s' %(self.thriftUtilsFileName)
         thriftdbutilfd = open(self.thriftUtilsFileName, 'w+')
 
         servicesName = self.name
