@@ -174,25 +174,28 @@ def get_listeners_and_access_from_json(goStructToListersDict):
         path = os.path.join(dir, jsonfilename)
         if jsonfilename.endswith(".json"):
             #print path
-            with open(path, 'r') as f:
-                data = json.load(f)
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
 
-                for k, v in data.iteritems():
-                    accessDict[k] = v["access"]
-                    if v["Owner"]:
-                        goStructToListersDict.setdefault(k, [])
-                        goStructToListersDict[k].append(v["Owner"])
-                        if v["Owner"] not in deamons:
-                            deamons.append(v["Owner"])
-                    '''
-                    NOTE: as of 1/18/2016 not being used
-                    if v["Listeners"]:
-                        goStructToListersDict.setdefault(k, [])
-                        goStructToListersDict[k] += v["Listeners"]
-                        for d in v["Listeners"]:
-                            if d not in deamons:
-                                deamons.append(d)
-                    '''
+                    for k, v in data.iteritems():
+                        accessDict[k] = v["access"]
+                        if v["Owner"]:
+                            goStructToListersDict.setdefault(k, [])
+                            goStructToListersDict[k].append(v["Owner"])
+                            if v["Owner"] not in deamons:
+                                deamons.append(v["Owner"])
+                        '''
+                        NOTE: as of 1/18/2016 not being used
+                        if v["Listeners"]:
+                            goStructToListersDict.setdefault(k, [])
+                            goStructToListersDict[k] += v["Listeners"]
+                            for d in v["Listeners"]:
+                                if d not in deamons:
+                                    deamons.append(d)
+                        '''
+            except:
+                pass
     return deamons, accessDict
 
 def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessDict):
