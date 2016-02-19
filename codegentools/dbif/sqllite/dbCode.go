@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var fileHeader = `package models                                                                                                                                                                                                                                                                                                                                              
@@ -41,8 +42,6 @@ func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.Fi
 	argsList := ""
 	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
-			fmt.Printf("Names %s , Len %d", fld.Names, len(fld.Names))
-			fmt.Printf("IDX %d, Name %s Len %d \n", idx, fld.Names[0].String(), len(str.Fields.List))
 			attrNamesList = attrNamesList + fld.Names[0].String() + " "
 			argsList = argsList + "obj." + fld.Names[0].String() + " "
 			valuesList = valuesList + "'%v' "
@@ -90,10 +89,8 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File) 
 			switch fld.Type.(type) {
 			case *ast.Ident:
 				varName := fld.Names[0].String()
-				fmt.Printf("-- %s \n", fld.Names[0])
 				if fld.Tag != nil {
-					if fld.Tag.Value == "`SNAPROUTE: KEY`" {
-						fmt.Println("Appending Key")
+					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
 						keys = append(keys, varName)
 					}
 				}
@@ -117,7 +114,6 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File) 
 	}
 	keyStr = keyStr + ")\" +\n"
 
-	fmt.Println(keyStr)
 	lines = append(lines, keyStr)
 	fcnClosure :=
 		`")"
@@ -138,7 +134,8 @@ func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") DeleteObjectFromDb (objKey string, dbHdl *sql.DB) error {\n")
 	lines = append(lines,
-		`if err != nil {
+		`sqlKey, err := obj.GetSqlKeyStr(objKey) 
+		if err != nil {
 		fmt.Println("GetSqlKeyStr with key", objKey, "failed with error", err)
 		return err
 	}`)
@@ -176,6 +173,15 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
+func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
+	switch typeVal {
+	case "uint8", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
+		return true
+	default:
+		return false
+	}
+	return false
+}
 func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
@@ -189,14 +195,26 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 			case *ast.Ident:
 				varName := fld.Names[0].String()
 				if fld.Tag != nil {
-					if fld.Tag.Value == "`SNAPROUTE: KEY`" {
+					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
+						idntType := fld.Type.(*ast.Ident)
+						varType := idntType.String()
 						if multipleKeys == 0 {
-							keyStr = keyStr + " string (obj." + varName + ") "
+							if obj.IsNumericType(varType) {
+								keyStr = keyStr + " string (strconv.Atoi(int(obj." + varName + "))) "
+							} else {
+								keyStr = keyStr + " string (obj." + varName + ") "
+							}
 							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
-						} else {
-							keyStr = keyStr + "\"#\" + string (obj." + varName + ") "
-							reverseKeyStr = reverseKeyStr + "and" + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
 
+							multipleKeys = 1
+						} else {
+							if obj.IsNumericType(varType) {
+								keyStr = keyStr + "+ \"#\" + string (strconv.Atoi(int(obj." + varName + "))) "
+							} else {
+								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
+							}
+
+							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(idx-1) + "]" + " + " + "\"\\\"\""
 						}
 					}
 				}
@@ -214,7 +232,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 
 	lines = append(lines, reverseKeyStr)
 	lines = append(lines, `
-						return key, nil
+						return sqlKey, nil
 						}
 						`)
 	for _, line := range lines {
@@ -227,7 +245,9 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl *sql.DB) (objList []* "+obj.ObjName+", err error) { \n")
 	lines = append(lines, "dbCmd :=  \"select * from "+obj.ObjName+"\"\n")
-	lines = append(lines, `if err != nil {
+	lines = append(lines, `
+						rows, err := dbHdl.Query(dbCmd)
+						if err != nil {
 						 return objList, err
 						 }
 						defer rows.Close()
@@ -264,7 +284,7 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 	lines = append(lines, `
 			objTyp := reflect.TypeOf(obj)
 			objVal := reflect.ValueOf(obj)
-			dbObjVal := reflect.ValueOf(dbV4Route)
+			dbObjVal := reflect.ValueOf(dbObj)
 			attrIds := make([]bool, objTyp.NumField())
 			idx := 0
 			for i := 0; i < objTyp.NumField(); i++ {
@@ -344,7 +364,7 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 
 func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File) {
 	var lines []string
-	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(dbObj ConfigObj, attrSet []bool, dbHdl *sql.DB) error {\n")
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(inObj ConfigObj, attrSet []bool, dbHdl *sql.DB) error {\n")
 	lines = append(lines, "var fieldSqlStr string\n")
 	lines = append(lines, "dbObj := inObj.("+obj.ObjName+")\n")
 	lines = append(lines, "dbCmd := \"update "+obj.ObjName+" set\"\n")
@@ -457,6 +477,7 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 }
 
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
+	fmt.Println("Generating dbIf file ", obj.DbFileName)
 	dbFile, err := os.Create(obj.DbFileName)
 	if err != nil {
 		fmt.Println("Failed to open the file", obj.DbFileName)
@@ -471,8 +492,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
 	obj.WriteKeyRelatedFcns(str, dbFile)
 	obj.WriteGetAllObjFromDbFcn(str, dbFile)
 	obj.WriteCompareObjectsAndDiffFcn(str, dbFile)
-	obj.WriteCompareObjectsAndDiffFcn(str, dbFile)
 	obj.WriteUpdateObjectInDbFcn(str, dbFile)
 	dbFile.Sync()
-	fmt.Println("DB File is at ", obj.DbFileName)
 }

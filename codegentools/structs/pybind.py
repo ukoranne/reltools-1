@@ -27,6 +27,7 @@ import copy
 import os
 import subprocess
 from bitarray import bitarray
+import json
 
 from pyang import plugin
 from pyang import statements
@@ -125,6 +126,8 @@ srBase = os.environ.get('SR_CODE_BASE', None)
 MODELS_PATH_LIST = [srBase + "/generated/src/models/"]
 CODE_GENERATION_PATH = srBase + "/generated/src/models/"
 
+gYangObjInfo = None
+gOwnersInfo  = None
 
 def safe_name(arg):
     """
@@ -211,6 +214,7 @@ class BTPyGOClass(plugin.PyangPlugin):
             # Add the 'pybind' output format to pyang.
         self.multiple_modules = True
         fmts['pybind'] = self
+        self.owner    = None
 
     def emit(self, ctx, modules, fd):
         # When called, call the build_pyangbind function.
@@ -219,12 +223,12 @@ class BTPyGOClass(plugin.PyangPlugin):
         fdDict = {"struct" : fd,
                   "func": open(name+"_func.go", 'w+b')}
 
-        #for ext in ('','_enum', '_func', '_db'):
-        #  #cmd = "rm %s%s%s.go" % (CODE_GENERATION_PATH, name, ext)
-        #  cmd = "rm -f %s%s.go" % (name, ext)
-        #  executeGoModelCleanupCommand([cmd])
-
         build_pybind(ctx, modules, fdDict)
+
+        objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
+        #import ipdb;ipdb.set_trace()
+        with open(objsData, 'w+') as fp:
+            json.dump(gYangObjInfo, fp,  indent=2)
 
         for f in fdDict.values():
             f.close()
@@ -288,9 +292,14 @@ class BTPyGOClass(plugin.PyangPlugin):
                                         dest="specific_object",
                                         action="store",
                                         help="""Generate Gobindings only for a specific object"""),
+                    optparse.make_option("--owner",
+                                        dest="owner",
+                                        action="store",
+                                        help="""Owner daemon responsible for this model"""),
                   ]
         g = optparser.add_option_group("pyangbind output specific options")
         g.add_options(optlist)
+
 
 # Core function to build the pyangbind output - starting with building the
 # dependencies - and then working through the instantiated tree that pyang has
@@ -816,6 +825,7 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
 
             # create struct skeleton
             # this will create the beginning of the struct definition
+            #import ipdb;ipdb.set_trace()
             structName = CreateStructSkeleton(module, fdDict["struct"], parent, path)
             if structName != '':
                 #print 'creating unique class name', structName
@@ -924,6 +934,8 @@ def addStructDescription(module, nfd, parent, path):
 
 
 def CreateStructSkeleton(module, nfd, parent, path, write=True):
+    global gOwnersInfo 
+    global gYangObjInfo
     if not ENABLE_CAMEL_CASE:
         structName = '%s' % safe_name(parent.arg)
         if not path == "":
@@ -935,11 +947,43 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
     else:
         structName = '%s' % safe_name(safe_name(path.replace("/", "_")))
 
-    #if 'Config' == structName[-6:]:
-    #  structName = structName[:-6]
-
     if write and structName != '':
         nfd.write("type %s struct {\n" % structName)
+        if not gOwnersInfo or not gYangObjInfo:
+            ownersData = srBase+ '/snaproute/src/models/'+'yangObjInfo.json' 
+            objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
+            with open(ownersData) as objInfoFile:    
+                gOwnersInfo = json.load(objInfoFile)
+
+            if not os.path.exists(objsData):
+                open(objsData, 'w').close() 
+                gYangObjInfo = {}
+            else:
+                with open(objsData, 'w+') as objInfoFile:    
+                    try:
+                        gYangObjInfo = json.load(objInfoFile)
+                    except:
+                        gYangObjInfo = {}
+
+        owner =  gOwnersInfo[parent.i_module.i_modulename]
+        srcFile = ''
+        if nfd:
+            parts = nfd.stream.name.split('/')[-1].split('.')
+            srcFile = '.'.join(parts[0:-1])
+
+        multiplicity = '1'
+        if parent.keyword == 'list':
+            multiplicity = '*'
+        access = 'w'
+        for stmt in parent.i_children:
+            if stmt.i_config == False:
+                access = 'r'
+
+        gYangObjInfo[structName] =  {'access': access,                                                                                                       
+                                      'multiplicity':multiplicity, 
+                                      'owner': owner['owner'],
+                                      'srcfile' : srcFile
+                                    }
 
     return structName
 
@@ -947,29 +991,6 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     structName = CreateStructSkeleton(module, nfd, parent, path, write=False)
     if structName != '':
-        #nfd.write("func New%s() *%s {\n" % (structName, structName))
-
-        # Generic NewFunc, set up the path_helper if asked to.
-        #nfd.write("\tnewObj := &%s{\n" % (structName))
-        # Write out the classes that are stored locally as self.__foo where
-        # foo is the safe YANG name.
-
-        #for c in classes:
-        #    if classes[c]["default"] != 0:
-        #        default = classes[c]["default"]
-        #        if default not in class_bool_map.keys() and type(default) != type(1):
-        #            default = c + "_" + default
-        #            default = safe_name(default)
-        #            # TODO need to handle enumeration types
-        #            continue
-        #            #if "REJECT" in default:
-        #            #  print "DEFAULT", c, classes[c]
-        #        nfd.write("\t\t%s : %s%s,\n" % (classes[c]["name"],
-        #                                        classes[c]["base"], default))
-        #nfd.write("\t\t}\n")
-        #nfd.write("\treturn newObj\n}\n\n")
-
-        # write unmarshalObject function
         nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
         var err error
         if len(body) > 0 {
@@ -1053,10 +1074,6 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     elementList.append(elemName)
 
     for i in elements:
-            #print '******************************************'
-            #print "GO STRUCT", elements
-            #print '******************************************'
-
         elemName = i["name"][:1].upper() + i["name"][1:]
 
         if elemName in elementList:
@@ -1156,9 +1173,6 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 elementList.append(elemName)
 
         else:
-            #print '******************************************'
-            #print "GO-STRUCT element %s %s %s %s" % (elemName, i["class"], i["type"], i["name"],)
-            #print '******************************************'
             membertype = i["type"]
             if isinstance(membertype, list):
                 membertype = "[]%s" % membertype[0]
@@ -1724,7 +1738,4 @@ def get_element(ctx, fdDict, element, module, parent, path,
 
         this_object.append(elemdict)
 
-    #print '==============================================================='
-    #print "ELEMENT DICT", elemdict
-    #print '==============================================================='
     return this_object
