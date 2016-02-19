@@ -286,6 +286,45 @@ class DaemonObjectsInfo (object) :
 				return true
 			    }\n""")
 
+    def createClientIfUpdateObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+	print 'clientIf Update Object for %s' %(self.name)
+	clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
+
+	    logger.Println("### Update Object called %s", attrSet, objKey)
+	    ok := false
+	    switch obj.(type) {
+	""" %(newDeamonName, newDeamonName))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            s = structName
+            d = self.name
+            if structInfo['access'] in ['w', 'rw']:
+		clientIfFd.write("""\ncase models.%s :""" % (s,))
+		clientIfFd.write("""\n// cast original object
+		origdata := dbObj.(models.%s)
+		updatedata := obj.(models.%s)\n""" %(s, s) )
+		clientIfFd.write("""// create new thrift objects
+		origconf := %s.New%s()\nupdateconf := %s.New%s()\n""" %(servicesName, s, servicesName, s))
+		clientIfFd.write("""models.Convert%s%sObjToThrift(&origdata, origconf)
+		models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
+		clientIfFd.write("""
+		    if clnt.ClientHdl != nil {
+			ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
+			if ok {
+			    updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
+			} else {
+			    panic(err)
+			}
+		    }
+		    break\n""" %(s))
+
+	clientIfFd.write("""\ndefault:
+				    break
+				}
+		    return ok
+
+		}\n""")
+
     def createClientIfGetBulkObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
 	print 'clientIf GetBulk Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
@@ -371,12 +410,9 @@ class DaemonObjectsInfo (object) :
 	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName)
 	self.createClientIfCreateObject(clientIfFd, servicesName, newDeamonName, objectNames)
 	self.createClientIfDeleteObject(clientIfFd, servicesName, newDeamonName, objectNames)
+	self.createClientIfUpdateObject(clientIfFd, servicesName, newDeamonName, objectNames)
 	self.createClientIfGetBulkObject(clientIfFd, servicesName, newDeamonName, objectNames)
 	clientIfFd.close()
-        '''
-    createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
-
-        '''
 
 gDryRun =  False
 def generateThriftAndClientIfs():
@@ -417,18 +453,6 @@ def generateThriftAndClientIfs():
         entry.generate_clientif(ownerToObjMap[dmn])
 
     return
-    goStructToListersDict = {}
-
-
-    allCrudStructList = []
-    # lets create the clientIf and .thrift files for each listener deamon
-    #for d in deamons:
-    #    createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
-
-        # create a client if info
-        # Jay Start here
-        # generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
-
     # create teh object map file
     # generate_objmap(allCrudStructList)
 
