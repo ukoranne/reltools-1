@@ -173,6 +173,15 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
+func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
+	switch typeVal {
+	case "uint8", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
+		return true
+	default:
+		return false
+	}
+	return false
+}
 func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
@@ -187,12 +196,24 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 				varName := fld.Names[0].String()
 				if fld.Tag != nil {
 					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
+						idntType := fld.Type.(*ast.Ident)
+						varType := idntType.String()
 						if multipleKeys == 0 {
-							keyStr = keyStr + " string (obj." + varName + ") "
+							if obj.IsNumericType(varType) {
+								keyStr = keyStr + " string (strconv.Atoi(int(obj." + varName + "))) "
+							} else {
+								keyStr = keyStr + " string (obj." + varName + ") "
+							}
 							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
+
 							multipleKeys = 1
 						} else {
-							keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
+							if obj.IsNumericType(varType) {
+								keyStr = keyStr + "+ \"#\" + string (strconv.Atoi(int(obj." + varName + "))) "
+							} else {
+								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
+							}
+
 							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(idx-1) + "]" + " + " + "\"\\\"\""
 						}
 					}
