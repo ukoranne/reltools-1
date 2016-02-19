@@ -200,7 +200,34 @@ class DaemonObjectsInfo (object) :
 
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
-    
+   
+    def clientIfBasicHelper(self, clientIfFd, servicesName, newDeamonName, lowerDeamonName):
+	clientIfFd.write("""type %sClient struct {
+				    ipcutils.IPCClientBase
+				    ClientHdl *%s.%sServicesClient
+				}\n""" % (newDeamonName, servicesName, newDeamonName))
+	clientIfFd.write("""
+			    func (clnt *%sClient) Initialize(name string, address string) {
+				clnt.Address = address
+				return
+			    }\n""" % (newDeamonName,))
+	clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
+
+				clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
+				if clnt.TTransport != nil && clnt.PtrProtocolFactory != nil {
+				    clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.TTransport, clnt.PtrProtocolFactory)
+				    if clnt.ClientHdl != nil {
+					clnt.IsConnected = true
+				    } else {
+					clnt.IsConnected = false
+				    }
+				}
+				return true
+			    }\n""" % (newDeamonName, servicesName, newDeamonName))
+	clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
+				return clnt.IsConnected
+			    }\n""" % (newDeamonName,))
+
     def generate_clientif(self, objectNames):
         if self.name == 'ospfd':  ### Hari TODO remove this condition once OSPF works
             return
@@ -229,31 +256,7 @@ class DaemonObjectsInfo (object) :
 	    "database/sql"
 	    "utils/ipcutils"
 	    )\n""" % servicesName)
-	clientIfFd.write("""type %sClient struct {
-				    ipcutils.IPCClientBase
-				    ClientHdl *%s.%sServicesClient
-				}\n""" % (newDeamonName, servicesName, newDeamonName))
-	clientIfFd.write("""
-			    func (clnt *%sClient) Initialize(name string, address string) {
-				clnt.Address = address
-				return
-			    }\n""" % (newDeamonName,))
-	clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
-
-				clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
-				if clnt.TTransport != nil && clnt.PtrProtocolFactory != nil {
-				    clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.TTransport, clnt.PtrProtocolFactory)
-				    if clnt.ClientHdl != nil {
-					clnt.IsConnected = true
-				    } else {
-					clnt.IsConnected = false
-				    }
-				}
-				return true
-			    }\n""" % (newDeamonName, servicesName, newDeamonName))
-	clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
-				return clnt.IsConnected
-			    }\n""" % (newDeamonName,))
+	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName, lowerDeamonName)
         '''
     createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
     createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
