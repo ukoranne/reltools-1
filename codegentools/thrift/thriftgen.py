@@ -201,7 +201,7 @@ class DaemonObjectsInfo (object) :
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
    
-    def clientIfBasicHelper(self, clientIfFd, servicesName, newDeamonName, lowerDeamonName):
+    def clientIfBasicHelper(self, clientIfFd, servicesName, newDeamonName):
 	clientIfFd.write("""type %sClient struct {
 				    ipcutils.IPCClientBase
 				    ClientHdl *%s.%sServicesClient
@@ -228,7 +228,7 @@ class DaemonObjectsInfo (object) :
 				return clnt.IsConnected
 			    }\n""" % (newDeamonName,))
 
-    def createClientIfCreateObject(self, clientIfFd, servicesName, newDeamonName, lowerDeamonName, objectNames):
+    def createClientIfCreateObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
 	print 'Create clientIf Create Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 			    var objId int64
@@ -255,6 +255,35 @@ class DaemonObjectsInfo (object) :
 				}
 
 				return objId, true
+			    }\n""")
+
+    def createClientIfDeleteObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+	print 'Create clientIf Delete Object for %s' %(self.name)
+	clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
+
+				switch obj.(type) {\n""" % (newDeamonName,))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            s = structName
+            d = self.name
+            if structInfo['access'] in ['w', 'rw']:
+		clientIfFd.write("""
+				    case models.%s :
+				    data := obj.(models.%s)
+				    conf := %s.New%s()\n""" % (s, s, servicesName, s))
+		clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
+		clientIfFd.write("""
+				    _, err := clnt.ClientHdl.Delete%s(conf)
+				    if err != nil {
+				    return false
+				    }
+				    data.DeleteObjectFromDb(objKey, dbHdl)
+				    break\n""" % (s,))
+	clientIfFd.write("""default:
+				    break
+				}
+
+				return true
 			    }\n""")
 
     def generate_clientif(self, objectNames):
@@ -285,10 +314,10 @@ class DaemonObjectsInfo (object) :
 	    "database/sql"
 	    "utils/ipcutils"
 	    )\n""" % servicesName)
-	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName, lowerDeamonName)
-	self.createClientIfCreateObject(clientIfFd, servicesName, newDeamonName, lowerDeamonName, objectNames)
+	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName)
+	self.createClientIfCreateObject(clientIfFd, servicesName, newDeamonName, objectNames)
+	self.createClientIfDeleteObject(clientIfFd, servicesName, newDeamonName, objectNames)
         '''
-    createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
     createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
     createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
     clientIfFd.close()
