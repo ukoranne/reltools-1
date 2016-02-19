@@ -229,7 +229,7 @@ class DaemonObjectsInfo (object) :
 			    }\n""" % (newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
-	print 'Create clientIf Create Object for %s' %(self.name)
+	print 'clientIf Create Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 			    var objId int64
 				switch obj.(type) {\n""" % (newDeamonName,))
@@ -258,7 +258,7 @@ class DaemonObjectsInfo (object) :
 			    }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
-	print 'Create clientIf Delete Object for %s' %(self.name)
+	print 'clientIf Delete Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
 				switch obj.(type) {\n""" % (newDeamonName,))
@@ -286,6 +286,62 @@ class DaemonObjectsInfo (object) :
 				return true
 			    }\n""")
 
+    def createClientIfGetBulkObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+	print 'clientIf GetBulk Object for %s' %(self.name)
+	clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
+					    objCount int64,
+					    nextMarker int64,
+					    more bool,
+					    objs []models.ConfigObj) {
+
+	    logger.Println("### Get Bulk request called with", currMarker, count)
+	    switch obj.(type) {
+	\n""" %(newDeamonName))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            s = structName
+            d = self.name
+	    if structInfo['access'] in ['r']:
+		clientIfFd.write("""\ncase models.%s :\n""" % (s,))
+
+		clientIfFd.write("""
+		    if clnt.ClientHdl != nil {
+			    var ret_obj models.%s
+			bulkInfo, err := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
+			if bulkInfo != nil &&bulkInfo.Count != 0 {
+			    objCount = int64(bulkInfo.Count)
+			    more = bool(bulkInfo.More)
+			    nextMarker = int64(bulkInfo.EndIdx)
+			    for i := 0; i < int(bulkInfo.Count); i++ {
+				if len(objs) == 0 {
+				    objs = make([]models.ConfigObj, 0)
+				}\n""" %(s, s, servicesName, servicesName))
+
+                for k, v in enumerate(structInfo['membersInfo'].iteritems()):
+                    attrInfo = v
+                    attrType = attrInfo['type']
+                    if attrInfo['isArray'] != 'False':
+			clientIfFd.write("""\nfor _, data := range bulkInfo.%sList[i].%s {
+				ret_obj.%s = %s(data)
+				}\n""" %(s, k, k, attrType))
+		    else:
+			clientIfFd.write("""
+				ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, v, s, k))
+		clientIfFd.write("""\nobjs = append(objs, ret_obj)
+					}
+
+			    } else {
+				fmt.Println(err)
+			    }
+		    }
+		    break\n""")
+	clientIfFd.write("""\ndefault:
+				    break
+				}
+		    return nil, objCount, nextMarker, more, objs
+
+		}\n""")
+
     def generate_clientif(self, objectNames):
         if self.name == 'ospfd':  ### Hari TODO remove this condition once OSPF works
             return
@@ -293,8 +349,6 @@ class DaemonObjectsInfo (object) :
         print '#ClientIf file is %s' %(self.clientIfFileName)
         servicesName = self.name
 	newDeamonName = servicesName.upper()
-	lowerDeamonName = servicesName.lower()
-        #print objectNames.objectDict
 	clientIfFd.write("package main\n")
 	#if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
 	if (len([x for x,y in objectNames.objectDict.iteritems() if x in objectNames.objectDict and 'r' in y]) > 0):
@@ -317,10 +371,10 @@ class DaemonObjectsInfo (object) :
 	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName)
 	self.createClientIfCreateObject(clientIfFd, servicesName, newDeamonName, objectNames)
 	self.createClientIfDeleteObject(clientIfFd, servicesName, newDeamonName, objectNames)
+	self.createClientIfGetBulkObject(clientIfFd, servicesName, newDeamonName, objectNames)
+	clientIfFd.close()
         '''
-    createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
     createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
-    clientIfFd.close()
 
         '''
 
