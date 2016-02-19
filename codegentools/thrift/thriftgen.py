@@ -55,6 +55,8 @@ class DaemonObjectsInfo (object) :
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
 	self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
+        self.servicesName = self.name
+	self.newDeamonName = self.servicesName.upper()
         self.objectDict = {}
 
     def __str__(self):
@@ -164,19 +166,19 @@ class DaemonObjectsInfo (object) :
         print '#ThriftUtils file is %s' %(self.thriftUtilsFileName)
         thriftdbutilfd = open(self.thriftUtilsFileName, 'w+')
 
-        servicesName = self.name
         thriftdbutilfd.write("package models\n")
         thriftdbutilfd.write("""import (\n 
-                                "%s"\n)""" %(servicesName))
+                                "%s"\n)""" %(self.servicesName))
 
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
             d = self.name
             if structInfo['access'] in ['w', 'rw']:
-                thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, servicesName, s))
+                thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, self.servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
-                    attrType = v['type']
+                    attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
+
                     if v['isArray'] != 'False':
                          thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
                                                         thriftobj.%s = append(thriftobj.%s, %s(data%s))
@@ -186,10 +188,11 @@ class DaemonObjectsInfo (object) :
                 thriftdbutilfd.write("""}\n""")
 
 
-                thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
+                thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, self.servicesName, s, s))
 
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
                     attrInfo = v
+                    #attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
                     attrType = attrInfo['type']
                     if attrInfo['isArray'] != 'False':
                         thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
@@ -201,16 +204,16 @@ class DaemonObjectsInfo (object) :
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
    
-    def clientIfBasicHelper(self, clientIfFd, servicesName, newDeamonName):
+    def clientIfBasicHelper(self, clientIfFd):
 	clientIfFd.write("""type %sClient struct {
 				    ipcutils.IPCClientBase
 				    ClientHdl *%s.%sServicesClient
-				}\n""" % (newDeamonName, servicesName, newDeamonName))
+				}\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
 	clientIfFd.write("""
 			    func (clnt *%sClient) Initialize(name string, address string) {
 				clnt.Address = address
 				return
-			    }\n""" % (newDeamonName,))
+			    }\n""" % (self.newDeamonName,))
 	clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
 
 				clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
@@ -223,16 +226,16 @@ class DaemonObjectsInfo (object) :
 				    }
 				}
 				return true
-			    }\n""" % (newDeamonName, servicesName, newDeamonName))
+			    }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
 	clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
 				return clnt.IsConnected
-			    }\n""" % (newDeamonName,))
+			    }\n""" % (self.newDeamonName,))
 
-    def createClientIfCreateObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+    def createClientIfCreateObject(self, clientIfFd, objectNames):
 	print 'clientIf Create Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
 			    var objId int64
-				switch obj.(type) {\n""" % (newDeamonName,))
+				switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -241,7 +244,7 @@ class DaemonObjectsInfo (object) :
 		clientIfFd.write("""
 				    case models.%s :
 				    data := obj.(models.%s)
-				    conf := %s.New%s()\n""" % (s, s, servicesName, s))
+				    conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
 		clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
 		clientIfFd.write("""
 				    _, err := clnt.ClientHdl.Create%s(conf)
@@ -257,11 +260,11 @@ class DaemonObjectsInfo (object) :
 				return objId, true
 			    }\n""")
 
-    def createClientIfDeleteObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+    def createClientIfDeleteObject(self, clientIfFd, objectNames):
 	print 'clientIf Delete Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
-				switch obj.(type) {\n""" % (newDeamonName,))
+				switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -270,7 +273,7 @@ class DaemonObjectsInfo (object) :
 		clientIfFd.write("""
 				    case models.%s :
 				    data := obj.(models.%s)
-				    conf := %s.New%s()\n""" % (s, s, servicesName, s))
+				    conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
 		clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
 		clientIfFd.write("""
 				    _, err := clnt.ClientHdl.Delete%s(conf)
@@ -286,14 +289,14 @@ class DaemonObjectsInfo (object) :
 				return true
 			    }\n""")
 
-    def createClientIfUpdateObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+    def createClientIfUpdateObject(self, clientIfFd, objectNames):
 	print 'clientIf Update Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
 	    logger.Println("### Update Object called %s", attrSet, objKey)
 	    ok := false
 	    switch obj.(type) {
-	""" %(newDeamonName, newDeamonName))
+	""" %(self.newDeamonName, self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -304,7 +307,7 @@ class DaemonObjectsInfo (object) :
 		origdata := dbObj.(models.%s)
 		updatedata := obj.(models.%s)\n""" %(s, s) )
 		clientIfFd.write("""// create new thrift objects
-		origconf := %s.New%s()\nupdateconf := %s.New%s()\n""" %(servicesName, s, servicesName, s))
+		origconf := %s.New%s()\nupdateconf := %s.New%s()\n""" %(self.servicesName, s, self.servicesName, s))
 		clientIfFd.write("""models.Convert%s%sObjToThrift(&origdata, origconf)
 		models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
 		clientIfFd.write("""
@@ -325,7 +328,7 @@ class DaemonObjectsInfo (object) :
 
 		}\n""")
 
-    def createClientIfGetBulkObject(self, clientIfFd, servicesName, newDeamonName, objectNames):
+    def createClientIfGetBulkObject(self, clientIfFd, objectNames):
 	print 'clientIf GetBulk Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
 					    objCount int64,
@@ -335,7 +338,7 @@ class DaemonObjectsInfo (object) :
 
 	    logger.Println("### Get Bulk request called with", currMarker, count)
 	    switch obj.(type) {
-	\n""" %(newDeamonName))
+	\n""" %(self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -354,7 +357,7 @@ class DaemonObjectsInfo (object) :
 			    for i := 0; i < int(bulkInfo.Count); i++ {
 				if len(objs) == 0 {
 				    objs = make([]models.ConfigObj, 0)
-				}\n""" %(s, s, servicesName, servicesName))
+				}\n""" %(s, s, self.servicesName, self.servicesName))
 
                 for k, v in enumerate(structInfo['membersInfo'].iteritems()):
                     attrInfo = v
@@ -370,7 +373,7 @@ class DaemonObjectsInfo (object) :
 					}
 
 			    } else {
-				fmt.Println(err)
+				logger.Println(err)
 			    }
 		    }
 		    break\n""")
@@ -386,32 +389,15 @@ class DaemonObjectsInfo (object) :
             return
 	clientIfFd = open(self.clientIfFileName, 'w+')
         print '#ClientIf file is %s' %(self.clientIfFileName)
-        servicesName = self.name
-	newDeamonName = servicesName.upper()
 	clientIfFd.write("package main\n")
 	#if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
-	if (len([x for x,y in objectNames.objectDict.iteritems() if x in objectNames.objectDict and 'r' in y]) > 0):
-	    # BELOW CODE WILL BE FORMATED BY GOFMT
-	    clientIfFd.write("""import (
-	    "%s"
-	    "fmt"
-	    "models"
-	    "database/sql"
-	    "utils/ipcutils"
-	    )\n""" % servicesName)
-	else:
-	    # BELOW CODE WILL BE FORMATED BY GOFMT
-	    clientIfFd.write("""import (
-	    "%s"
-	    "models"
-	    "database/sql"
-	    "utils/ipcutils"
-	    )\n""" % servicesName)
-	self.clientIfBasicHelper(clientIfFd, servicesName, newDeamonName)
-	self.createClientIfCreateObject(clientIfFd, servicesName, newDeamonName, objectNames)
-	self.createClientIfDeleteObject(clientIfFd, servicesName, newDeamonName, objectNames)
-	self.createClientIfUpdateObject(clientIfFd, servicesName, newDeamonName, objectNames)
-	self.createClientIfGetBulkObject(clientIfFd, servicesName, newDeamonName, objectNames)
+        # BELOW CODE WILL BE FORMATED BY GOFMT
+        clientIfFd.write("""import (\n "%s"\n"models"\n"database/sql"\n"utils/ipcutils")\n""" % self.servicesName)
+	self.clientIfBasicHelper(clientIfFd)
+	self.createClientIfCreateObject(clientIfFd, objectNames)
+	self.createClientIfDeleteObject(clientIfFd, objectNames)
+	self.createClientIfUpdateObject(clientIfFd, objectNames)
+	self.createClientIfGetBulkObject(clientIfFd, objectNames)
 	clientIfFd.close()
 
 gDryRun =  False
