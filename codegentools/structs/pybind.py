@@ -974,8 +974,12 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
         multiplicity = '1'
         if parent.keyword == 'list':
             multiplicity = '*'
-            
-        gYangObjInfo[structName] =  {'access': 'w',                                                                                                       
+        access = 'w'
+        for stmt in parent.i_children:
+            if stmt.i_config == False:
+                access = 'r'
+
+        gYangObjInfo[structName] =  {'access': access,                                                                                                       
                                       'multiplicity':multiplicity, 
                                       'owner': owner['owner'],
                                       'srcfile' : srcFile
