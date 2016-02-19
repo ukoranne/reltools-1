@@ -11,6 +11,7 @@ srBase = os.environ.get('SR_CODE_BASE', None)
 GO_MODEL_BASE_PATH_LIST = [srBase + "/generated/src/%s/" % MODEL_NAME,
                            srBase + "/snaproute/src/models/"]
 JSON_MODEL_REGISTRAION_PATH = srBase + "/snaproute/src/models/"
+THRIFT_UTILS_PATH = srBase + "/snaproute/src/models/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
@@ -51,7 +52,7 @@ class DaemonObjectsInfo (object) :
         self.name   =  name
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
-        self.thriftUtilsFileName = THRIFT_CODE_GENERATION_PATH + name + "dbthriftutil.go"
+        self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
         self.objectDict = {}
 
     def __str__(self):
@@ -156,7 +157,9 @@ class DaemonObjectsInfo (object) :
 
 
     def createConvertObjToThriftObj(self, objectNames):
-        #print '#ThriftUtils file is %s' %(self.thriftUtilsFileName)
+        if self.name == 'ospfd':  ### Hari TODO remove this condition once OSPF works
+            return
+        print '#ThriftUtils file is %s' %(self.thriftUtilsFileName)
         thriftdbutilfd = open(self.thriftUtilsFileName, 'w+')
 
         servicesName = self.name
@@ -171,34 +174,27 @@ class DaemonObjectsInfo (object) :
             if structInfo['access'] in ['w', 'rw']:
                 thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
-                    cast = v['type']
-                    if cast.startswith('i'):
-                        cast = 'int' + cast.lstrip('i')
-                    if cast == "bool":
-                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                    thriftobj.%s = append(thriftobj.%s, %s(data%s))
-                                                }\n""" %(i, k, k, k, cast, i))
+                    attrType = v['type']
+                    if v['isArray'] != 'False':
+                         thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                        thriftobj.%s = append(thriftobj.%s, %s(data%s))
+                                                    }\n""" %(i, k, k, k, attrType, i))
                     else:
-                        thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                    thriftobj.%s = append(thriftobj.%s, %s(data%s))
-                                                }\n""" %(i, k, k, k, cast, i))
-
-                    thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, cast, k))
+                        thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
                 thriftdbutilfd.write("""}\n""")
 
-                thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
-                #for i, (k, v) in enumerate(goStructDict[s].iteritems()):
-                    #print k.split(' ')
-                #    cast = v
 
-                    # lets convert thrift i8, i16, i32, i64 to int...
-                #    if cast.endswith("[]"):
-                #        cast = cast[:-2]
-                #        thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
-                #                                    dbobj.%s = append(dbobj.%s, %s(data%s))
-                #                                }\n""" %(i, k, k, k, cast, i))
-                #    else:
-                #        thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, cast, k))
+                thriftdbutilfd.write("""\nfunc ConvertThriftTo%s%sObj(thriftobj *%s.%s, dbobj *%s) { """ %(d, s, servicesName, s, s))
+
+                for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
+                    attrInfo = v
+                    attrType = attrInfo['type']
+                    if attrInfo['isArray'] != 'False':
+                        thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
+                                                    dbobj.%s = append(dbobj.%s, %s(data%s))
+                                                }\n""" %(i, k, k, k, attrType, i))
+                    else:
+                        thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, attrType, k))
 
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
@@ -248,14 +244,15 @@ def generateThriftAndClientIfs():
 
     allCrudStructList = []
     # lets create the clientIf and .thrift files for each listener deamon
-    for d in deamons:
-        createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
+    #for d in deamons:
+    #    createConvertObjToThriftObj(d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
 
         # create a client if info
-        generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
+        # Jay Start here
+        # generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
 
     # create teh object map file
-    generate_objmap(allCrudStructList)
+    # generate_objmap(allCrudStructList)
 
 
 def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict):

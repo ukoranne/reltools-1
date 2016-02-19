@@ -32,6 +32,7 @@ type ObjectInfoJson struct {
 type ObjectMembersInfo struct {
 	VarType string `json:"type"`
 	IsKey   bool   `json:"isKey"`
+	IsArray bool   `json:"isArray"`
 }
 
 // This structure represents the objects that are generated directly from go files instead of yang models
@@ -97,7 +98,6 @@ func main() {
 	for name, obj := range objMap {
 		obj.ObjName = name
 		srcFile := fileBase + obj.SrcFile
-
 		f, err := parser.ParseFile(fset,
 			srcFile,
 			nil,
@@ -117,11 +117,10 @@ func main() {
 						typ := spec.(*ast.TypeSpec)
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
-							//fmt.Printf("%s \n", typ.Name.Name)
 							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
 							listingsFd.WriteString(obj.DbFileName + "\n")
 							obj.WriteDBFunctions(str)
-							generateObjectMembersInfo(str, dirStore+typ.Name.Name+"Members.json")
+							generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 						}
 					}
 				}
@@ -129,7 +128,7 @@ func main() {
 		}
 	}
 }
-func generateObjectMembersInfo(str *ast.StructType, jsonFileName string) {
+func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) {
 	// Write Skeleton of the structure in json.
 	//This would help later python scripts to understand the structure
 	var objMembers map[string]ObjectMembersInfo
@@ -144,10 +143,20 @@ func generateObjectMembersInfo(str *ast.StructType, jsonFileName string) {
 
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
+			varName := fld.Names[0].String()
 			switch fld.Type.(type) {
+			case *ast.ArrayType:
+				arrayInfo := fld.Type.(*ast.ArrayType)
+				info := ObjectMembersInfo{}
+				info.IsArray = true
+				objMembers[varName] = info
+				idntType := arrayInfo.Elt.(*ast.Ident)
+				varType := idntType.String()
+				info.VarType = varType
+				objMembers[varName] = info
+
 			case *ast.Ident:
 				info := ObjectMembersInfo{}
-				varName := fld.Names[0].String()
 				if fld.Tag != nil {
 					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
 						info.IsKey = true
@@ -246,8 +255,8 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 													   return obj, err                                                                                                         
 													}
 													`)
-						objMap[typ.Name.Name] = obj
 
+						objMap[typ.Name.Name] = obj
 						marshalFcnFd, err := os.Create(marshalFcnFile)
 						if err != nil {
 							fmt.Println("Failed to open the file", marshalFcnFile)
