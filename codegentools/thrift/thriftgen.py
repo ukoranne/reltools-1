@@ -12,6 +12,7 @@ GO_MODEL_BASE_PATH_LIST = [srBase + "/generated/src/%s/" % MODEL_NAME,
                            srBase + "/snaproute/src/models/"]
 JSON_MODEL_REGISTRAION_PATH = srBase + "/snaproute/src/models/"
 THRIFT_UTILS_PATH = srBase + "/snaproute/src/models/"
+CLIENTIF_SRC_PATCH = srBase + "/snaproute/src/config/"
 #JSON_MODEL_REGISTRAION_PATH = HOME + "/git/reltools/codegentools/gotojson/"
 CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
@@ -53,6 +54,7 @@ class DaemonObjectsInfo (object) :
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
+	self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
         self.objectDict = {}
 
     def __str__(self):
@@ -198,8 +200,68 @@ class DaemonObjectsInfo (object) :
 
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
+    
+    def generate_clientif(self, objectNames):
+        if self.name == 'ospfd':  ### Hari TODO remove this condition once OSPF works
+            return
+	clientIfFd = open(self.clientIfFileName, 'w+')
+        print '#ClientIf file is %s' %(self.clientIfFileName)
+        servicesName = self.name
+	newDeamonName = servicesName.upper()
+	lowerDeamonName = servicesName.lower()
+        #print objectNames.objectDict
+	clientIfFd.write("package main\n")
+	#if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
+	if (len([x for x,y in objectNames.objectDict.iteritems() if x in objectNames.objectDict and 'r' in y]) > 0):
+	    # BELOW CODE WILL BE FORMATED BY GOFMT
+	    clientIfFd.write("""import (
+	    "%s"
+	    "fmt"
+	    "models"
+	    "database/sql"
+	    "utils/ipcutils"
+	    )\n""" % servicesName)
+	else:
+	    # BELOW CODE WILL BE FORMATED BY GOFMT
+	    clientIfFd.write("""import (
+	    "%s"
+	    "models"
+	    "database/sql"
+	    "utils/ipcutils"
+	    )\n""" % servicesName)
+	clientIfFd.write("""type %sClient struct {
+				    ipcutils.IPCClientBase
+				    ClientHdl *%s.%sServicesClient
+				}\n""" % (newDeamonName, servicesName, newDeamonName))
+	clientIfFd.write("""
+			    func (clnt *%sClient) Initialize(name string, address string) {
+				clnt.Address = address
+				return
+			    }\n""" % (newDeamonName,))
+	clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
 
+				clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
+				if clnt.TTransport != nil && clnt.PtrProtocolFactory != nil {
+				    clnt.ClientHdl = %s.New%sServicesClientFactory(clnt.TTransport, clnt.PtrProtocolFactory)
+				    if clnt.ClientHdl != nil {
+					clnt.IsConnected = true
+				    } else {
+					clnt.IsConnected = false
+				    }
+				}
+				return true
+			    }\n""" % (newDeamonName, servicesName, newDeamonName))
+	clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
+				return clnt.IsConnected
+			    }\n""" % (newDeamonName,))
+        '''
+    createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
+    createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict, accessDict)
+    createClientIfGetBulkObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
+    createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict, goStructDict, accessDict)
+    clientIfFd.close()
 
+        '''
 
 gDryRun =  False
 def generateThriftAndClientIfs():
@@ -237,6 +299,7 @@ def generateThriftAndClientIfs():
         entry.parseSrcFile()
         entry.generateThriftInterfaces(ownerToObjMap[dmn])
         entry.createConvertObjToThriftObj(ownerToObjMap[dmn])
+        entry.generate_clientif(ownerToObjMap[dmn])
 
     return
     goStructToListersDict = {}
