@@ -289,6 +289,12 @@ class DaemonObjectsInfo (object) :
 				return true
 			    }\n""")
 
+    def createClientIfGetObject(self, clientIfFd, objectNames):
+	print 'clientIf Get Object for %s' %(self.name)
+	clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (models.ConfigObj, bool) {\n""" % (self.newDeamonName,))
+	clientIfFd.write("""return nil, false                                                                                                    
+			    }\n""")
+
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
 	print 'clientIf Update Object for %s' %(self.name)
 	clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
@@ -398,6 +404,8 @@ class DaemonObjectsInfo (object) :
 	self.createClientIfDeleteObject(clientIfFd, objectNames)
 	self.createClientIfUpdateObject(clientIfFd, objectNames)
 	self.createClientIfGetBulkObject(clientIfFd, objectNames)
+	self.createClientIfGetObject(clientIfFd, objectNames)
+        
 	clientIfFd.close()
 
 gDryRun =  False
