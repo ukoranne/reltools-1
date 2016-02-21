@@ -367,7 +367,7 @@ class DaemonObjectsInfo (object) :
 				    objs = make([]models.ConfigObj, 0)
 				}\n""" %(s, s, self.servicesName, self.servicesName))
 
-                for k, v in enumerate(structInfo['membersInfo'].iteritems()):
+                for k, v in structInfo['membersInfo'].iteritems():
                     attrInfo = v
                     attrType = attrInfo['type']
                     if attrInfo['isArray'] != 'False':
@@ -376,7 +376,7 @@ class DaemonObjectsInfo (object) :
 				}\n""" %(s, k, k, attrType))
 		    else:
 			clientIfFd.write("""
-				ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, v, s, k))
+				ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, attrType, s, k))
 		clientIfFd.write("""\nobjs = append(objs, ret_obj)
 					}
 
@@ -393,8 +393,6 @@ class DaemonObjectsInfo (object) :
 		}\n""")
 
     def generate_clientif(self, objectNames):
-        if self.name == 'ospfd':  ### Hari TODO remove this condition once OSPF works
-            return
 	clientIfFd = open(self.clientIfFileName, 'w+')
         print '#ClientIf file is %s' %(self.clientIfFileName)
 	clientIfFd.write("package main\n")

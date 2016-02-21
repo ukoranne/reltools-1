@@ -41,6 +41,10 @@ installdir:
 
 codegenv2:
 	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
+
+codegenclean:
+	$(SR_CODE_BASE)/reltools/codegentools/cleangencode.sh
+
 codegen:
 	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
@@ -71,6 +75,6 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 endif
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
-clean: $(COMPS)
+clean: codegenclean $(COMPS)
 	$(foreach f,$^, make -C $(f) clean;)
 	$(RMDIRFORCE) $(DESTDIR)
