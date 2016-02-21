@@ -125,7 +125,7 @@ MODEL_NAME = 'models'
 srBase = os.environ.get('SR_CODE_BASE', None)
 MODELS_PATH_LIST = [srBase + "/generated/src/models/"]
 CODE_GENERATION_PATH = srBase + "/generated/src/models/"
-
+GENERATED_FILES_LIST = srBase + "/reltools/codegentools/._genInfo/generatedGoFiles.txt"
 gYangObjInfo = None
 gOwnersInfo  = None
 
@@ -219,14 +219,21 @@ class BTPyGOClass(plugin.PyangPlugin):
     def emit(self, ctx, modules, fd):
         # When called, call the build_pyangbind function.
         name = fd.name.split('.')[0]
-
         fdDict = {"struct" : fd,
-                  "func": open(name+"_func.go", 'w+b')}
+                  "func": open(name+"_serializer.go", 'w+b')}
 
+        modelFileName  = fd.name.strip('.tmp')
+        serializerName = modelFileName.strip('.go') + '_serializer.go'
         build_pybind(ctx, modules, fdDict)
 
+        with open(GENERATED_FILES_LIST, 'a+') as fp:
+            fp.write(modelFileName + '\n')
+            fp.write(serializerName+ '\n')
+
         objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
-        #import ipdb;ipdb.set_trace()
+        with open(objsData, 'w+') as fp:
+            json.dump(gYangObjInfo, fp,  indent=2)
+
         with open(objsData, 'w+') as fp:
             json.dump(gYangObjInfo, fp,  indent=2)
 
