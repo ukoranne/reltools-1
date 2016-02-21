@@ -109,8 +109,12 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File) 
 	}
 
 	keyStr := "\"PRIMARY KEY ( "
-	for _, key := range keys {
-		keyStr = keyStr + key
+	for idx, key := range keys {
+		if idx == 0 {
+			keyStr = keyStr + key
+		} else {
+			keyStr = keyStr + ", " + key
+		}
 	}
 	keyStr = keyStr + ")\" +\n"
 
