@@ -49,14 +49,14 @@ func main() {
 	}
 	jsonFile := base + "/snaproute/src/models/genObjectConfig.json"
 	fileBase := base + "/snaproute/src/models/"
-	listingFile := "dbIffiles.txt"
 	var objMap map[string]ObjectSrcInfo
 
 	//
 	// Create a directory to store all the temporary files
 	//
 	dirStore := base + "/reltools/codegentools/._genInfo/"
-	os.Mkdir(dirStore, 0777)
+	//os.Mkdir(dirStore, 0777)
+	listingFile := dirStore + "generatedGoFiles.txt"
 
 	//
 	// Files generated from yang models are already listed in right format in genObjectConfig.json
@@ -89,7 +89,7 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", jsonFile, err)
 	}
 
-	listingsFd, err := os.Create(listingFile)
+	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
 	if err != nil {
 		fmt.Println("Failed to open the file", listingFile)
 		return
