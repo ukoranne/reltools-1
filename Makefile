@@ -75,6 +75,7 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 endif
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
-clean: codegenclean $(COMPS)
+clean: $(COMPS)
+	$(SR_CODE_BASE)/reltools/codegentools/cleangencode.sh
 	$(foreach f,$^, make -C $(f) clean;)
 	$(RMDIRFORCE) $(DESTDIR)
