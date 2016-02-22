@@ -2,7 +2,7 @@ import os
 import json
 import re
 
-OBJECT_MAP_NAME = "objectmap.go"
+OBJECT_MAP_NAME = "genObjMap.go"
 
 MODEL_NAME = 'models'
 srBase = os.environ.get('SR_CODE_BASE', None)
@@ -16,7 +16,7 @@ CODE_GENERATION_PATH = srBase + "/reltools/codegentools/gotothrift/"
 CLIENTIF_CODE_GENERATION_PATH = srBase + "/generated/src/config/"
 CLIENTIF_FILE_PATH = srBase + "/src/config/"
 SRC_BASE = srBase + "/snaproute/src/"
-OBJMAP_CODE_GENERATION_PATH = srBase + "/generated/src/%s/" % MODEL_NAME
+OBJMAP_CODE_GENERATION_PATH = srBase + "/snaproute/src/%s/" % MODEL_NAME
 THRIFT_CODE_GENERATION_PATH = srBase + "/generated/src/gorpc/"
 DBUTIL_CODE_GENERATION_PATH = THRIFT_CODE_GENERATION_PATH + "dbutils/"
 GENERATED_FILES_LIST = srBase + "/reltools/codegentools/._genInfo/generatedGoFiles.txt"
@@ -447,25 +447,26 @@ def generateThriftAndClientIfs():
     return
 
 
-def generate_objmap(allStructList):
+def generateObjectMap():
+    genObjInfoJson = JSON_MODEL_REGISTRAION_PATH + 'genObjectConfig.json'
     fd = open(OBJMAP_CODE_GENERATION_PATH + OBJECT_MAP_NAME, 'w+')
     fd.write("""package %s\n\n""" % MODEL_NAME)
-    fd.write("""var ConfigObjectMap = map[string] ConfigObj{\n""")
+    fd.write("""var GenConfigObjectMap = map[string] ConfigObj{\n""")
 
-    # lets temporarily add the manual objects
-    fd.write(""" "IPV4Route":    &IPV4Route{},    // manually merged from originional
-	"Vlan":         &Vlan{},         // manually added, no YANG defined
-	"IPv4Intf":     &IPv4Intf{},     // manually added, no YANG defined
-	"IPv4Neighbor": &IPv4Neighbor{}, // manually added, no YANG defined
-	"BGPGlobalConfig": &BGPGlobalConfig{}, //manually added, no YANG defined
-	"BGPNeighborConfig" : &BGPNeighborConfig{}, //manually added, no YANG defined\n""")
+    with open(genObjInfoJson) as infoFile:
+        objData = json.load(infoFile)
 
-    for i, s in enumerate(allStructList):
-        fd.write(""""%s" : &%s{},\n""" %(s, s,))
+    for name,  dtls in objData.iteritems():
+        line  = "\"%s\" :    &%s{}," %(name, name)
+        fd.write(line+"\n")
 
     fd.write("""}\n""")
     fd.close()
+    with open(GENERATED_FILES_LIST, 'a+') as fp:
+        fp.write(OBJMAP_CODE_GENERATION_PATH + OBJECT_MAP_NAME+ '\n')
 
+    
 
 if __name__ == "__main__":
+    generateObjectMap ()
     generateThriftAndClientIfs()
