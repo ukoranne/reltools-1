@@ -705,6 +705,7 @@ def GetParentChildrenLeafs(ctx, i_module, parent, parentChildrenLeaf=None):
             childLeaf += 1
             if ch.arg not in parentChildrenLeaf:
                 t = ch.search_one('type')
+                des = ch.search_one('description')
                 et = None
                 if t is not None:
                     et = build_elemtype(ctx, t)
@@ -713,7 +714,7 @@ def GetParentChildrenLeafs(ctx, i_module, parent, parentChildrenLeaf=None):
                 # print ch.__dict__
                 if hasattr(ch, "i_is_key"):
                     isKey = ch.i_is_key
-                parentChildrenLeaf.update({ch.arg: (et, isKey)})
+                parentChildrenLeaf.update({ch.arg: (et, isKey, des.arg)})
 
 
     if parent.parent not in ({}, None, ''):
@@ -955,7 +956,6 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
         structName = '%s' % safe_name(safe_name(path.replace("/", "_")))
 
     if write and structName != '':
-        nfd.write("type %s struct {\n" % structName)
         if not gOwnersInfo or not gYangObjInfo:
             ownersData = srBase+ '/snaproute/src/models/'+'yangObjInfo.json' 
             objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
@@ -963,34 +963,42 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
                 gOwnersInfo = json.load(objInfoFile)
 
             if not os.path.exists(objsData):
+                print 'genObjectConfig does not exist'
                 open(objsData, 'w').close() 
                 gYangObjInfo = {}
             else:
-                with open(objsData, 'w+') as objInfoFile:    
+                with open(objsData, 'a+') as objInfoFile:
                     try:
                         gYangObjInfo = json.load(objInfoFile)
-                    except:
+                    except Exception as e:
+                        print 'genObjectConfig exists but problem with json', e
                         gYangObjInfo = {}
 
-        owner =  gOwnersInfo[parent.i_module.i_modulename]
-        srcFile = ''
-        if nfd:
-            parts = nfd.stream.name.split('/')[-1].split('.')
-            srcFile = '.'.join(parts[0:-1])
+        # import ipdb; ipdb.set_trace()
+        if parent.i_module.i_modulename in gOwnersInfo:
+            nfd.write("type %s struct {\n" % structName)
 
-        multiplicity = '1'
-        if parent.keyword == 'list':
-            multiplicity = '*'
-        access = 'w'
-        for stmt in parent.i_children:
-            if stmt.i_config == False:
-                access = 'r'
+            owner =  gOwnersInfo[parent.i_module.i_modulename]
+            srcFile = ''
+            if nfd:
+                parts = nfd.stream.name.split('/')[-1].split('.')
+                srcFile = '.'.join(parts[0:-1])
 
-        gYangObjInfo[structName] =  {'access': access,                                                                                                       
-                                      'multiplicity':multiplicity, 
-                                      'owner': owner['owner'],
-                                      'srcfile' : srcFile
-                                    }
+            multiplicity = '1'
+            if parent.keyword == 'list':
+                multiplicity = '*'
+            access = 'w'
+            for stmt in parent.i_children:
+                if stmt.i_config == False:
+                    access = 'r'
+
+            gYangObjInfo[structName] =  {'access': access,
+                                          'multiplicity':multiplicity,
+                                          'owner': owner['owner'],
+                                          'srcfile' : srcFile
+                                        }
+        else:
+            structName = ''
 
     return structName
 
@@ -1027,6 +1035,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         childNameList.append(i["name"][:1].upper() + i["name"][1:])
         attrDescriptionDict[i['name']] =  i['description']
 
+    for name, elemtype in parentChildrenLeaf.iteritems():
+        attrDescriptionDict[name] = elemtype[2]
 
     # lets add the default interface functions from the BaseObj
     elements_str += "\tBaseObj\n"
@@ -1042,9 +1052,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         if elemtype[1]:
             #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if isinstance(elemtype[0][1]["native_type"], list):
-                elements_str += "\t%sKey []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+                elements_str += "\t%s []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
             else:
-                elements_str += "\t%sKey %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+                elements_str += "\t%s %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
             elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
             elementList.append(safe_name(name))
         elif safe_name(name) not in childNameList:
@@ -1073,7 +1083,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         membertype = "[]%s" % membertype[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                        elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
                     else:
                         elements_str += "\t%s %s" % (elemName, membertype)
 
@@ -1107,7 +1117,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                             continue
 
                         if keyname == i["name"]:
-                            elements_str += "\t%sKey %s  %s" % (elemName, varname, LIST_KEY_STR)
+                            elements_str += "\t%s %s  %s" % (elemName, varname, LIST_KEY_STR)
                         else:
                             elements_str += "\t%s %s" % (elemName, varname)
 
@@ -1120,7 +1130,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         varname = varname[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                        elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
                     else:
                         elements_str += "\t%s []%s" % (elemName, varname)
                     elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
@@ -1130,7 +1140,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     varname = varname[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                    elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
                 else:
                     elements_str += "\t%s []%s" % (elemName, varname)
 
@@ -1145,7 +1155,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             listType = i["type"]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey []%s  %s" % (elemName, listType, LIST_KEY_STR)
+                elements_str += "\t%s []%s  %s" % (elemName, listType, LIST_KEY_STR)
             else:
                 elements_str += "\t%s []%s" % (elemName, listType)
 
@@ -1172,7 +1182,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     membertype = "[]%s" % membertype[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                    elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
                 else:
                     elements_str += "\t%s %s" % (elemName, membertype)
 
@@ -1185,7 +1195,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 membertype = "[]%s" % membertype[0]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
             else:
                 elements_str += "\t%s %s" % (elemName, membertype)
 
