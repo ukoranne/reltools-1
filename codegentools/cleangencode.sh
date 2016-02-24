@@ -10,4 +10,6 @@ do
 done    
 rm $infoFile
 rm $infoFile.tmp
+rm -f $SR_CODE_BASE/reltools/codegentools/._genInfo/*
+rm -f $SR_CODE_BASE/snaproute/src/models/genObj*
 

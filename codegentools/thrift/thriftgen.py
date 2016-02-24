@@ -54,9 +54,9 @@ class DaemonObjectsInfo (object) :
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
-	self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
+        self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
         self.servicesName = self.name
-	self.newDeamonName = self.servicesName.upper()
+        self.newDeamonName = self.servicesName.upper()
         self.objectDict = {}
 
     def __str__(self):
