@@ -22,17 +22,6 @@ DBUTIL_CODE_GENERATION_PATH = THRIFT_CODE_GENERATION_PATH + "dbutils/"
 GENERATED_FILES_LIST = srBase + "/reltools/codegentools/._genInfo/generatedGoFiles.txt"
 
 GENERATED_FILES_LISTING_FILE = srBase + '/reltools/codegentools/._genInfo'
-daemonThriftNameChangeDict = {
-    "arpd" : "arpd",
-    "asicd" : "asicdServices",
-    "bgpd"  : "bgpd",
-    "lacpd"  : "lacpd",
-    "portd" : "portdServices",
-    "dhcprelayd" : "dhcprelayd",
-    "stpd" : "stpd",
-    "bfdd" : "bfdd"
-}
-
 
 goToThirftTypeMap = {
   'bool':          {"native_type": "bool"},
