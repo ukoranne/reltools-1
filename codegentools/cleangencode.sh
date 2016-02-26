@@ -1,7 +1,9 @@
 #!/bin/bash
 infoFile=$SR_CODE_BASE/reltools/codegentools/._genInfo/generatedGoFiles.txt
 #sort $infoFile|
+mkdir -p $SR_CODE_BASE/reltools/codegentools/._genInfo/ 
 touch $infoFile
+touch $infoFile.tmp
 uniq $infoFile >$infoFile.tmp
 for srcFile in `cat $infoFile.tmp`;
 do
