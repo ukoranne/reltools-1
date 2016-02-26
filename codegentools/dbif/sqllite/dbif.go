@@ -8,6 +8,8 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
+	"regexp"
+	//"strconv"
 	"strings"
 )
 
@@ -30,9 +32,11 @@ type ObjectInfoJson struct {
 
 // This structure represents the a golang Structure for a config object
 type ObjectMembersInfo struct {
-	VarType string `json:"type"`
-	IsKey   bool   `json:"isKey"`
-	IsArray bool   `json:"isArray"`
+	VarType     string `json:"type"`
+	IsKey       bool   `json:"isKey"`
+	IsArray     bool   `json:"isArray"`
+	Description string `json:"description"`
+	DefaultVal  string `json:"default"`
 }
 
 // This structure represents the objects that are generated directly from go files instead of yang models
@@ -128,12 +132,39 @@ func main() {
 		}
 	}
 }
+
+func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
+	reg, err := regexp.Compile("[`\"]")
+	if err != nil {
+		fmt.Println("Error in regex ", err)
+	}
+	tags := reg.ReplaceAllString(attrTags, "")
+	splits := strings.Split(tags, ",")
+	for _, part := range splits {
+		keys := strings.Split(part, ":")
+		for idx, key := range keys {
+			alphas, err := regexp.Compile("[^A-Za-z]")
+			if err != nil {
+				fmt.Println("Error in regex ", err)
+			}
+			key = alphas.ReplaceAllString(key, "")
+			switch key {
+			case "SNAPROUTE":
+				attrInfo.IsKey = true
+			case "DESCRIPTION":
+				attrInfo.Description = keys[idx+1]
+			case "DEFAULT":
+				attrInfo.DefaultVal = keys[idx+1]
+			}
+		}
+	}
+	return
+}
 func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) {
 	// Write Skeleton of the structure in json.
 	//This would help later python scripts to understand the structure
 	var objMembers map[string]ObjectMembersInfo
 	objMembers = make(map[string]ObjectMembersInfo, 1)
-
 	fdHdl, err := os.Create(jsonFileName)
 	if err != nil {
 		fmt.Println("Failed to open the file", jsonFileName)
@@ -154,13 +185,13 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				varType := idntType.String()
 				info.VarType = varType
 				objMembers[varName] = info
-
+				if fld.Tag != nil {
+					getSpecialTagsForAttribute(fld.Tag.Value, &info)
+				}
 			case *ast.Ident:
 				info := ObjectMembersInfo{}
 				if fld.Tag != nil {
-					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
-						info.IsKey = true
-					}
+					getSpecialTagsForAttribute(fld.Tag.Value, &info)
 				}
 				idntType := fld.Type.(*ast.Ident)
 				varType := idntType.String()
@@ -235,6 +266,7 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 												switch strings.Trim(splits[0], " ") {
 												case "ACCESS":
 													obj.Access = strings.Trim(splits[1], "\"")
+
 												case "MULTIPLICITY":
 													tmpString := strings.Trim(splits[1], "`")
 													obj.Multiplicity = strings.Trim(tmpString, "\"")
