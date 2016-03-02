@@ -1017,9 +1017,9 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         if elemtype[1]:
             #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if isinstance(elemtype[0][1]["native_type"], list):
-                elements_str += "\t%sKey []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+                elements_str += "\t%s []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
             else:
-                elements_str += "\t%sKey %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
+                elements_str += "\t%s %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
             if name in attrDescriptionDict:
                 elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
             elementList.append(safe_name(name))
@@ -1050,7 +1050,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         membertype = "[]%s" % membertype[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                        elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
                     else:
                         elements_str += "\t%s %s" % (elemName, membertype)
 
@@ -1089,7 +1089,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                             continue
 
                         if keyname == i["name"]:
-                            elements_str += "\t%sKey %s  %s" % (elemName, varname, LIST_KEY_STR)
+                            elements_str += "\t%s %s  %s" % (elemName, varname, LIST_KEY_STR)
                         else:
                             elements_str += "\t%s %s" % (elemName, varname)
                         if elemName in attrDescriptionDict:
@@ -1102,7 +1102,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                         varname = varname[0]
 
                     if keyname == i["name"]:
-                        elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                        elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
                     else:
                         elements_str += "\t%s []%s" % (elemName, varname)
                     if elemName in attrDescriptionDict:
@@ -1113,7 +1113,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     varname = varname[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                    elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
                 else:
                     elements_str += "\t%s []%s" % (elemName, varname)
 
@@ -1129,7 +1129,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             listType = i["type"]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey []%s  %s" % (elemName, listType, LIST_KEY_STR)
+                elements_str += "\t%s []%s  %s" % (elemName, listType, LIST_KEY_STR)
             else:
                 elements_str += "\t%s []%s" % (elemName, listType)
 
@@ -1157,7 +1157,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                     membertype = "[]%s" % membertype[0]
 
                 if keyname == i["name"]:
-                    elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                    elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
                 else:
                     elements_str += "\t%s %s" % (elemName, membertype)
 
@@ -1174,7 +1174,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 membertype = "[]%s" % membertype[0]
 
             if keyname == i["name"]:
-                elements_str += "\t%sKey %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
             else:
                 elements_str += "\t%s %s" % (elemName, membertype)
 

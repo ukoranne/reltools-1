@@ -482,9 +482,11 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
     servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
 
     clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
-
+        var ok bool
+        var err error
 	logger.Println("### Update Object called %s", attrSet, objKey)
-	ok := false
+	ok = false
+        err = nil
 	switch obj.(type) {
     """ %(newDeamonName, newDeamonName))
     for s in crudStructsList:
@@ -511,7 +513,7 @@ def createClientIfUpdateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
             '''
             clientIfFd.write("""
                 if clnt.ClientHdl != nil {
-                    ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
+                    ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
                     if ok {
                         updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
                     } else {

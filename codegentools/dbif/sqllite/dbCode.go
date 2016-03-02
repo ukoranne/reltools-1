@@ -109,8 +109,12 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File) 
 	}
 
 	keyStr := "\"PRIMARY KEY ( "
-	for _, key := range keys {
-		keyStr = keyStr + key
+	for idx, key := range keys {
+		if idx == 0 {
+			keyStr = keyStr + key
+		} else {
+			keyStr = keyStr + ", " + key
+		}
 	}
 	keyStr = keyStr + ")\" +\n"
 
@@ -174,7 +178,6 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 }
 
 func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
-	return false
 	switch typeVal {
 	case "uint8", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
 		return true
@@ -201,7 +204,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 						varType := idntType.String()
 						if multipleKeys == 0 {
 							if obj.IsNumericType(varType) {
-								keyStr = keyStr + " string (strconv.Atoi(int(obj." + varName + "))) "
+								keyStr = keyStr + " string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
 							} else {
 								keyStr = keyStr + " string (obj." + varName + ") "
 							}
@@ -210,7 +213,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 							multipleKeys = 1
 						} else {
 							if obj.IsNumericType(varType) {
-								keyStr = keyStr + "+ \"#\" + string (strconv.Atoi(int(obj." + varName + "))) "
+								keyStr = keyStr + "+ \"#\" + string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
 							} else {
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
 							}
@@ -395,7 +398,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 									fieldVal.Kind() == reflect.Uint32 ||
 									fieldVal.Kind() == reflect.Uint64 {
 									fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, int(fieldVal.Uint()))
-								} else if objVal.Kind() == reflect.Bool {
+								} else if fieldVal.Kind() == reflect.Bool {
 									fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, dbutils.ConvertBoolToInt(bool(fieldVal.Bool())))
 								} else {
 									fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
