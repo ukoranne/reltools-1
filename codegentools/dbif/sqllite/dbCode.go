@@ -190,7 +190,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
-	multipleKeys := 0
+	numKeys := 0
 	keyStr := "key := "
 	reverseKeyStr := "sqlKey := \""
 	for idx, fld := range str.Fields.List {
@@ -202,15 +202,13 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 					if strings.Contains(fld.Tag.Value, "SNAPROUTE") {
 						idntType := fld.Type.(*ast.Ident)
 						varType := idntType.String()
-						if multipleKeys == 0 {
+						if numKeys == 0 {
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + " string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
 							} else {
 								keyStr = keyStr + " string (obj." + varName + ") "
 							}
 							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
-
-							multipleKeys = 1
 						} else {
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + "+ \"#\" + string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
@@ -220,10 +218,15 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 
 							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(idx-1) + "]" + " + " + "\"\\\"\""
 						}
+						numKeys += 1
+
 					}
 				}
 			}
 		}
+	}
+	if numKeys == 1 {
+		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
 	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
@@ -421,7 +424,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObj(dbObj ConfigObj, attrSet []bool) (ConfigObj, error) {\n")
-	lines = append(lines, "var mergedObject  "+obj.ObjName)
+	lines = append(lines, "var mergedObject  "+obj.ObjName+"\n")
 	lines = append(lines, `objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						dbObjVal := reflect.ValueOf(dbObj)
@@ -478,6 +481,10 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 					}
 					
 					`)
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
 }
 
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
@@ -497,5 +504,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
 	obj.WriteGetAllObjFromDbFcn(str, dbFile)
 	obj.WriteCompareObjectsAndDiffFcn(str, dbFile)
 	obj.WriteUpdateObjectInDbFcn(str, dbFile)
+	obj.WriteMergeDbAndConfigObjFcn(str, dbFile)
 	dbFile.Sync()
 }
