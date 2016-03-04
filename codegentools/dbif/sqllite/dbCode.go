@@ -424,7 +424,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObj(dbObj ConfigObj, attrSet []bool) (ConfigObj, error) {\n")
-	lines = append(lines, "var mergedObject  "+obj.ObjName)
+	lines = append(lines, "var mergedObject  "+obj.ObjName+"\n")
 	lines = append(lines, `objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						dbObjVal := reflect.ValueOf(dbObj)
@@ -481,6 +481,10 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 					}
 					
 					`)
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
 }
 
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
@@ -500,5 +504,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType) {
 	obj.WriteGetAllObjFromDbFcn(str, dbFile)
 	obj.WriteCompareObjectsAndDiffFcn(str, dbFile)
 	obj.WriteUpdateObjectInDbFcn(str, dbFile)
+	obj.WriteMergeDbAndConfigObjFcn(str, dbFile)
 	dbFile.Sync()
 }
