@@ -264,8 +264,12 @@ class DaemonObjectsInfo (object) :
         print 'clientIf Update Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
-            logger.Println("### Update Object called %s", attrSet, objKey)
-            ok := false
+            var ok bool
+            var err error
+	    logger.Println("### Update Object called %s", attrSet, objKey)
+	    logger.Println("### Update Object ", obj)
+	    ok = false
+            err = nil
             switch obj.(type) {
         """ %(self.newDeamonName, self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
@@ -282,8 +286,9 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&origdata, origconf)
                 models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
                 clientIfFd.write("""
+                    logger.Println("ClientHdl is: ", clnt.ClientHdl)
                     if clnt.ClientHdl != nil {
-                        ok, err := clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
+                        ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
                         if ok {
                             updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
                         } else {
