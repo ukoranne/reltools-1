@@ -165,7 +165,7 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	attrNamesList := "err = dbHdl.QueryRow(dbCmd).Scan("
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
-			attrNamesList = attrNamesList + "&obj." + fld.Names[0].String() + ", "
+			attrNamesList = attrNamesList + "&object." + fld.Names[0].String() + ", "
 		}
 	}
 	attrNamesList = attrNamesList + ")\n"
