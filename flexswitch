@@ -48,8 +48,14 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'asicd',
                      'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'sysd',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'ribd',
                      'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'bfdd',
+                    'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'arpd',
                      'params': '-params=' + baseDir + '/params'},
@@ -71,9 +77,6 @@ def getDaemonsInfo (baseDir) :
 
                     {'name': 'vrrpd',
                      'params': '-params=' + baseDir + '/params'},
-
-                    {'name': 'bfdd',
-                    'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
