@@ -267,7 +267,6 @@ class DaemonObjectsInfo (object) :
             var ok bool
             var err error
 	    logger.Println("### Update Object called %s", attrSet, objKey)
-	    logger.Println("### Update Object ", obj)
 	    ok = false
             err = nil
             switch obj.(type) {
@@ -286,7 +285,6 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&origdata, origconf)
                 models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
                 clientIfFd.write("""
-                    logger.Println("ClientHdl is: ", clnt.ClientHdl)
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
                         if ok {
