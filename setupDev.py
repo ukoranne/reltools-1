@@ -307,22 +307,23 @@ if __name__ == '__main__':
     if options.py_pkgs:
         todo = ['python']
 
-    createDirectoryStructure()
-    setupMakefileLink()
+    if len(todo) > 1:
+        createDirectoryStructure()
+        setupMakefileLink()
 
-    if 'python' in todo:
-        installPythonDependencies()
-    installPkgDependencies()
+        if 'python' in todo:
+            installPythonDependencies()
+        installPkgDependencies()
 
-    if False == verifyThriftInstallation():
-        installThriftDependencies()
-        installThrift()
-    else:
-        print ' Thrift already exists'
-		
-    installGoPacketDependencies()
+        if False == verifyThriftInstallation():
+            installThriftDependencies()
+            installThrift()
+        else:
+            print ' Thrift already exists'
+                    
+        installGoPacketDependencies()
 
-    setupGitCredentialCache()
+        setupGitCredentialCache()
     if 'snaproute' in todo:
         reposList = None
         if options.specific_repo:
