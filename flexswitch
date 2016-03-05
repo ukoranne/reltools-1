@@ -11,6 +11,9 @@ import subprocess
 from optparse import OptionParser
 ASICD_CONF_FILE='/opt/flexswitch/params/asicd.conf'
 
+nonSnapRouteDmns = {
+    'sqlwebd' : '/usr/local/bin/sqlite_web'
+}
 def determineMacAddress ():
     print 'Getting MAC address'
     process = subprocess.Popen('ifconfig -a' ,
@@ -80,13 +83,20 @@ def getDaemonsInfo (baseDir) :
 
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'sqlwebd',
+                     'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
                     ]
     return daemonsToStart
 
 class FlexSwitchDaemon (daemon.Daemon):
     def run(self, *args, **kwargs):
         cmd = args[0][0]
-        pargs = args[0]
+        if type(args[0][1]) ==list:
+	   pargs = args[0][1]	
+	else :
+	   pargs = args[0]
+	
         os.execvp(cmd, pargs)
 
 
@@ -147,7 +157,11 @@ if __name__=="__main__":
             print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
             dmnCount += 1
             pidFile = pidFileDir + dmn['name']+'.pid'
-            cmd = baseDir +'/bin/'+ dmn['name']
+            if dmn['name'] not in nonSnapRouteDmns:
+                cmd = baseDir +'/bin/'+ dmn['name']
+            else:
+                cmd = nonSnapRouteDmns[dmn['name']]
+
             pargs = (cmd, dmn['params'])
             time.sleep(2)
             pid = os.fork()
