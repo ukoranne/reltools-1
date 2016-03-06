@@ -13,36 +13,42 @@ tar -xvzf Pygments-2.1.3.tar.gz
 
 cd /opt/flexswitch/dbbrowser/Pygments-2.1.3/
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf peewee-2.8.0.tar.gz
 
 cd /opt/flexswitch/dbbrowser/peewee-2.8.0/
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf Flask-0.10.1.tar.gz
 
 cd /opt/flexswitch/dbbrowser/Flask-0.10.1
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf itsdangerous-0.24.tar.gz
 
 cd /opt/flexswitch/dbbrowser/itsdangerous-0.24/
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf Jinja2-2.4.tar.gz
 
 cd /opt/flexswitch/dbbrowser/Jinja2-2.4
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf Werkzeug-0.7.tar.gz
 
 cd /opt/flexswitch/dbbrowser/Werkzeug-0.7
 python setup.py install
+sleep 1
 
 cd /opt/flexswitch/dbbrowser/
 tar -xvzf sqliteBrowser.tgz
