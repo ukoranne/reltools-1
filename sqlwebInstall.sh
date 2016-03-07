@@ -2,11 +2,15 @@
 cd /opt/flexswitch
 tar -xvzf /opt/flexswitch/dbBrowser.tgz
 
-cd /opt/flexswitch/dbbrowser
-dpkg -i /opt/flexswitch/dbbrowser/python-pkg-resources_20.1.1-1_all.deb
+# This is not needed... :-/
+#cd /opt/flexswitch/dbbrowser
+#dpkg -i /opt/flexswitch/dbbrowser/python-pkg-resources_20.1.1-1_all.deb
 
 cd /opt/flexswitch/dbbrowser
-dpkg -i /opt/flexswitch/dbbrowser/python-setuptools_20.1.1-1_all.deb
+tar -xzvf setuptools-20.1.1.tar.gz
+
+cd /opt/flexswitch/dbbrowser/setuptools-20.1.1/
+python setup.py install
 
 cd /opt/flexswitch/dbbrowser
 tar -xvzf Pygments-2.1.3.tar.gz
