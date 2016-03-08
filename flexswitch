@@ -50,6 +50,10 @@ def isProcessRunning(pidFile):
         fp = file(pidFile, "r")
         processId = int(fp.read().strip())
         fp.close()
+        if os.path.exists('/proc/%d' % processId):
+            pass
+        else:
+            processId = 0
     except IOError:
         processId = 0
     return (processId != 0)
@@ -178,14 +182,14 @@ if __name__=="__main__":
                 time.sleep(2)
                 pid = os.fork()
                 if pid == 0:
-                    dmn = FlexSwitchDaemon (pidFile,
+                    dmnInst = FlexSwitchDaemon (pidFile,
                                             #stdout= baseDir+'/bin/'+'log.txt',
                                             #stderr= baseDir+'/bin/'+'log.txt',
                                             stdout = '/var/log/syslog',
                                             stderr = '/var/log/syslog',
                                             #stderr= baseDir+'/bin/'+'log.txt',
                                             verbose=2)
-                    dmn.start(pargs)
+                    dmnInst.start(pargs)
         end = datetime.datetime.now()
         print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:
