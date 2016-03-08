@@ -319,6 +319,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
             clientIfFd.write("""
                                 _, err := clnt.ClientHdl.Create%s(conf)
                                 if err != nil {
+                                fmt.Println("Create failed:", err)
                                 return int64(0), false
                                 }
                                 objId, _ = data.StoreObjectInDb(dbHdl)
@@ -355,6 +356,7 @@ def createClientIfDeleteObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
             clientIfFd.write("""
                                 _, err := clnt.ClientHdl.Delete%s(conf)
                                 if err != nil {
+                                fmt.Println("Delete failed:", err)
                                 return false
                                 }
                                 data.DeleteObjectFromDb(objKey, dbHdl)
@@ -539,23 +541,14 @@ def generate_clientif(clientIfFd, d, crudStructsList, goMemberTypeDict, goStruct
     servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
 
     print crudStructsList
-    if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
-        # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""import (
-        "%s"
-        "fmt"
-        "models"
-        "database/sql"
-        "utils/ipcutils"
-        )\n""" % servicesName)
-    else:
-        # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""import (
-        "%s"
-        "models"
-        "database/sql"
-        "utils/ipcutils"
-        )\n""" % servicesName)
+    # BELOW CODE WILL BE FORMATED BY GOFMT
+    clientIfFd.write("""import (
+    "%s"
+    "fmt"
+    "models"
+    "database/sql"
+    "utils/ipcutils"
+    )\n""" % servicesName)
     clientIfFd.write("""type %sClient struct {
 	                        ipcutils.IPCClientBase
 	                        ClientHdl *%s.%sServicesClient
