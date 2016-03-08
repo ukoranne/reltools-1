@@ -214,6 +214,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                                     _, err := clnt.ClientHdl.Create%s(conf)
                                     if err != nil {
+								fmt.Println("Create failed:", err)
                                     return int64(0), false
                                     }
                                     objId, _ = data.StoreObjectInDb(dbHdl)
@@ -243,6 +244,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                                     _, err := clnt.ClientHdl.Delete%s(conf)
                                     if err != nil {
+								fmt.Println("Delete failed:", err)
                                     return false
                                     }
                                     data.DeleteObjectFromDb(objKey, dbHdl)
@@ -362,7 +364,7 @@ class DaemonObjectsInfo (object) :
         clientIfFd.write("package main\n")
         #if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
         # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""import (\n "%s"\n"models"\n"database/sql"\n"utils/ipcutils")\n""" % self.servicesName)
+        clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"database/sql"\n"utils/ipcutils")\n""" % self.servicesName)
         self.clientIfBasicHelper(clientIfFd)
         self.createClientIfCreateObject(clientIfFd, objectNames)
         self.createClientIfDeleteObject(clientIfFd, objectNames)
