@@ -179,7 +179,7 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 
 func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
 	switch typeVal {
-	case "uint8", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
+	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
 		return true
 	default:
 		return false
