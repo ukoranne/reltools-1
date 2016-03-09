@@ -14,6 +14,8 @@ modelsToBuild = [
                  {'srcs'   : '/snaproute/src/models/yangmodel/stp/*.yang',
                   'output' : 'stp.go'},
 
+                 {'srcs'   : '/snaproute/src/models/yangmodel/vxlan/*.yang',
+                  'output' : 'vxlan.go'},
                  #{'srcs'   : 'openconfig/release/models/bgp/*.yang',
                  # 'output' : 'genBgp.go'},
 
