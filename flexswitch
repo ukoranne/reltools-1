@@ -44,6 +44,19 @@ def determineMacAddress ():
         with open(ASICD_CONF_FILE, 'w') as fileHdl:
             json.dump(confData, fileHdl,  indent=2)
 
+def isProcessRunning(pidFile):
+    processId = 0
+    try:
+        fp = file(pidFile, "r")
+        processId = int(fp.read().strip())
+        fp.close()
+        if os.path.exists('/proc/%d' % processId):
+            pass
+        else:
+            processId = 0
+    except IOError:
+        processId = 0
+    return (processId != 0)
 
 def getDaemonsInfo (baseDir) :
 
@@ -157,23 +170,26 @@ if __name__=="__main__":
             print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
             dmnCount += 1
             pidFile = pidFileDir + dmn['name']+'.pid'
-            if dmn['name'] not in nonSnapRouteDmns:
-                cmd = baseDir +'/bin/'+ dmn['name']
+            if isProcessRunning(pidFile):
+                print "process %s is already running" %(dmn['name'])
             else:
-                cmd = nonSnapRouteDmns[dmn['name']]
+                if dmn['name'] not in nonSnapRouteDmns:
+                    cmd = baseDir +'/bin/'+ dmn['name']
+                else:
+                    cmd = nonSnapRouteDmns[dmn['name']]
 
-            pargs = (cmd, dmn['params'])
-            time.sleep(2)
-            pid = os.fork()
-            if pid == 0:
-                dmn = FlexSwitchDaemon (pidFile,
-                                        #stdout= baseDir+'/bin/'+'log.txt',
-                                        #stderr= baseDir+'/bin/'+'log.txt',
-                                        stdout = '/var/log/syslog',
-                                        stderr = '/var/log/syslog',
-                                        #stderr= baseDir+'/bin/'+'log.txt',
-                                        verbose=2)
-                dmn.start(pargs)
+                pargs = (cmd, dmn['params'])
+                time.sleep(2)
+                pid = os.fork()
+                if pid == 0:
+                    dmnInst = FlexSwitchDaemon (pidFile,
+                                            #stdout= baseDir+'/bin/'+'log.txt',
+                                            #stderr= baseDir+'/bin/'+'log.txt',
+                                            stdout = '/var/log/syslog',
+                                            stderr = '/var/log/syslog',
+                                            #stderr= baseDir+'/bin/'+'log.txt',
+                                            verbose=2)
+                    dmnInst.start(pargs)
         end = datetime.datetime.now()
         print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:

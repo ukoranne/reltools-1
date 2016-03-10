@@ -339,8 +339,8 @@ class DaemonObjectsInfo (object) :
                     attrType = attrInfo['type']
                     if attrInfo['isArray'] != 'False':
                         clientIfFd.write("""\nfor _, data := range bulkInfo.%sList[i].%s {
-                                ret_obj.%s = %s(data)
-                                }\n""" %(s, k, k, attrType))
+                                ret_obj.%s = append(ret_obj.%s, %s(data))
+                                }\n""" %(s, k, k, k, attrType))
                     else:
                         clientIfFd.write("""
                                 ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, attrType, s, k))
