@@ -190,10 +190,14 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
+	lines = append(lines, "keyName := \""+obj.ObjName+"\"\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"Config\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"State\")\n")
+
 	numKeys := 0
-	keyStr := "key := "
+	keyStr := "key := keyName + \"#\" + "
 	reverseKeyStr := "sqlKey := \""
-	for idx, fld := range str.Fields.List {
+	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
 			switch fld.Type.(type) {
 			case *ast.Ident:
@@ -208,7 +212,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 							} else {
 								keyStr = keyStr + " string (obj." + varName + ") "
 							}
-							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(idx-1) + "]"
+							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(numKeys+1) + "]"
 						} else {
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + "+ \"#\" + string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
@@ -216,7 +220,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
 							}
 
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(idx-1) + "]" + " + " + "\"\\\"\""
+							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]" + " + " + "\"\\\"\""
 						}
 						numKeys += 1
 
@@ -250,7 +254,8 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File) 
 
 func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.File) {
 	var lines []string
-	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl *sql.DB) (objList []* "+obj.ObjName+", err error) { \n")
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl *sql.DB) (objList []ConfigObj, err error) { \n")
+	lines = append(lines, "var object "+obj.ObjName+"\n")
 	lines = append(lines, "dbCmd :=  \"select * from "+obj.ObjName+"\"\n")
 	lines = append(lines, `
 						rows, err := dbHdl.Query(dbCmd)
@@ -260,7 +265,6 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 						defer rows.Close()
 						for rows.Next() {`+"\n")
 
-	lines = append(lines, "object := new("+obj.ObjName+")\n")
 	stmt := "if err = rows.Scan("
 	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
