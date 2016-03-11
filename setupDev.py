@@ -2,7 +2,8 @@ import os
 import subprocess
 from optparse import OptionParser
 import sys
-import json 
+import json
+import shlex
 
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
@@ -17,6 +18,21 @@ GENERATED_SRC = '/generated/src/'
 
 gHomeDir = None
 gDryRun =  False
+
+def executeCommandV2(command):
+    out = ''
+    if type(command) != list:
+        command = [ command]
+    for cmd in command:
+        if gDryRun :
+            print cmd
+        else:
+            print cmd
+            args = shlex.split(cmd)
+            process = subprocess.Popen(args)
+            out,err = process.communicate()
+    return out
+
 
 def executeCommand (command) :
     out = ''
@@ -268,6 +284,43 @@ def setupOpenNslLibLink ():
         cmd = 'ln -s ' + libLocation + 'libopennsl.so.1 ' + libLocation + 'libopennsl.so'
         executeCommand(cmd)
 
+def setupIpTablelib ():
+    nfLoc = gHomeDir + SNAP_ROUTE_SRC + 'netfilter/'
+    libipDir = 'libiptables'
+    allLibs = ['libmnl', 'libnftnl', 'iptables']
+    os.chdir(nfLoc)
+    command = []
+    command.append('mkdir -p '+ libipDir)
+    executeCommand(command)
+    prefixDir = nfLoc + libipDir
+    cflagsDir = nfLoc + libipDir + "/include"
+    ldflagsDir = nfLoc + libipDir + "/lib"
+
+    for lib in allLibs:
+        os.chdir(nfLoc + lib)
+        cmd = []
+        cmd.append('./autogen.sh')
+        if lib == 'libmnl':
+            cmd.append('./configure --prefix=\"' + prefixDir + '\"')
+        elif lib == 'libnftnl':
+            os.environ["LIBMNL_CFLAGS"]= nfLoc + libipDir + "/include/libmnl"
+            os.environ["LIBMNL_LIBS"]= nfLoc + libipDir + "/lib/pkgconfig"
+            cmd.append('./configure --prefix="' + prefixDir + '" CFLAGS="-I' + cflagsDir + '" LDFLAGS="-L' + ldflagsDir +'"')
+        elif lib == 'iptables':
+            cmd.append('./configure --prefix="' + prefixDir + '" CFLAGS="-I' + cflagsDir + '" LDFLAGS="-L' + ldflagsDir +'" LIBS=\"-lmnl -lnftnl\"')
+        cmd.append('make')
+        cmd.append('make install')
+        executeCommandV2(cmd)
+
+    usrLib = "/usr/local/lib/"
+    if not os.path.isfile(usrLib + 'libip4tc.so'):
+        os.chdir(usrLib)
+        cmd = []
+        cmd.append('sudo ln -s ' + nfLoc + libipDir + '/lib/libip4tc.so.0.1.0 libip4tc.so')
+        cmd.append('sudo /sbin/ldconfig')
+        executeCommand(cmd)
+
+
 if __name__ == '__main__':
     parser = OptionParser()
 
@@ -306,7 +359,7 @@ if __name__ == '__main__':
 
     if options.py_pkgs:
         todo = ['python']
-
+    
     if len(todo) > 1:
         createDirectoryStructure()
         setupMakefileLink()
@@ -324,13 +377,15 @@ if __name__ == '__main__':
         installGoPacketDependencies()
 
         setupGitCredentialCache()
+   
     if 'snaproute' in todo:
         reposList = None
         if options.specific_repo:
             reposList = [options.specific_repo]
         cloneSnapRouteGitRepos(reposList)
-
+    
     if 'external' in todo:
         getExternalGoDeps()
-
+    
+    setupIpTablelib()
     setupOpenNslLibLink()
