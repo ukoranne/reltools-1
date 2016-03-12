@@ -286,6 +286,8 @@ def setupOpenNslLibLink ():
 
 def setupIpTablelib ():
     nfLoc = gHomeDir + SNAP_ROUTE_SRC + 'netfilter/'
+    repoUrl= 'https://github.com/'+ 'SnapRoute/netfilter'
+    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + SNAP_ROUTE_SRC)
     libipDir = 'libiptables'
     allLibs = ['libmnl', 'libnftnl', 'iptables']
     os.chdir(nfLoc)
@@ -312,15 +314,6 @@ def setupIpTablelib ():
         cmd.append('make install')
         executeCommandV2(cmd)
 
-    usrLib = "/usr/local/lib/"
-    if not os.path.isfile(usrLib + 'libip4tc.so'):
-        os.chdir(usrLib)
-        cmd = []
-        cmd.append('sudo ln -s ' + nfLoc + libipDir + '/lib/libip4tc.so.0.1.0 libip4tc.so')
-        cmd.append('sudo /sbin/ldconfig')
-        executeCommand(cmd)
-
-
 if __name__ == '__main__':
     parser = OptionParser()
 
@@ -344,13 +337,19 @@ if __name__ == '__main__':
                       action='store_true',
                       help="Only External repos")
 
+    parser.add_option("-u", "--update", 
+                      dest="update",
+                      action='store_true',
+                      help="Update the new additions")
+
+
     (options, args) = parser.parse_args()
 
     gUserName =  raw_input('Please Enter github username:')
     gHomeDir = os.path.dirname(os.getcwd())
     print '### Anchor Directory is %s' %(gHomeDir)
 
-    todo = ['external', 'snaproute', 'specific_repo', 'python']
+    todo = ['external', 'snaproute', 'specific_repo', 'python', 'netfilter']
     if options.sr_repos or options.specific_repo:
         todo = ['snaproute']
 
@@ -360,6 +359,9 @@ if __name__ == '__main__':
     if options.py_pkgs:
         todo = ['python']
     
+    if options.update:
+        todo = ['update']
+
     if len(todo) > 1:
         createDirectoryStructure()
         setupMakefileLink()
@@ -387,5 +389,7 @@ if __name__ == '__main__':
     if 'external' in todo:
         getExternalGoDeps()
     
-    setupIpTablelib()
+    if 'update' in todo:
+        setupIpTablelib()
+        
     setupOpenNslLibLink()
