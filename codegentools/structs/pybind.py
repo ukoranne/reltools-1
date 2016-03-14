@@ -165,46 +165,6 @@ def safe_name(arg):
 
 
 gDryRun =  False
-def executeGoFmtCommand (fd, command) :
-    out = ''
-    if type(command) != list:
-        command = [ command]
-    for cmd in command:
-        if gDryRun :
-            print cmd
-        else:
-            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            # create a go format version, at this point the fd is still
-            # open so this is a .tmp file, lets strip this for the new
-            # file
-            #print err
-            directory = CODE_GENERATION_PATH
-            fmt_name_with_dir = fd.name.rstrip('.tmp')
-            print fmt_name_with_dir
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-
-            #copyCmd = "cp %s %s" %(fd.name.rstrip('.tmp'), fmt_name_with_dir)
-            #process = subprocess.Popen(copyCmd.split(), stdout=subprocess.PIPE)
-            #out,err = process.communicate()
-
-
-        return out
-def executeGoModelCleanupCommand (command) :
-    out = ''
-    if type(command) != list:
-        command = [ command]
-    for cmd in command:
-        if gDryRun :
-            print cmd
-        else:
-            #print cmd
-            process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-            out,err = process.communicate()
-            #print out, err
-        return out
-
 # Base machinery to support operation as a plugin to pyang.
 def pyang_plugin_init():
     plugin.register_plugin(BTPyGOClass())
@@ -220,7 +180,7 @@ class BTPyGOClass(plugin.PyangPlugin):
         # When called, call the build_pyangbind function.
         name = fd.name.split('.')[0]
         fdDict = {"struct" : fd,
-                  "func": open(name+"_serializer.go", 'w+b')}
+                  "func": open(name + "_serializer.go", 'w+b')}
 
         modelFileName  = fd.name.strip('.tmp')
         serializerName = modelFileName.strip('.go') + '_serializer.go'
@@ -237,13 +197,9 @@ class BTPyGOClass(plugin.PyangPlugin):
         with open(objsData, 'w+') as fp:
             json.dump(gYangObjInfo, fp,  indent=2)
 
-        for f in fdDict.values():
-            f.close()
-            #import ipdb;ipdb.set_trace()
-            executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
-
-            #cmd = "rm %s%s" % (MODELS_PATH_LIST[0] + f.name.split('_')[0].rstrip('.go').rstrip('.tmp') + "/", f.name.rstrip('tmp'))
-            #executeGoModelCleanupCommand([cmd])
+        #for f in fdDict.values():
+        #    f.close()
+        #    executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
 
 
     def add_opts(self, optparser):

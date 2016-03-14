@@ -53,8 +53,8 @@ class DaemonObjectsInfo (object) :
         self.name   =  name
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
-        self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
-        self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
+        self.thriftUtilsFileName = THRIFT_UTILS_PATH + "gen_" + name + "dbthriftutil.go"
+        self.clientIfFileName = CLIENTIF_SRC_PATCH + "gen_" + name + "clientif.go"
         self.servicesName = self.name
         self.SName = svcName
         self.newDeamonName = self.servicesName.upper()
