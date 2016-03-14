@@ -49,13 +49,14 @@ goToThirftTypeMap = {
 }
 
 class DaemonObjectsInfo (object) :
-    def __init__ (self, name, location):
+    def __init__ (self, name, location, svcName):
         self.name   =  name
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
-        self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
-        self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
+        self.thriftUtilsFileName = THRIFT_UTILS_PATH + "gen_" + name + "dbthriftutil.go"
+        self.clientIfFileName = CLIENTIF_SRC_PATCH + "gen_" + name + "clientif.go"
         self.servicesName = self.name
+        self.SName = svcName
         self.newDeamonName = self.servicesName.upper()
         self.objectDict = {}
 
@@ -89,6 +90,9 @@ class DaemonObjectsInfo (object) :
 
     def generateThriftInterfaces(self, objectNames):
         thriftfd = open(self.thriftFileName, 'w+')
+        sName = self.SName
+        if sName != "nil" :
+            thriftfd.write("include \"%s.thrift\"\n" %(sName))
         dmn = self.name
         thriftfd.write("namespace go %s\n" %(dmn))                                                             
         thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
@@ -114,7 +118,10 @@ class DaemonObjectsInfo (object) :
                 thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(structName, structName, structName))
 
 
-        thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        if sName == "nil" :
+            thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        else :
+            thriftfd.write("service %sServices extends %s.%sServices {\n" % (dmn.upper(), sName, sName.upper()))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             s = structName
             if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
@@ -200,6 +207,7 @@ class DaemonObjectsInfo (object) :
         print 'clientIf Create Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                             var objId int64
+                            var err error
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -212,12 +220,16 @@ class DaemonObjectsInfo (object) :
                                     conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
-                                    _, err := clnt.ClientHdl.Create%s(conf)
+                                    _, err = clnt.ClientHdl.Create%s(conf)
                                     if err != nil {
 								fmt.Println("Create failed:", err)
                                     return int64(0), false
                                     }
-                                    objId, _ = data.StoreObjectInDb(dbHdl)
+                                    objId, err = data.StoreObjectInDb(dbHdl)
+                                    if err != nil {
+								fmt.Println("Store object in DB failed:", err)
+                                    return objId, false
+                                    }
                                     break\n""" % (s,))
         clientIfFd.write("""default:
                                     break
@@ -382,6 +394,7 @@ def generateThriftAndClientIfs():
     yangDmnDirsInfoJson = JSON_MODEL_REGISTRAION_PATH + 'yangObjInfo.json'
 
     ownerDirsInfo = {} 
+    ownerInternalServiceInfo = {}
     for dirFile  in [goDmnDirsInfoJson, yangDmnDirsInfoJson]:
         with open(dirFile) as locnFile:
             objData = json.load(locnFile)
@@ -389,6 +402,7 @@ def generateThriftAndClientIfs():
         for dmn, info in objData.iteritems():
             if not ownerDirsInfo.has_key(info['owner']):
                 ownerDirsInfo[info['owner']] = info['location']
+                ownerInternalServiceInfo[info['owner']] = info['svcName']
 
     
     with open(genObjInfoJson) as infoFile:
@@ -399,7 +413,7 @@ def generateThriftAndClientIfs():
         if ownerToObjMap.has_key(dtls['owner']):
             dmnObj = ownerToObjMap[dtls['owner']]
         else:
-            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']]) 
+            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']], ownerInternalServiceInfo[dtls['owner']]) 
             ownerToObjMap[dtls['owner']] = dmnObj
 
         dmnObj.objectDict[name] = dtls
