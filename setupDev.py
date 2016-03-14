@@ -2,7 +2,8 @@ import os
 import subprocess
 from optparse import OptionParser
 import sys
-import json 
+import json
+import shlex
 
 thrift_version = '0.9.3'
 thrift_pkg_name = 'thrift-'+thrift_version 
@@ -17,6 +18,21 @@ GENERATED_SRC = '/generated/src/'
 
 gHomeDir = None
 gDryRun =  False
+
+def executeCommandV2(command):
+    out = ''
+    if type(command) != list:
+        command = [ command]
+    for cmd in command:
+        if gDryRun :
+            print cmd
+        else:
+            print cmd
+            args = shlex.split(cmd)
+            process = subprocess.Popen(args)
+            out,err = process.communicate()
+    return out
+
 
 def executeCommand (command) :
     out = ''
@@ -268,6 +284,36 @@ def setupOpenNslLibLink ():
         cmd = 'ln -s ' + libLocation + 'libopennsl.so.1 ' + libLocation + 'libopennsl.so'
         executeCommand(cmd)
 
+def setupIpTablelib ():
+    nfLoc = gHomeDir + SNAP_ROUTE_SRC + 'netfilter/'
+    repoUrl= 'https://github.com/'+ 'SnapRoute/netfilter'
+    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + SNAP_ROUTE_SRC)
+    libipDir = 'libiptables'
+    allLibs = ['libmnl', 'libnftnl', 'iptables']
+    os.chdir(nfLoc)
+    command = []
+    command.append('mkdir -p '+ libipDir)
+    executeCommand(command)
+    prefixDir = nfLoc + libipDir
+    cflagsDir = nfLoc + libipDir + "/include"
+    ldflagsDir = nfLoc + libipDir + "/lib"
+
+    for lib in allLibs:
+        os.chdir(nfLoc + lib)
+        cmd = []
+        cmd.append('./autogen.sh')
+        if lib == 'libmnl':
+            cmd.append('./configure --prefix=\"' + prefixDir + '\"')
+        elif lib == 'libnftnl':
+            os.environ["LIBMNL_CFLAGS"]= nfLoc + libipDir + "/include/libmnl"
+            os.environ["LIBMNL_LIBS"]= nfLoc + libipDir + "/lib/pkgconfig"
+            cmd.append('./configure --prefix="' + prefixDir + '" CFLAGS="-I' + cflagsDir + '" LDFLAGS="-L' + ldflagsDir +'"')
+        elif lib == 'iptables':
+            cmd.append('./configure --prefix="' + prefixDir + '" CFLAGS="-I' + cflagsDir + '" LDFLAGS="-L' + ldflagsDir +'" LIBS=\"-lmnl -lnftnl\"')
+        cmd.append('make')
+        cmd.append('make install')
+        executeCommandV2(cmd)
+
 if __name__ == '__main__':
     parser = OptionParser()
 
@@ -291,13 +337,19 @@ if __name__ == '__main__':
                       action='store_true',
                       help="Only External repos")
 
+    parser.add_option("-u", "--update", 
+                      dest="update",
+                      action='store_true',
+                      help="Update the new additions")
+
+
     (options, args) = parser.parse_args()
 
     gUserName =  raw_input('Please Enter github username:')
     gHomeDir = os.path.dirname(os.getcwd())
     print '### Anchor Directory is %s' %(gHomeDir)
 
-    todo = ['external', 'snaproute', 'specific_repo', 'python']
+    todo = ['external', 'snaproute', 'specific_repo', 'python', 'netfilter']
     if options.sr_repos or options.specific_repo:
         todo = ['snaproute']
 
@@ -306,6 +358,9 @@ if __name__ == '__main__':
 
     if options.py_pkgs:
         todo = ['python']
+    
+    if options.update:
+        todo = ['update']
 
     if len(todo) > 1:
         createDirectoryStructure()
@@ -324,13 +379,17 @@ if __name__ == '__main__':
         installGoPacketDependencies()
 
         setupGitCredentialCache()
+   
     if 'snaproute' in todo:
         reposList = None
         if options.specific_repo:
             reposList = [options.specific_repo]
         cloneSnapRouteGitRepos(reposList)
-
+    
     if 'external' in todo:
         getExternalGoDeps()
-
+    
+    if 'update' in todo:
+        setupIpTablelib()
+        
     setupOpenNslLibLink()
