@@ -207,6 +207,7 @@ class DaemonObjectsInfo (object) :
         print 'clientIf Create Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                             var objId int64
+                            var err error
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -219,12 +220,16 @@ class DaemonObjectsInfo (object) :
                                     conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
-                                    _, err := clnt.ClientHdl.Create%s(conf)
+                                    _, err = clnt.ClientHdl.Create%s(conf)
                                     if err != nil {
 								fmt.Println("Create failed:", err)
                                     return int64(0), false
                                     }
-                                    objId, _ = data.StoreObjectInDb(dbHdl)
+                                    objId, err = data.StoreObjectInDb(dbHdl)
+                                    if err != nil {
+								fmt.Println("Store object in DB failed:", err)
+                                    return objId, false
+                                    }
                                     break\n""" % (s,))
         clientIfFd.write("""default:
                                     break
