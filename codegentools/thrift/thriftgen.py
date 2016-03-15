@@ -167,10 +167,10 @@ class DaemonObjectsInfo (object) :
                                                     }\n""" %(i, k, k, k, attrType, i))
                         else:
                             thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
-                                                        thriftdata%s := new(%s)
-                                                        Convert%s%sObjToThrift(data%s, thriftdata%s)
+                                                        thriftdata%s := new(%s.%s)
+                                                        Convert%s%sObjToThrift(&data%s, thriftdata%s)
                                                         thriftobj.%s = append(thriftobj.%s, thriftdata%s)
-                                                    }\n""" %(i, k, i, attrType, d, attrType, i, i, k, k, i))
+                                                    }\n""" %(i, k, i, self.servicesName, attrType, d, attrType, i, i, k, k, i))
                     else:
                         if attrType in goToThirftTypeMap:
                             thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
@@ -194,7 +194,7 @@ class DaemonObjectsInfo (object) :
                             thriftdbutilfd.write("""\nfor _, thriftdata%s := range thriftobj.%s {
                                                         dbobjdata%s := new(%s)
                                                         ConvertThriftTo%s%sObj(thriftdata%s, dbobjdata%s)
-                                                        dbobj.%s = append(dbobj.%s, dbobjdata%s)
+                                                        dbobj.%s = append(dbobj.%s, *dbobjdata%s)
                                                     }\n""" %(i, k, i, attrType, d, attrType, i, i, k, k, i))
                     else:
                         if attrType in goToThirftTypeMap:
