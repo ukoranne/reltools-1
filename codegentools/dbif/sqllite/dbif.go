@@ -122,8 +122,10 @@ func main() {
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
 							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
-							listingsFd.WriteString(obj.DbFileName + "\n")
-							obj.WriteDBFunctions(str)
+							if strings.Contains(obj.Access, "w") {
+								listingsFd.WriteString(obj.DbFileName + "\n")
+								obj.WriteDBFunctions(str)
+							}
 							generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 						}
 					}
@@ -252,7 +254,6 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 					typ := spec.(*ast.TypeSpec)
 					str, ok := typ.Type.(*ast.StructType)
 					if ok == true {
-						marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
 						marshalFcnFile := fileBase + strings.Split(srcFile, ".")[0] + "_serializer.go"
 						//fmt.Println("marshalFcnFile ", marshalFcnFile)
 						for _, fld := range str.Fields.List {
@@ -277,36 +278,39 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 								}
 							}
 						}
-						marshalFcnsLine = append(marshalFcnsLine, `
-													var err error                                                                                                           
-													if len(body) > 0 {                                                                                                      
-													    if err = json.Unmarshal(body, &obj); err != nil {                                                                    
-													         fmt.Println("###  called, unmarshal failed", obj, err)                                             
-													      }                                                                                                                    
-													   }                                                                                                                       
-													   return obj, err                                                                                                         
+						objMap[typ.Name.Name] = obj
+						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") {
+							marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
+							marshalFcnsLine = append(marshalFcnsLine, `
+													var err error
+													if len(body) > 0 {
+													    if err = json.Unmarshal(body, &obj); err != nil {
+													         fmt.Println("###  called, unmarshal failed", obj, err)
+													      }
+													   }
+													   return obj, err
 													}
 													`)
 
-						objMap[typ.Name.Name] = obj
-						marshalFcnFd, err := os.Create(marshalFcnFile)
-						if err != nil {
-							fmt.Println("Failed to open the file", marshalFcnFile)
-							return err
-						}
-						defer marshalFcnFd.Close()
-						marshalFcnFd.WriteString(`package models                                                                                                                                                                                                                   
-													                                                                                                                           
-													import (                                                                                                                   
-													   "encoding/json"                                                                                                         
-													                                                                                                                           
-													   "fmt"                                                                                                                   
+							marshalFcnFd, err := os.Create(marshalFcnFile)
+							if err != nil {
+								fmt.Println("Failed to open the file", marshalFcnFile)
+								return err
+							}
+							defer marshalFcnFd.Close()
+							marshalFcnFd.WriteString(`package models
+
+													import (
+													   "encoding/json"
+
+													   "fmt"
 													)`)
 
-						for _, marshalLine := range marshalFcnsLine {
-							marshalFcnFd.WriteString(string(marshalLine))
+							for _, marshalLine := range marshalFcnsLine {
+								marshalFcnFd.WriteString(string(marshalLine))
+							}
+							//marshalFcnFd.WriteString("}\n")
 						}
-						//marshalFcnFd.WriteString("}\n")
 
 					}
 				}
