@@ -102,9 +102,6 @@ func main() {
 
 	for name, obj := range objMap {
 		obj.ObjName = name
-		if obj.Access == "r" {
-			continue
-		}
 		srcFile := fileBase + obj.SrcFile
 		f, err := parser.ParseFile(fset,
 			srcFile,
@@ -129,7 +126,7 @@ func main() {
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.Contains(obj.Access, "w") {
 								listingsFd.WriteString(obj.DbFileName + "\n")
-							obj.WriteDBFunctions(str, membersInfo)
+								obj.WriteDBFunctions(str, membersInfo)
 							}
 						}
 					}

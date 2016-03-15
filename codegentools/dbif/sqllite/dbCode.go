@@ -525,7 +525,6 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 }
 
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo) {
-	fmt.Println("Generating dbIf file ", obj.DbFileName, attrMap)
 	dbFile, err := os.Create(obj.DbFileName)
 	if err != nil {
 		fmt.Println("Failed to open the file", obj.DbFileName)
