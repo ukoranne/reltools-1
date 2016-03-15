@@ -103,10 +103,15 @@ class DaemonObjectsInfo (object) :
             for attrName, attrInfo in structInfo['membersInfo'].iteritems():
                 index = index+1
                 if attrInfo['isArray'] != 'False' :
-                    nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
-                    thriftfd.write("\t%s : %s %s\n" % (index,
-                                                       nativetype,
-                                                       attrName))
+                    if str(attrInfo['type']) in goToThirftTypeMap:
+                        nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           nativetype,
+                                                           attrName))
+                    else:
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           "list<" + str(attrInfo['type']) + ">",
+                                                           attrName))
                 else:
                     if str(attrInfo['type']) in goToThirftTypeMap:
                         thriftfd.write("\t%s : %s %s\n" % (index,
