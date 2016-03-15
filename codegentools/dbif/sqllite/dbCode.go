@@ -89,7 +89,6 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, 
 		if fld.Names != nil {
 			switch fld.Type.(type) {
 			case *ast.ArrayType:
-				fmt.Println("Var Name ", fld.Names[0].String())
 				listMembers = append(listMembers, fld.Names[0].String())
 			case *ast.Ident:
 				varName := fld.Names[0].String()
@@ -168,15 +167,6 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 	return lines
 }
 
-///
-//dbCmd = "CREATE TABLE IF NOT EXISTS DhcpRelayIntfConfigServer " +
-//	"( " +
-//	"IntfId INTEGER NOT NULL,\n" +
-//	"ServerIp TEXT,\n" +
-//	"FOREIGN KEY(IntfId) REFERENCES DhcpRelayIntfConfig(IfIndex) ON DELETE CASCADE" +
-//	");"
-//_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
-///
 func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") DeleteObjectFromDb (objKey string, dbHdl *sql.DB) error {\n")
