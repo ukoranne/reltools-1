@@ -102,6 +102,9 @@ func main() {
 
 	for name, obj := range objMap {
 		obj.ObjName = name
+		if obj.Access == "r" {
+			continue
+		}
 		srcFile := fileBase + obj.SrcFile
 		f, err := parser.ParseFile(fset,
 			srcFile,
@@ -122,12 +125,12 @@ func main() {
 						typ := spec.(*ast.TypeSpec)
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
+							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.Contains(obj.Access, "w") {
 								listingsFd.WriteString(obj.DbFileName + "\n")
-								obj.WriteDBFunctions(str)
+							obj.WriteDBFunctions(str, membersInfo)
 							}
-							generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 						}
 					}
 				}
@@ -163,7 +166,7 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 	}
 	return
 }
-func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) {
+func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) map[string]ObjectMembersInfo {
 	// Write Skeleton of the structure in json.
 	//This would help later python scripts to understand the structure
 	var objMembers map[string]ObjectMembersInfo
@@ -171,7 +174,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	fdHdl, err := os.Create(jsonFileName)
 	if err != nil {
 		fmt.Println("Failed to open the file", jsonFileName)
-		return
+		return nil
 	}
 	defer fdHdl.Close()
 
@@ -209,6 +212,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	} else {
 		fdHdl.WriteString(string(lines))
 	}
+	return objMembers
 }
 
 func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, srcFile string, owner string) error {
