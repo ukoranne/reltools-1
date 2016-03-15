@@ -299,6 +299,7 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
     servicesName = daemonThriftNameChangeDict[d] if d in daemonThriftNameChangeDict else d
     clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                         var objId int64
+                        var err error
 	                    switch obj.(type) {\n""" % (newDeamonName,))
     for s in crudStructsList:
         if s in accessDict and 'w' in accessDict[s]:
@@ -317,12 +318,16 @@ def createClientIfCreateObject(clientIfFd, d, crudStructsList, goMemberTypeDict,
                 clientIfFd.write("""conf.%s = %s(data.%s)\n""" % (k, cast, k))
             '''
             clientIfFd.write("""
-                                _, err := clnt.ClientHdl.Create%s(conf)
+                                _, err = clnt.ClientHdl.Create%s(conf)
                                 if err != nil {
                                 fmt.Println("Create failed:", err)
                                 return int64(0), false
                                 }
-                                objId, _ = data.StoreObjectInDb(dbHdl)
+                                objId, err = data.StoreObjectInDb(dbHdl)
+                                if err != nil {
+                                fmt.Println("Store in DB failed:", err)
+                                return objId, false
+                                }
                                 break\n""" % (s,))
     clientIfFd.write("""default:
 		                break

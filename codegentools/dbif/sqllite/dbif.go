@@ -69,6 +69,13 @@ func main() {
 	//
 
 	goObjSources := base + "/snaproute/src/models/goObjInfo.json"
+
+	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
+	if err != nil {
+		fmt.Println("Failed to open the file", listingFile)
+		return
+	}
+	defer listingsFd.Close()
 	var goSrcsMap map[string]RawObjSrcInfo
 	bytes, err := ioutil.ReadFile(goObjSources)
 	if err != nil {
@@ -80,7 +87,7 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", goObjSources, err)
 	}
 	for goSrcFile, ownerName := range goSrcsMap {
-		generateHandCodedObjectsInformation(fileBase, goSrcFile, ownerName.Owner)
+		generateHandCodedObjectsInformation(listingsFd, fileBase, goSrcFile, ownerName.Owner)
 	}
 
 	bytes, err = ioutil.ReadFile(jsonFile)
@@ -93,12 +100,6 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", jsonFile, err)
 	}
 
-	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
-	if err != nil {
-		fmt.Println("Failed to open the file", listingFile)
-		return
-	}
-	defer listingsFd.Close()
 	for name, obj := range objMap {
 		obj.ObjName = name
 		srcFile := fileBase + obj.SrcFile
@@ -121,7 +122,7 @@ func main() {
 						typ := spec.(*ast.TypeSpec)
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
-							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
+							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.Contains(obj.Access, "w") {
 								listingsFd.WriteString(obj.DbFileName + "\n")
 								obj.WriteDBFunctions(str)
@@ -210,7 +211,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	}
 }
 
-func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner string) error {
+func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, srcFile string, owner string) error {
 	var objMap map[string]ObjectInfoJson
 	objMap = make(map[string]ObjectInfoJson, 1)
 
@@ -254,8 +255,8 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 					typ := spec.(*ast.TypeSpec)
 					str, ok := typ.Type.(*ast.StructType)
 					if ok == true {
-						marshalFcnFile := fileBase + strings.Split(srcFile, ".")[0] + "_serializer.go"
-						//fmt.Println("marshalFcnFile ", marshalFcnFile)
+						marshalFcnFile := fileBase + "gen_" + strings.Split(srcFile, ".")[0] + "_serializer.go"
+						listingsFd.WriteString(marshalFcnFile + "\n")
 						for _, fld := range str.Fields.List {
 							if fld.Names != nil {
 								switch fld.Type.(type) {
