@@ -68,14 +68,56 @@ func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.Fi
         fmt.Println("### Failed to return last object id", err)                                                           
     }                                                                                                                    
                                                                                                                            
-    }                                                                                                                       
-    return objectId, err                                                                                                    
     }` + "\n"
+
 	lines = append(lines, fcnClosure)
+	// Write Secondary table lines
+	secondaryLines := obj.WriteSecondaryTableInsertIntoDBFcn(str, fd, attrMap)
+	if len(secondaryLines) > 0 {
+		lines = append(lines, secondaryLines...)
+	}
+	lines = append(lines, `return objectId, err                                                                                                    
+						    }`+"\n")
+
 	for _, line := range lines {
 		fd.WriteString(line)
 	}
 	fd.Sync()
+}
+
+func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo) []string {
+	var lines []string
+
+	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
+		return lines
+	}
+	for attrName, attrInfo := range attrMap {
+		if attrInfo.IsArray == true {
+			for key, info := range attrMap {
+				if info.IsKey == true {
+					lines = append(lines,
+						"for i:= 0; i < len (obj."+attrName+"); i++ {\n")
+					lines = append(lines,
+						"dbCmd = fmt.Sprintf(\" INSERT INTO "+obj.ObjName+attrName+"("+key+" , "+attrName+") VALUES ('%v', '%v') ;\",\n")
+					lines = append(lines, "obj."+key+", obj."+attrName+"[i])\n")
+
+				}
+			}
+			lines = append(lines,
+				`	result, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
+				if err != nil {
+				fmt.Println("**** Failed to Create table", err)
+				} else {
+				_, err = result.LastInsertId()
+				if err != nil {
+					fmt.Println("### Failed to return last object id", err)
+				}
+				}
+				}
+				`)
+		}
+	}
+	return lines
 }
 
 func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo) {
