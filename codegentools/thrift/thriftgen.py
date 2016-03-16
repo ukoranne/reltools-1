@@ -103,14 +103,23 @@ class DaemonObjectsInfo (object) :
             for attrName, attrInfo in structInfo['membersInfo'].iteritems():
                 index = index+1
                 if attrInfo['isArray'] != 'False' :
-                    nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
-                    thriftfd.write("\t%s : %s %s\n" % (index,
-                                                       nativetype,
-                                                       attrName))
+                    if str(attrInfo['type']) in goToThirftTypeMap:
+                        nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           nativetype,
+                                                           attrName))
+                    else:
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           "list<" + str(attrInfo['type']) + ">",
+                                                           attrName))
                 else:
                     if str(attrInfo['type']) in goToThirftTypeMap:
                         thriftfd.write("\t%s : %s %s\n" % (index,
                                                          goToThirftTypeMap[str(attrInfo['type'])]['native_type'],
+                                                         attrName))
+                    else:
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                         str(attrInfo['type']),
                                                          attrName))
              
             thriftfd.write('}\n')
@@ -127,7 +136,7 @@ class DaemonObjectsInfo (object) :
             if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
-            else: # read only objects Counters/State
+            if 'r' in structInfo['access'] and structInfo['multiplicity'] == '*': # read only objects Counters/State
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
         thriftfd.write("}")
         thriftfd.close()
@@ -146,17 +155,27 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if structInfo['access'] in ['w', 'rw']:
+            if structInfo['access'] in ['w', 'rw', 'r', '']:
                 thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, self.servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
                     attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
 
                     if v['isArray'] != 'False':
-                         thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
                                                         thriftobj.%s = append(thriftobj.%s, %s(data%s))
                                                     }\n""" %(i, k, k, k, attrType, i))
+                        else:
+                            thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                        thriftdata%s := new(%s.%s)
+                                                        Convert%s%sObjToThrift(&data%s, thriftdata%s)
+                                                        thriftobj.%s = append(thriftobj.%s, thriftdata%s)
+                                                    }\n""" %(i, k, i, self.servicesName, attrType, d, attrType, i, i, k, k, i))
                     else:
-                        thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
+                        else:
+                            thriftdbutilfd.write("""Convert%s%sObjToThrift(&dbobj.%s, thriftobj.%s)\n""" % (d, attrType, k, k)) 
                 thriftdbutilfd.write("""}\n""")
 
 
@@ -167,11 +186,21 @@ class DaemonObjectsInfo (object) :
                     #attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
                     attrType = attrInfo['type']
                     if attrInfo['isArray'] != 'False':
-                        thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
                                                     dbobj.%s = append(dbobj.%s, %s(data%s))
                                                 }\n""" %(i, k, k, k, attrType, i))
+                        else:
+                            thriftdbutilfd.write("""\nfor _, thriftdata%s := range thriftobj.%s {
+                                                        dbobjdata%s := new(%s)
+                                                        ConvertThriftTo%s%sObj(thriftdata%s, dbobjdata%s)
+                                                        dbobj.%s = append(dbobj.%s, *dbobjdata%s)
+                                                    }\n""" %(i, k, i, attrType, d, attrType, i, i, k, k, i))
                     else:
-                        thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, attrType, k))
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, attrType, k))
+                        else:
+                            thriftdbutilfd.write("""ConvertThriftTo%s%sObj(thriftobj.%s, &dbobj.%s)\n""" % (d, attrType, k, k)) 
 
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
@@ -330,32 +359,24 @@ class DaemonObjectsInfo (object) :
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
-            if structInfo['access'] in ['r']:
+            d = self.name
+            if 'r' in structInfo['access'] and structInfo['multiplicity'] == '*':
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
-                            var ret_obj models.%s
                         bulkInfo, err := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
                         if bulkInfo != nil &&bulkInfo.Count != 0 {
                             objCount = int64(bulkInfo.Count)
                             more = bool(bulkInfo.More)
                             nextMarker = int64(bulkInfo.EndIdx)
                             for i := 0; i < int(bulkInfo.Count); i++ {
+                                ret_obj := new(models.%s)
                                 if len(objs) == 0 {
                                     objs = make([]models.ConfigObj, 0)
-                                }\n""" %(s, s, self.servicesName, self.servicesName))
+                                }\n""" %(s, self.servicesName, self.servicesName, s))
 
-                for k, v in structInfo['membersInfo'].iteritems():
-                    attrInfo = v
-                    attrType = attrInfo['type']
-                    if attrInfo['isArray'] != 'False':
-                        clientIfFd.write("""\nfor _, data := range bulkInfo.%sList[i].%s {
-                                ret_obj.%s = append(ret_obj.%s, %s(data))
-                                }\n""" %(s, k, k, k, attrType))
-                    else:
-                        clientIfFd.write("""
-                                ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, attrType, s, k))
+                clientIfFd.write("""\nmodels.ConvertThriftTo%s%sObj(bulkInfo.%sList[i], ret_obj)""" % (d, s, s))
                 clientIfFd.write("""\nobjs = append(objs, ret_obj)
                                         }
 
@@ -437,8 +458,10 @@ def generateObjectMap():
         objData = json.load(infoFile)
 
     for name,  dtls in objData.iteritems():
-        line  = "\"%s\" :    &%s{}," %(name, name)
-        fd.write(line+"\n")
+        #print "name = %s, dtls = %s" % (name, dtls)
+        if "w" in dtls['access'] or "r" in dtls['access']:
+            line  = "\"%s\" :    &%s{}," %(name, name)
+            fd.write(line+"\n")
 
     fd.write("""}\n""")
     fd.close()
