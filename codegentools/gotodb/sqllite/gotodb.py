@@ -155,7 +155,7 @@ def build_gosqllite_from_go(files, generatePath, objects):
             if found:
                 print 'Found structure ', obj, ' in file ', directory, gofilename
                 dbFd.close()
-                #executeGoFmtCommand(dbFd, ["gofmt -w %s" % dbFd.name], GO_MODEL_BASE_PATH)
+                executeGoFmtCommand(dbFd, ["gofmt -w %s" % dbFd.name], GO_MODEL_BASE_PATH)
                 break
 
         if not found:
@@ -795,5 +795,5 @@ if __name__ == "__main__":
     files, generatePath = get_dir_file_names(args.file)
     build_gosqllite_from_go(files, generatePath, objects)
     fd = createCommonDbFunc(generatePath)
-    #executeGoFmtCommand(fd, ["gofmt -w %s" % fd.name], GO_MODEL_BASE_PATH)
+    executeGoFmtCommand(fd, ["gofmt -w %s" % fd.name], GO_MODEL_BASE_PATH)
     #executeLocalCleanup()

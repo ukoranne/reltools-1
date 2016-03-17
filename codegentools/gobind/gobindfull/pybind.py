@@ -204,8 +204,8 @@ class BTPyGOClass(plugin.PyangPlugin):
 
       build_pybind(ctx, modules, fdDict)
 
-      #for f in fdDict.values():
-        #executeGoFmtCommand(f, ['gofmt %s' % f.name])
+      for f in fdDict.values():
+        executeGoFmtCommand(f, ['gofmt %s' % f.name])
 
 
     def add_opts(self, optparser):

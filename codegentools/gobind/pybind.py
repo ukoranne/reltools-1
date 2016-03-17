@@ -229,7 +229,7 @@ class BTPyGOClass(plugin.PyangPlugin):
         for f in fdDict.values():
             f.close()
             #import ipdb;ipdb.set_trace()
-            #executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
+            executeGoFmtCommand(f, ['gofmt -w %s' % f.name])
 
             #cmd = "rm %s%s" % (MODELS_PATH_LIST[0] + f.name.split('_')[0].rstrip('.go').rstrip('.tmp') + "/", f.name.rstrip('tmp'))
             #executeGoModelCleanupCommand([cmd])
