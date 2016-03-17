@@ -2,15 +2,16 @@ MKDIR=mkdir -p
 RMDIRFORCE=rm -rf
 PKG_BUILD=FALSE
 PROD_NAME=flexswitch
+OPENNSL_TARGET=cel_redstone
+SAI_TARGET=mlnx
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	EXT_INSTALL_PATH=
 	BUILD_DIR=out
-	ALL_DEPS=codegenv2 installdir ipc exe install
 else
 	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
 	BUILD_DIR=flexswitch-0.0.1
-	ALL_DEPS=codegenv2 installdir ipc exe install
 endif
+ALL_DEPS=codegenv2 installdir ipc exe install
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
@@ -51,13 +52,13 @@ codegen:
 	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
 exe: $(COMPS)
-	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) GOLDFLAGS="-r /opt/flexswitch/sharedlib";)
+	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";)
 
 ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
 
 copy: $(COMPS)
-	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH);)
+	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET);)
 
 install:installdir copy
 	install $(SR_CODE_BASE)/reltools/flexswitch $(DESTDIR)/$(EXT_INSTALL_PATH)
