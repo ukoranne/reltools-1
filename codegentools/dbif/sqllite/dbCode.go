@@ -347,7 +347,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
 							}
 
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]" + " + " + "\"\\\"\""
+							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"  
 						}
 						numKeys += 1
 
@@ -356,9 +356,9 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 			}
 		}
 	}
-	if numKeys == 1 {
+//	if numKeys == 1 {
 		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
-	}
+//	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
 						return key, nil
