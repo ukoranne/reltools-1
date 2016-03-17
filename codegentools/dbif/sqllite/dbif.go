@@ -126,7 +126,7 @@ func main() {
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.Contains(obj.Access, "w") {
 								listingsFd.WriteString(obj.DbFileName + "\n")
-								obj.WriteDBFunctions(str, membersInfo)
+								obj.WriteDBFunctions(str, membersInfo, objMap)
 							}
 						}
 					}
@@ -134,6 +134,49 @@ func main() {
 			}
 		}
 	}
+}
+
+func getObjectMemberInfo(objMap map[string]ObjectSrcInfo, objName string) (membersInfo map[string]ObjectMembersInfo) {
+	fset := token.NewFileSet() // positions are relative to fset
+	base := os.Getenv("SR_CODE_BASE")
+	if len(base) <= 0 {
+		fmt.Println(" Environment Variable SR_CODE_BASE has not been set")
+		return membersInfo
+	}
+	fileBase := base + "/snaproute/src/models/"
+	for name, obj := range objMap {
+		if objName == name {
+			obj.ObjName = name
+			srcFile := fileBase + obj.SrcFile
+			f, err := parser.ParseFile(fset,
+				srcFile,
+				nil,
+				parser.ParseComments)
+
+			if err != nil {
+				fmt.Println("Failed to parse input file ", srcFile, err)
+				return
+			}
+
+			for _, dec := range f.Decls {
+				tk, ok := dec.(*ast.GenDecl)
+				if ok {
+					for _, spec := range tk.Specs {
+						switch spec.(type) {
+						case *ast.TypeSpec:
+							typ := spec.(*ast.TypeSpec)
+							str, ok := typ.Type.(*ast.StructType)
+							if ok && name == typ.Name.Name {
+								membersInfo = generateMembersInfoForAllObjects(str, "")
+								return membersInfo
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return membersInfo
 }
 
 func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
@@ -168,12 +211,16 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	//This would help later python scripts to understand the structure
 	var objMembers map[string]ObjectMembersInfo
 	objMembers = make(map[string]ObjectMembersInfo, 1)
-	fdHdl, err := os.Create(jsonFileName)
-	if err != nil {
-		fmt.Println("Failed to open the file", jsonFileName)
-		return nil
+	var fdHdl *os.File
+	var err error
+	if jsonFileName != "" {
+		fdHdl, err = os.Create(jsonFileName)
+		if err != nil {
+			fmt.Println("Failed to open the file", jsonFileName)
+			return nil
+		}
+		defer fdHdl.Close()
 	}
-	defer fdHdl.Close()
 
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
@@ -191,6 +238,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				if fld.Tag != nil {
 					getSpecialTagsForAttribute(fld.Tag.Value, &info)
 				}
+				objMembers[varName] = info
 			case *ast.Ident:
 				info := ObjectMembersInfo{}
 				if fld.Tag != nil {
@@ -207,7 +255,9 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	if err != nil {
 		fmt.Println("Error in converting to Json", err)
 	} else {
-		fdHdl.WriteString(string(lines))
+		if fdHdl != nil {
+			fdHdl.WriteString(string(lines))
+		}
 	}
 	return objMembers
 }
