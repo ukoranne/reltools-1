@@ -294,9 +294,19 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	lines = append(lines, "sqlKey, err := obj.GetSqlKeyStr(objKey)\n")
 	lines = append(lines, "dbCmd := \"select * from "+obj.ObjName+" where \" + sqlKey\n")
 	attrNamesList := "err = dbHdl.QueryRow(dbCmd).Scan("
+	first :=true
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
-			attrNamesList = attrNamesList + "&object." + fld.Names[0].String() + ", "
+			switch fld.Type.(type){
+				case *ast.ArrayType:
+				   fmt.Println(fld.Names[0].String(),"Array type")
+				default:
+				    if !first {
+						attrNamesList = attrNamesList + ","
+					}
+			        attrNamesList = attrNamesList + "&object." + fld.Names[0].String()
+		            first = false
+			} 
 		}
 	}
 	attrNamesList = attrNamesList + ")\n"
