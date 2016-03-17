@@ -227,14 +227,18 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 	var conditionsLine []string
 	var frnKeyLine string
 
+	first := true
 	for attrName, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
 		if attrInfo.IsArray == true {
 			for key, info := range attrMap {
 				if info.IsKey == true {
-					conditionsLine = append(conditionsLine,
-						"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+                    if first == true {
+					    conditionsLine = append(conditionsLine,
+						    "\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+					    first = false
+					}
 					frnKeyLine = frnKeyLine + key
 					frnKeyLine = frnKeyLine + comma
 					comma = ","
