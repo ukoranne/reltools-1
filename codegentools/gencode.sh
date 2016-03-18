@@ -13,7 +13,7 @@ for srcFile in `cat $SR_CODE_BASE/reltools/codegentools/._genInfo/generatedGoFil
 do
 if [[ $srcFile == *."go"* ]]
 then
-	   go fmt $srcFile
+	   gofmt -w $srcFile
 fi
 done    
 
