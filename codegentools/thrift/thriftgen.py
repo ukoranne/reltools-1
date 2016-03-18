@@ -136,7 +136,7 @@ class DaemonObjectsInfo (object) :
             if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
-            if 'r' in structInfo['access'] and structInfo['multiplicity'] == '*': # read only objects Counters/State
+            if 'r' in structInfo['access']: # read only objects Counters/State
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
         thriftfd.write("}")
         thriftfd.close()
@@ -360,7 +360,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access'] and structInfo['multiplicity'] == '*':
+            if 'r' in structInfo['access']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""
