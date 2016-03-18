@@ -234,7 +234,6 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 	var lines []string
 	var frnKeyLine string
 
-	first := true
 	for attrName, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
@@ -242,11 +241,8 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 		if attrInfo.IsArray == true {
 			for key, info := range attrMap {
 				if info.IsKey == true {
-					if first == true {
-						conditionsLine = append(conditionsLine,
-							"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
-						first = false
-					}
+					conditionsLine = append(conditionsLine,
+						"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
 					frnKeyLine = frnKeyLine + key
 					frnKeyLine = frnKeyLine + comma
 					comma = ","
