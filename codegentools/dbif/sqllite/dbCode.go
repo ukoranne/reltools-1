@@ -224,12 +224,12 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, 
 
 func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) []string {
 	var lines []string
-	var conditionsLine []string
 	var frnKeyLine string
 
 	for attrName, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
+		conditionsLine := make([]string, 0)
 		if attrInfo.IsArray == true {
 			for key, info := range attrMap {
 				if info.IsKey == true {
@@ -347,7 +347,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
 							}
 
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"  
+							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
 						}
 						numKeys += 1
 
@@ -356,9 +356,9 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 			}
 		}
 	}
-//	if numKeys == 1 {
-		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
-//	}
+	//	if numKeys == 1 {
+	reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+	//	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
 						return key, nil
