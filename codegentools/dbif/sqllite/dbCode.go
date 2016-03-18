@@ -18,6 +18,14 @@ import (
 )    
 
 `
+
+var fileHeaderForState = `package models                                                                                                                                                                                                                                                                                                                                              
+import (
+   "fmt"                                                                                                                   
+   "strings"                                                                                                               
+)    
+
+`
 var goTypesToSqliteMap = map[string]string{
 	"bool":    "bool",
 	"uint8":   "INTEGER",
@@ -266,8 +274,9 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
 	lines = append(lines, "keyName := \""+obj.ObjName+"\"\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"Config\")\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"State\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" Config\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" State\")\n")
+	lines = append(lines, "fmt.Println(\"key is \", keyName)\n")
 
 	numKeys := 0
 	keyStr := "key := keyName + \"#\" + "
@@ -573,15 +582,20 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		return
 	}
 	defer dbFile.Close()
-	dbFile.WriteString(fileHeader)
-	obj.WriteCreateTableFcn(str, dbFile, attrMap)
-	obj.WriteStoreObjectInDBFcn(str, dbFile, attrMap)
-	obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMap)
-	obj.WriteGetObjectFromDbFcn(str, dbFile, attrMap)
-	obj.WriteKeyRelatedFcns(str, dbFile, attrMap)
-	obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMap)
-	obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMap)
-	obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMap)
-	obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMap)
+	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
+		dbFile.WriteString(fileHeader)
+		obj.WriteCreateTableFcn(str, dbFile, attrMap)
+		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMap)
+		obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMap)
+		obj.WriteGetObjectFromDbFcn(str, dbFile, attrMap)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMap)
+		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMap)
+		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMap)
+		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMap)
+		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMap)
+	} else {
+		dbFile.WriteString(fileHeaderForState)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMap)
+	}
 	dbFile.Sync()
 }
