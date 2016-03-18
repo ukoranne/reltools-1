@@ -18,6 +18,14 @@ import (
 )
 
 `
+
+var fileHeaderForState = `package models                                                                                                                                                                                                                                                                                                                                              
+import (
+   "fmt"                                                                                                                   
+   "strings"                                                                                                               
+)    
+
+`
 var goTypesToSqliteMap = map[string]string{
 	"bool":    "bool",
 	"uint8":   "INTEGER",
@@ -224,17 +232,21 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, 
 
 func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) []string {
 	var lines []string
-	var conditionsLine []string
 	var frnKeyLine string
 
+	first := true
 	for attrName, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
+		conditionsLine := make([]string, 0)
 		if attrInfo.IsArray == true {
 			for key, info := range attrMap {
 				if info.IsKey == true {
-					conditionsLine = append(conditionsLine,
-						"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+					if first == true {
+						conditionsLine = append(conditionsLine,
+							"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+						first = false
+					}
 					frnKeyLine = frnKeyLine + key
 					frnKeyLine = frnKeyLine + comma
 					comma = ","
@@ -290,9 +302,19 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	lines = append(lines, "sqlKey, err := obj.GetSqlKeyStr(objKey)\n")
 	lines = append(lines, "dbCmd := \"select * from "+obj.ObjName+" where \" + sqlKey\n")
 	attrNamesList := "err = dbHdl.QueryRow(dbCmd).Scan("
+	first := true
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
-			attrNamesList = attrNamesList + "&object." + fld.Names[0].String() + ", "
+			switch fld.Type.(type) {
+			case *ast.ArrayType:
+				fmt.Println(fld.Names[0].String(), "Array type")
+			default:
+				if !first {
+					attrNamesList = attrNamesList + ","
+				}
+				attrNamesList = attrNamesList + "&object." + fld.Names[0].String()
+				first = false
+			}
 		}
 	}
 	attrNamesList = attrNamesList + ")\n"
@@ -318,8 +340,9 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
 	lines = append(lines, "keyName := \""+obj.ObjName+"\"\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"Config\")\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(\""+obj.ObjName+"\", \"State\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" Config\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" State\")\n")
+	lines = append(lines, "fmt.Println(\"key is \", keyName)\n")
 
 	numKeys := 0
 	keyStr := "key := keyName + \"#\" + "
@@ -347,7 +370,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
 							}
 
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"  
+							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
 						}
 						numKeys += 1
 
@@ -356,9 +379,9 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 			}
 		}
 	}
-//	if numKeys == 1 {
-		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
-//	}
+	//	if numKeys == 1 {
+	reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+	//	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
 						return key, nil
@@ -699,15 +722,20 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		return
 	}
 	defer dbFile.Close()
-	dbFile.WriteString(fileHeader)
-	obj.WriteCreateTableFcn(str, dbFile, attrMap, objMap)
-	obj.WriteStoreObjectInDBFcn(str, dbFile, attrMap, objMap)
-	obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMap, objMap)
-	obj.WriteGetObjectFromDbFcn(str, dbFile, attrMap, objMap)
-	obj.WriteKeyRelatedFcns(str, dbFile, attrMap, objMap)
-	obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMap, objMap)
-	obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMap, objMap)
-	obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMap, objMap)
-	obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMap, objMap)
+	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
+		dbFile.WriteString(fileHeader)
+		obj.WriteCreateTableFcn(str, dbFile, attrMap, objMap)
+		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMap, objMap)
+		obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMap, objMap)
+		obj.WriteGetObjectFromDbFcn(str, dbFile, attrMap, objMap)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMap, objMap)
+		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMap, objMap)
+		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMap, objMap)
+		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMap, objMap)
+		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMap, objMap)
+	} else {
+		dbFile.WriteString(fileHeaderForState)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMap, objMap)
+	}
 	dbFile.Sync()
 }

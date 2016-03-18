@@ -58,7 +58,7 @@ ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
 
 copy: $(COMPS)
-	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH);)
+	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET);)
 
 install:installdir copy
 	install $(SR_CODE_BASE)/reltools/flexswitch $(DESTDIR)/$(EXT_INSTALL_PATH)
