@@ -8,7 +8,8 @@
 	dh $@
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l$(SR_CODE_BASE)/snaproute/src/asicd/pluginManager/sai/mlnx/libs -l$(SR_CODE_BASE)/snaproute/src/asicd/pluginManager/sai/bfoot/libs
+	#dh_shlibdeps -l$(SR_CODE_BASE)/snaproute/src/asicd/pluginManager/sai/mlnx/libs -l$(SR_CODE_BASE)/snaproute/src/asicd/pluginManager/sai/bfoot/libs
+	dh_shlibdeps -l$(SR_CODE_BASE)/snaproute/src/asicd/pluginManager/sai/mlnx/libs
 
 binary:
 	dh binary --before dh_strip
