@@ -80,7 +80,6 @@ class DaemonObjectsInfo (object) :
 
             info['membersInfo'] = objMembersStrData
             
-        #print self.objectDict
 
     def addGeneratedFilesNamesToListing (self):
         with open(GENERATED_FILES_LIST, 'a+') as fp:
@@ -233,7 +232,6 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
-        print 'clientIf Create Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                             var objId int64
                             var err error
@@ -268,7 +266,6 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, objectNames):
-        print 'clientIf Delete Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -298,13 +295,11 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        print 'clientIf Get Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (models.ConfigObj, bool) {\n""" % (self.newDeamonName,))
         clientIfFd.write("""return nil, false                                                                                                    
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        print 'clientIf Update Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
             var ok bool
@@ -346,7 +341,6 @@ class DaemonObjectsInfo (object) :
                 }\n""")
 
     def createClientIfGetBulkObject(self, clientIfFd, objectNames):
-        print 'clientIf GetBulk Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
                                             objCount int64,
                                             nextMarker int64,
@@ -458,7 +452,6 @@ def generateObjectMap():
         objData = json.load(infoFile)
 
     for name,  dtls in objData.iteritems():
-        #print "name = %s, dtls = %s" % (name, dtls)
         if "w" in dtls['access'] or "r" in dtls['access']:
             line  = "\"%s\" :    &%s{}," %(name, name)
             fd.write(line+"\n")
