@@ -93,9 +93,6 @@ def getDaemonsInfo (baseDir) :
 
                     {'name': 'vrrpd',
                      'params': '-params=' + baseDir + '/params'},
-
-                    {'name': 'vxland',
-                     'params': '-params=' + baseDir + '/params'},
                     
 		    {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
