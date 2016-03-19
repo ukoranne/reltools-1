@@ -49,15 +49,22 @@ goToThirftTypeMap = {
 }
 
 class DaemonObjectsInfo (object) :
-    def __init__ (self, name, location, svcName):
+    def __init__ (self, name, location, svcName, finalSvcName=None):
         self.name   =  name
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_UTILS_PATH + "gen_" + name + "dbthriftutil.go"
         self.clientIfFileName = CLIENTIF_SRC_PATCH + "gen_" + name + "clientif.go"
-        self.servicesName = self.name
+        print '## DMN %s svcName %s' %(name, finalSvcName)
+        if finalSvcName:
+            self.servicesName = finalSvcName
+        else: 
+            self.servicesName = self.name
         self.SName = svcName
-        self.newDeamonName = self.servicesName.upper()
+        if "Services" in self.servicesName:
+            self.newDeamonName = self.servicesName.rstrip("Services").upper()
+        else:
+            self.newDeamonName = self.servicesName.upper()
         self.objectDict = {}
 
     def __str__(self):
@@ -92,7 +99,7 @@ class DaemonObjectsInfo (object) :
         sName = self.SName
         if sName != "nil" :
             thriftfd.write("include \"%s.thrift\"\n" %(sName))
-        dmn = self.name
+        dmn = self.servicesName
         thriftfd.write("namespace go %s\n" %(dmn))                                                             
         thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
         for structName, structInfo in objectNames.objectDict.iteritems ():
@@ -122,17 +129,19 @@ class DaemonObjectsInfo (object) :
                                                          attrName))
              
             thriftfd.write('}\n')
-            if structInfo['access'] == 'r' :
+            if 'r' in structInfo['access']:
                 thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(structName, structName, structName))
 
 
         if sName == "nil" :
             thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        elif "Services" in dmn: 
+            thriftfd.write("service %sServices extends %s.%sServices {\n" % (dmn.rstrip("Services").upper(), sName, sName.upper()))
         else :
             thriftfd.write("service %sServices extends %s.%sServices {\n" % (dmn.upper(), sName, sName.upper()))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             s = structName
-            if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
+            if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
             if 'r' in structInfo['access']: # read only objects Counters/State
@@ -410,6 +419,7 @@ def generateThriftAndClientIfs():
 
     ownerDirsInfo = {} 
     ownerInternalServiceInfo = {}
+    ownerFinalServiceInfo = {}
     for dirFile  in [goDmnDirsInfoJson, yangDmnDirsInfoJson]:
         with open(dirFile) as locnFile:
             objData = json.load(locnFile)
@@ -418,6 +428,9 @@ def generateThriftAndClientIfs():
             if not ownerDirsInfo.has_key(info['owner']):
                 ownerDirsInfo[info['owner']] = info['location']
                 ownerInternalServiceInfo[info['owner']] = info['svcName']
+                if info.has_key('finalSvcName'):
+                    ownerFinalServiceInfo[info['owner']] = info['finalSvcName']
+
 
     
     with open(genObjInfoJson) as infoFile:
@@ -425,12 +438,15 @@ def generateThriftAndClientIfs():
 
     ownerToObjMap = {}
     for name,  dtls in objData.iteritems():
+        finalSvcName =None 
+        if ownerFinalServiceInfo.has_key(dtls['owner']):
+            finalSvcName = ownerFinalServiceInfo[dtls['owner']]
+
         if ownerToObjMap.has_key(dtls['owner']):
             dmnObj = ownerToObjMap[dtls['owner']]
-        else:
-            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']], ownerInternalServiceInfo[dtls['owner']]) 
+        else :
+            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']], ownerInternalServiceInfo[dtls['owner']], finalSvcName)
             ownerToObjMap[dtls['owner']] = dmnObj
-
         dmnObj.objectDict[name] = dtls
     
     for dmn, entry in ownerToObjMap.iteritems():
