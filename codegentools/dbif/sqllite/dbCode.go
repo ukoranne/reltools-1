@@ -128,7 +128,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 				if info.IsKey == true {
 					lines = append(lines,
 						"for i:= 0; i < len (obj."+attrName+"); i++ {\n")
-					lines = append(lines, "dbCmd = fmt.Sprintf(\" INSERT INTO "+obj.ObjName+attrName+"("+key)
+					lines = append(lines, "dbCmd = fmt.Sprintf(\" INSERT INTO "+obj.ObjName+attrName+"("+obj.ObjName+key)
 					for _, attr := range attrs {
 						lines = append(lines, ", "+attr)
 					}
@@ -237,14 +237,16 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 	for attrName, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
+		frnKeyRef := ""
 		conditionsLine := make([]string, 0)
 		if attrInfo.IsArray == true {
 			for key, info := range attrMap {
 				if info.IsKey == true {
 					conditionsLine = append(conditionsLine,
-						"\""+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
-					frnKeyLine = frnKeyLine + key
+						"\""+obj.ObjName+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+					frnKeyLine = frnKeyLine + obj.ObjName + key
 					frnKeyLine = frnKeyLine + comma
+					frnKeyRef = frnKeyRef + key + comma
 					comma = ","
 				}
 			}
@@ -261,7 +263,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 				lines = append(lines, "\""+attrName)
 				lines = append(lines, " "+goTypesToSqliteMap[attrInfo.VarType]+", \\n \" +\n")
 			}
-			lines = append(lines, "\"FOREIGN KEY ( "+frnKeyLine+" ) "+"REFERENCES"+" "+obj.ObjName+"("+frnKeyLine+") ON DELETE CASCADE\"+\n")
+			lines = append(lines, "\"FOREIGN KEY ( "+frnKeyLine+" ) "+"REFERENCES"+" "+obj.ObjName+"("+frnKeyRef+") ON DELETE CASCADE\"+\n")
 			lines = append(lines, "\");\"\n")
 			lines = append(lines, `_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)`+"\n")
 		}
