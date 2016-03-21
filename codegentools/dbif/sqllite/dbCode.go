@@ -19,11 +19,11 @@ import (
 
 `
 
-var fileHeaderForState = `package models                                                                                                                                                                                                                                                                                                                                              
+var fileHeaderForState = `package models
 import (
-   "fmt"                                                                                                                   
-   "strings"                                                                                                               
-)    
+   "fmt"
+   "strings"
+)
 
 `
 var goTypesToSqliteMap = map[string]string{
@@ -338,8 +338,8 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
 	lines = append(lines, "keyName := \""+obj.ObjName+"\"\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" Config\")\n")
-	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\" State\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\"Config\")\n")
+	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\"State\")\n")
 	lines = append(lines, "fmt.Println(\"key is \", keyName)\n")
 
 	numKeys := 0
@@ -411,15 +411,16 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 						 return objList, err
 						 }
 						defer rows.Close()
+						objList = make([]ConfigObj, 0)
 						for rows.Next() {`+"\n")
 
 	stmt := "if err = rows.Scan("
 	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
 			if idx != len(str.Fields.List)-1 {
-				stmt = stmt + "&obj." + fld.Names[0].String() + ", "
+				stmt = stmt + "&object." + fld.Names[0].String() + ", "
 			} else {
-				stmt = stmt + "&obj." + fld.Names[0].String() + "); err != nil {\n"
+				stmt = stmt + "&object." + fld.Names[0].String() + "); err != nil {\n"
 			}
 		}
 	}
