@@ -166,23 +166,22 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 }
 
 func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+	var prelines []string
 	var lines []string
 	var listMembers []string
+	var pragmaline []string
+	var finalLines []string
 	//var userDefinedObjectMembersInfo map[string]ObjectMembersInfo
-	lines = append(lines, "\nfunc (obj "+obj.ObjName+") CreateDBTable(dbHdl *sql.DB) error {\n")
-	lines = append(lines, "dbCmd := \"CREATE TABLE IF NOT EXISTS "+obj.ObjName+" \"+ \n")
+	prelines = append(prelines, "\nfunc (obj "+obj.ObjName+") CreateDBTable(dbHdl *sql.DB) error {\n")
+	prelines = append(prelines, "var dbCmd string\n")
+	prelines = append(prelines, "var err error\n")
+	lines = append(lines, "dbCmd = \"CREATE TABLE IF NOT EXISTS "+obj.ObjName+" \"+ \n")
 	lines = append(lines, "\"( \" + \n")
 	keys := make([]string, 0)
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
 			switch fld.Type.(type) {
 			case *ast.ArrayType:
-				//typ := fld.Type.(*ast.ArrayType)
-				//fmt.Printf("++++++++ WriteCreateTableFcn: FieldsList=%+v, fld=%+v, type=%+v, tag=%+v, elt=%+v\n", str.Fields.List, fld,
-				//	typ, fld.Tag, typ.Elt)
-				//typ := spec.(*ast.TypeSpec)
-				//str, ok := typ.Type.(*ast.StructType)
-				//fmt.Printf("WriteCreateTableFcn: typ=%+v, str=%+v\n", typ, str)
 				listMembers = append(listMembers, fld.Names[0].String())
 			case *ast.Ident:
 				varName := fld.Names[0].String()
@@ -217,14 +216,29 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, 
 	fcnClosure :=
 		`")"
 
-	_, err := dbutils.ExecuteSQLStmt(dbCmd, dbHdl)` + "\n"
+	_, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)` + "\n"
 	lines = append(lines, fcnClosure)
 	secondaryTblLines := obj.WriteSecondaryTableCreateFcn(str, fd, attrMap, objMap)
 	if len(secondaryTblLines) > 0 {
 		lines = append(lines, secondaryTblLines...)
+		pragmaline = append(pragmaline, `
+						    dbCmd = "PRAGMA foreign_keys = ON;"
+						    _, err = dbutils.ExecuteSQLStmt(dbCmd, dbHdl)
+						    if err != nil {
+							    fmt.Println("Failed to SET Foreignkey pragma", err)
+						    }
+						`+"\n")
 	}
 	lines = append(lines, "return err "+"\n"+"}  \n")
-	for _, line := range lines {
+	// Append Pre Db Cmd Lines... like func name, var define
+	finalLines = append(finalLines, prelines[:]...)
+	// Append PRAGMA foreign key line if the secondary table is present
+	if len(pragmaline) > 0 {
+		finalLines = append(finalLines, pragmaline[:]...)
+	}
+	// Append remaining lines from the function..
+	finalLines = append(finalLines, lines[:]...)
+	for _, line := range finalLines {
 		fd.WriteString(line)
 	}
 	fd.Sync()
