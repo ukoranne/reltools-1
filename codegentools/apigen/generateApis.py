@@ -36,7 +36,6 @@ class apiGenie (object) :
             with open('baseCode.txt', 'r') as base:
                 fileHdl.writelines(base.readlines())
             for objName, obj in self.objDict.iteritems():
-                #if objName == 'OspfIfEntryConfig':
                 obj.writeAllMethods(fileHdl)
         
 
@@ -46,7 +45,7 @@ if __name__ == '__main__':
         print 'Environment variable SR_CODE_BASE is not set'
     
     objDescriptors = [ baseDir + '/snaproute/src/models/' + 'genObjectConfig.json',
-                       baseDir + '/snaproute/src/models/' + 'handCodedObjInfo.json'
+                       #baseDir + '/snaproute/src/models/' + 'handCodedObjInfo.json'
                      ]
     attrDescriptorsLocation = baseDir+'/reltools/codegentools/._genInfo/'
     outputDir = baseDir+'snaproute/src/flexSdk/py'
