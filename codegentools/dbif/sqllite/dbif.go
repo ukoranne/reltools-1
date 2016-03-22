@@ -37,6 +37,7 @@ type ObjectMembersInfo struct {
 	IsArray     bool   `json:"isArray"`
 	Description string `json:"description"`
 	DefaultVal  string `json:"default"`
+	Position    int    `json:"position"`
 }
 
 // This structure represents the objects that are generated directly from go files instead of yang models
@@ -124,7 +125,8 @@ func main() {
 						if ok && name == typ.Name.Name {
 							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
-							if strings.Contains(obj.Access, "w") {
+							if strings.ContainsAny(obj.Access, "rw") {
+								fmt.Println("Creating DBIF for", obj.ObjName)
 								listingsFd.WriteString(obj.DbFileName + "\n")
 								obj.WriteDBFunctions(str, membersInfo, objMap)
 							}
@@ -222,7 +224,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 		defer fdHdl.Close()
 	}
 
-	for _, fld := range str.Fields.List {
+	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
 			varName := fld.Names[0].String()
 			switch fld.Type.(type) {
@@ -230,6 +232,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				arrayInfo := fld.Type.(*ast.ArrayType)
 				info := ObjectMembersInfo{}
 				info.IsArray = true
+				info.Position = idx
 				objMembers[varName] = info
 				idntType := arrayInfo.Elt.(*ast.Ident)
 				varType := idntType.String()
@@ -247,6 +250,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				idntType := fld.Type.(*ast.Ident)
 				varType := idntType.String()
 				info.VarType = varType
+				info.Position = idx
 				objMembers[varName] = info
 			}
 		}
