@@ -337,7 +337,7 @@ class DaemonObjectsInfo (object) :
                         if ok {
                             updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
                         } else {
-                            panic(err)
+                            logger.Println("Update failed", err)
                         }
                     }
                     break\n""" %(s))
