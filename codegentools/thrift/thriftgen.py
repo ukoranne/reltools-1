@@ -94,6 +94,15 @@ class DaemonObjectsInfo (object) :
             fp.write(self.thriftUtilsFileName+ '\n')
             fp.write(self.clientIfFileName+ '\n')
 
+    def convertMemberInfoToOrderedList(self, structName, structInfo):
+
+        structInfoList = []
+        print 'Converting struct members to list: ', structName, len(structInfo)
+        for i in range(len(structInfo['membersInfo'])+1):
+            for attrName, attrInfo in structInfo['membersInfo'].iteritems():
+                if attrInfo['position'] == "%s" %(i+1,):
+                    yield (attrName, attrInfo)
+
     def generateThriftInterfaces(self, objectNames):
         thriftfd = open(self.thriftFileName, 'w+')
         sName = self.SName
@@ -106,7 +115,8 @@ class DaemonObjectsInfo (object) :
             line = 'struct ' + structName + ' {'
             thriftfd.write(line + '\n')
             index = 0
-            for attrName, attrInfo in structInfo['membersInfo'].iteritems():
+
+            for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
                 index = index+1
                 if attrInfo['isArray'] != 'False' :
                     if str(attrInfo['type']) in goToThirftTypeMap:
