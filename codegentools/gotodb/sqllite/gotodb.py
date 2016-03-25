@@ -758,6 +758,8 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
                 #print lineSplit
                 lineSplit = filter(lambda a: a, lineSplit)
                 #print "after filtering, split =", lineSplit
+		if len(lineSplit) == 0:
+                    continue
 
                 elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
                 key = 0

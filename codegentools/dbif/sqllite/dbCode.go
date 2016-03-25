@@ -40,7 +40,7 @@ var goTypesToSqliteMap = map[string]string{
 	"int64":   "INTEGER",
 }
 
-func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") StoreObjectInDb(dbHdl *sql.DB)  (int64, error) {\n")
 	lines = append(lines, "var objectId int64\n")
@@ -106,13 +106,13 @@ func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) []string {
+func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
 	var lines []string
 
 	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
 		return lines
 	}
-	for attrName, attrInfo := range attrMap {
+	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
 			attrs := make([]string, 0)
 			if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
@@ -121,14 +121,14 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 					attrs = append(attrs, memAttrName)
 				}
 			} else {
-				attrs = append(attrs, attrName)
+				attrs = append(attrs, attrInfo.MemberName)
 			}
 
-			for key, info := range attrMap {
+			for _, info := range attrMap {
 				if info.IsKey == true {
 					lines = append(lines,
-						"for i:= 0; i < len (obj."+attrName+"); i++ {\n")
-					lines = append(lines, "dbCmd = fmt.Sprintf(\" INSERT INTO "+obj.ObjName+attrName+"("+obj.ObjName+key)
+						"for i:= 0; i < len (obj."+attrInfo.MemberName+"); i++ {\n")
+					lines = append(lines, "dbCmd = fmt.Sprintf(\" INSERT INTO "+obj.ObjName+attrInfo.MemberName+"("+obj.ObjName+info.MemberName)
 					for _, attr := range attrs {
 						lines = append(lines, ", "+attr)
 					}
@@ -137,13 +137,13 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 						lines = append(lines, ", '%v'")
 					}
 					lines = append(lines, ") ;\",\n")
-					lines = append(lines, "obj."+key)
+					lines = append(lines, "obj."+info.MemberName)
 					if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
 						for _, attr := range attrs {
-							lines = append(lines, ", obj."+attrName+"[i]."+attr)
+							lines = append(lines, ", obj."+attrInfo.MemberName+"[i]."+attr)
 						}
 					} else {
-						lines = append(lines, ", obj."+attrName+"[i]")
+						lines = append(lines, ", obj."+attrInfo.MemberName+"[i]")
 					}
 					lines = append(lines, ")\n")
 				}
@@ -165,7 +165,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 	return lines
 }
 
-func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var prelines []string
 	var lines []string
 	var listMembers []string
@@ -244,27 +244,27 @@ func (obj *ObjectSrcInfo) WriteCreateTableFcn(str *ast.StructType, fd *os.File, 
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) []string {
+func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
 	var lines []string
 	var frnKeyLine string
 
-	for attrName, attrInfo := range attrMap {
+	for _, attrInfo := range attrMap {
 		comma := ""
 		frnKeyLine = ""
 		frnKeyRef := ""
 		conditionsLine := make([]string, 0)
 		if attrInfo.IsArray == true {
-			for key, info := range attrMap {
+			for _, info := range attrMap {
 				if info.IsKey == true {
 					conditionsLine = append(conditionsLine,
-						"\""+obj.ObjName+key+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
-					frnKeyLine = frnKeyLine + obj.ObjName + key
+						"\""+obj.ObjName+info.MemberName+" "+goTypesToSqliteMap[info.VarType]+" NOT NULL, \\n \" +\n ")
+					frnKeyLine = frnKeyLine + obj.ObjName + info.MemberName
 					frnKeyLine = frnKeyLine + comma
-					frnKeyRef = frnKeyRef + key + comma
+					frnKeyRef = frnKeyRef + info.MemberName + comma
 					comma = ","
 				}
 			}
-			lines = append(lines, "\ndbCmd = \"CREATE TABLE IF NOT EXISTS "+obj.ObjName+attrName+" \" + \n")
+			lines = append(lines, "\ndbCmd = \"CREATE TABLE IF NOT EXISTS "+obj.ObjName+attrInfo.MemberName+" \" + \n")
 			lines = append(lines, " \" ( \" + \n")
 			lines = append(lines, conditionsLine...)
 			if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
@@ -274,7 +274,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 					lines = append(lines, " "+goTypesToSqliteMap[memAttrInfo.VarType]+", \\n \" +\n")
 				}
 			} else {
-				lines = append(lines, "\""+attrName)
+				lines = append(lines, "\""+attrInfo.MemberName)
 				lines = append(lines, " "+goTypesToSqliteMap[attrInfo.VarType]+", \\n \" +\n")
 			}
 			lines = append(lines, "\"FOREIGN KEY ( "+frnKeyLine+" ) "+"REFERENCES"+" "+obj.ObjName+"("+frnKeyRef+") ON DELETE CASCADE\"+\n")
@@ -285,7 +285,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableCreateFcn(str *ast.StructType, fd *
 	return lines
 }
 
-func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") DeleteObjectFromDb (objKey string, dbHdl *sql.DB) error {\n")
 	lines = append(lines,
@@ -307,7 +307,7 @@ func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetObjectFromDb (objKey string, dbHdl *sql.DB) (ConfigObj, error) {\n")
 	lines = append(lines, "var object "+obj.ObjName+"\n")
@@ -347,7 +347,7 @@ func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
 	}
 	return false
 }
-func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey () (string, error) {\n")
 
@@ -422,7 +422,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl *sql.DB) (objList []ConfigObj, err error) { \n")
 	lines = append(lines, "var object "+obj.ObjName+"\n")
@@ -459,7 +459,7 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") CompareObjectsAndDiff(updateKeys map[string]bool, inObj ConfigObj) ([]bool, error) {\n")
 	lines = append(lines, "dbObj := inObj.("+obj.ObjName+")")
@@ -546,15 +546,15 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(inObj ConfigObj, attrSet []bool, dbHdl *sql.DB) error {\n")
 	lines = append(lines, "var fieldSqlStr string\n")
 	lines = append(lines, "keys := make([]string, 0)\n")
-	for attrName, attrInfo := range attrMap {
+	for _, attrInfo := range attrMap {
 		if attrInfo.IsKey == true {
-			lines = append(lines, "keys = append(keys, \""+attrName+"\")\n")
+			lines = append(lines, "keys = append(keys, \""+attrInfo.MemberName+"\")\n")
 		}
 	}
 	lines = append(lines, "dbObj := inObj.("+obj.ObjName+")\n")
@@ -666,7 +666,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObj(dbObj ConfigObj, attrSet []bool) (ConfigObj, error) {\n")
 	lines = append(lines, "var mergedObject  "+obj.ObjName+"\n")
@@ -736,6 +736,29 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 	fd.Sync()
 }
 
+func (obj *ObjectSrcInfo) ConvertObjecMemberstMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
+
+	for i := 0; i < len(attrMap); i++ {
+		for attr, info := range attrMap {
+			if i == info.Position {
+				newMember := ObjectMemberAndInfo{
+					ObjectMembersInfo: ObjectMembersInfo{
+						VarType:     info.VarType,
+						IsKey:       info.IsKey,
+						IsArray:     info.IsArray,
+						Description: info.Description,
+						DefaultVal:  info.DefaultVal,
+						Position:    info.Position,
+					},
+					MemberName: attr,
+				}
+				attrMapSlice = append(attrMapSlice, newMember)
+			}
+		}
+	}
+	return
+}
+
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
 	dbFile, err := os.Create(obj.DbFileName)
 	if err != nil {
@@ -743,20 +766,22 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		return
 	}
 	defer dbFile.Close()
+	attrMapSlice := obj.ConvertObjecMemberstMapToOrderedSlice(attrMap)
+
 	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
 		dbFile.WriteString(fileHeader)
-		obj.WriteCreateTableFcn(str, dbFile, attrMap, objMap)
-		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMap, objMap)
-		obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMap, objMap)
-		obj.WriteGetObjectFromDbFcn(str, dbFile, attrMap, objMap)
-		obj.WriteKeyRelatedFcns(str, dbFile, attrMap, objMap)
-		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMap, objMap)
-		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMap, objMap)
-		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMap, objMap)
-		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMap, objMap)
+		obj.WriteCreateTableFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteGetObjectFromDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMapSlice, objMap)
+		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
 		dbFile.WriteString(fileHeaderForState)
-		obj.WriteKeyRelatedFcns(str, dbFile, attrMap, objMap)
+		obj.WriteKeyRelatedFcns(str, dbFile, attrMapSlice, objMap)
 	}
 	dbFile.Sync()
 }
