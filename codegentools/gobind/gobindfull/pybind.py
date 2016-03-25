@@ -196,7 +196,7 @@ class BTPyGOClass(plugin.PyangPlugin):
     def emit(self, ctx, modules, fd):
       # When called, call the build_pyangbind function.
       name = fd.name.split('.')[0]
-      print '### FD name in emit full ' %(fd.name)
+      #print '### FD name in emit full ' %(fd.name)
 
       fdDict = {"struct" : fd,
                 "enums" : open(name+"_enum.go", 'w'),

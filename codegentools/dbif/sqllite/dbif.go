@@ -37,6 +37,12 @@ type ObjectMembersInfo struct {
 	IsArray     bool   `json:"isArray"`
 	Description string `json:"description"`
 	DefaultVal  string `json:"default"`
+	Position    int    `json:"position"`
+}
+
+type ObjectMemberAndInfo struct {
+	ObjectMembersInfo
+	MemberName string
 }
 
 // This structure represents the objects that are generated directly from go files instead of yang models
@@ -69,6 +75,13 @@ func main() {
 	//
 
 	goObjSources := base + "/snaproute/src/models/goObjInfo.json"
+
+	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
+	if err != nil {
+		fmt.Println("Failed to open the file", listingFile)
+		return
+	}
+	defer listingsFd.Close()
 	var goSrcsMap map[string]RawObjSrcInfo
 	bytes, err := ioutil.ReadFile(goObjSources)
 	if err != nil {
@@ -80,7 +93,7 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", goObjSources, err)
 	}
 	for goSrcFile, ownerName := range goSrcsMap {
-		generateHandCodedObjectsInformation(fileBase, goSrcFile, ownerName.Owner)
+		generateHandCodedObjectsInformation(listingsFd, fileBase, goSrcFile, ownerName.Owner)
 	}
 
 	bytes, err = ioutil.ReadFile(jsonFile)
@@ -93,12 +106,6 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", jsonFile, err)
 	}
 
-	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
-	if err != nil {
-		fmt.Println("Failed to open the file", listingFile)
-		return
-	}
-	defer listingsFd.Close()
 	for name, obj := range objMap {
 		obj.ObjName = name
 		srcFile := fileBase + obj.SrcFile
@@ -121,16 +128,62 @@ func main() {
 						typ := spec.(*ast.TypeSpec)
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
-							obj.DbFileName = fileBase + typ.Name.Name + "dbif.go"
-							listingsFd.WriteString(obj.DbFileName + "\n")
-							obj.WriteDBFunctions(str)
-							generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
+							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
+							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
+							if strings.ContainsAny(obj.Access, "rw") {
+								fmt.Println("Creating DBIF for", obj.ObjName)
+								listingsFd.WriteString(obj.DbFileName + "\n")
+								obj.WriteDBFunctions(str, membersInfo, objMap)
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+}
+
+func getObjectMemberInfo(objMap map[string]ObjectSrcInfo, objName string) (membersInfo map[string]ObjectMembersInfo) {
+	fset := token.NewFileSet() // positions are relative to fset
+	base := os.Getenv("SR_CODE_BASE")
+	if len(base) <= 0 {
+		fmt.Println(" Environment Variable SR_CODE_BASE has not been set")
+		return membersInfo
+	}
+	fileBase := base + "/snaproute/src/models/"
+	for name, obj := range objMap {
+		if objName == name {
+			obj.ObjName = name
+			srcFile := fileBase + obj.SrcFile
+			f, err := parser.ParseFile(fset,
+				srcFile,
+				nil,
+				parser.ParseComments)
+
+			if err != nil {
+				fmt.Println("Failed to parse input file ", srcFile, err)
+				return
+			}
+
+			for _, dec := range f.Decls {
+				tk, ok := dec.(*ast.GenDecl)
+				if ok {
+					for _, spec := range tk.Specs {
+						switch spec.(type) {
+						case *ast.TypeSpec:
+							typ := spec.(*ast.TypeSpec)
+							str, ok := typ.Type.(*ast.StructType)
+							if ok && name == typ.Name.Name {
+								membersInfo = generateMembersInfoForAllObjects(str, "")
+								return membersInfo
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return membersInfo
 }
 
 func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
@@ -160,19 +213,23 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 	}
 	return
 }
-func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) {
+func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) map[string]ObjectMembersInfo {
 	// Write Skeleton of the structure in json.
 	//This would help later python scripts to understand the structure
 	var objMembers map[string]ObjectMembersInfo
 	objMembers = make(map[string]ObjectMembersInfo, 1)
-	fdHdl, err := os.Create(jsonFileName)
-	if err != nil {
-		fmt.Println("Failed to open the file", jsonFileName)
-		return
+	var fdHdl *os.File
+	var err error
+	if jsonFileName != "" {
+		fdHdl, err = os.Create(jsonFileName)
+		if err != nil {
+			fmt.Println("Failed to open the file", jsonFileName)
+			return nil
+		}
+		defer fdHdl.Close()
 	}
-	defer fdHdl.Close()
 
-	for _, fld := range str.Fields.List {
+	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
 			varName := fld.Names[0].String()
 			switch fld.Type.(type) {
@@ -180,6 +237,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				arrayInfo := fld.Type.(*ast.ArrayType)
 				info := ObjectMembersInfo{}
 				info.IsArray = true
+				info.Position = idx
 				objMembers[varName] = info
 				idntType := arrayInfo.Elt.(*ast.Ident)
 				varType := idntType.String()
@@ -188,6 +246,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				if fld.Tag != nil {
 					getSpecialTagsForAttribute(fld.Tag.Value, &info)
 				}
+				objMembers[varName] = info
 			case *ast.Ident:
 				info := ObjectMembersInfo{}
 				if fld.Tag != nil {
@@ -196,6 +255,7 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 				idntType := fld.Type.(*ast.Ident)
 				varType := idntType.String()
 				info.VarType = varType
+				info.Position = idx
 				objMembers[varName] = info
 			}
 		}
@@ -204,11 +264,14 @@ func generateMembersInfoForAllObjects(str *ast.StructType, jsonFileName string) 
 	if err != nil {
 		fmt.Println("Error in converting to Json", err)
 	} else {
-		fdHdl.WriteString(string(lines))
+		if fdHdl != nil {
+			fdHdl.WriteString(string(lines))
+		}
 	}
+	return objMembers
 }
 
-func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner string) error {
+func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, srcFile string, owner string) error {
 	var objMap map[string]ObjectInfoJson
 	objMap = make(map[string]ObjectInfoJson, 1)
 
@@ -252,9 +315,8 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 					typ := spec.(*ast.TypeSpec)
 					str, ok := typ.Type.(*ast.StructType)
 					if ok == true {
-						marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
-						marshalFcnFile := fileBase + strings.Split(srcFile, ".")[0] + "_serializer.go"
-						//fmt.Println("marshalFcnFile ", marshalFcnFile)
+						marshalFcnFile := fileBase + "gen_" + strings.Split(srcFile, ".")[0] + "_serializer.go"
+						listingsFd.WriteString(marshalFcnFile + "\n")
 						for _, fld := range str.Fields.List {
 							if fld.Names != nil {
 								switch fld.Type.(type) {
@@ -277,36 +339,39 @@ func generateHandCodedObjectsInformation(fileBase string, srcFile string, owner 
 								}
 							}
 						}
-						marshalFcnsLine = append(marshalFcnsLine, `
-													var err error                                                                                                           
-													if len(body) > 0 {                                                                                                      
-													    if err = json.Unmarshal(body, &obj); err != nil {                                                                    
-													         fmt.Println("###  called, unmarshal failed", obj, err)                                             
-													      }                                                                                                                    
-													   }                                                                                                                       
-													   return obj, err                                                                                                         
+						objMap[typ.Name.Name] = obj
+						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") {
+							marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
+							marshalFcnsLine = append(marshalFcnsLine, `
+													var err error
+													if len(body) > 0 {
+													    if err = json.Unmarshal(body, &obj); err != nil {
+													         fmt.Println("###  called, unmarshal failed", obj, err)
+													      }
+													   }
+													   return obj, err
 													}
 													`)
 
-						objMap[typ.Name.Name] = obj
-						marshalFcnFd, err := os.Create(marshalFcnFile)
-						if err != nil {
-							fmt.Println("Failed to open the file", marshalFcnFile)
-							return err
-						}
-						defer marshalFcnFd.Close()
-						marshalFcnFd.WriteString(`package models                                                                                                                                                                                                                   
-													                                                                                                                           
-													import (                                                                                                                   
-													   "encoding/json"                                                                                                         
-													                                                                                                                           
-													   "fmt"                                                                                                                   
+							marshalFcnFd, err := os.Create(marshalFcnFile)
+							if err != nil {
+								fmt.Println("Failed to open the file", marshalFcnFile)
+								return err
+							}
+							defer marshalFcnFd.Close()
+							marshalFcnFd.WriteString(`package models
+
+													import (
+													   "encoding/json"
+
+													   "fmt"
 													)`)
 
-						for _, marshalLine := range marshalFcnsLine {
-							marshalFcnFd.WriteString(string(marshalLine))
+							for _, marshalLine := range marshalFcnsLine {
+								marshalFcnFd.WriteString(string(marshalLine))
+							}
+							//marshalFcnFd.WriteString("}\n")
 						}
-						//marshalFcnFd.WriteString("}\n")
 
 					}
 				}

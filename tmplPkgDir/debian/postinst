@@ -18,10 +18,40 @@ set -e
 # the debian-policy package
 
 #FIXME: Create the sym links conditionally, depending on target + pass in directory
-ln -sf /opt/flexswitch/sharedlib/libAsicMgr.so.1 /opt/flexswitch/sharedlib/libAsicMgr.so
 ln -sf /opt/flexswitch/sharedlib/libopennsl.so.1 /opt/flexswitch/sharedlib/libopennsl.so
 ln -sf /opt/flexswitch/sharedlib/libnanomsg.so.4.0.0 /opt/flexswitch/sharedlib/libnanomsg.so
 ln -sf /opt/flexswitch/sharedlib/libnanomsg.so.4.0.0 /opt/flexswitch/sharedlib/libnanomsg.so.4
+ln -sf /opt/flexswitch/sharedlib/libip4tc.so.0.1.0 /opt/flexswitch/sharedlib/libip4tc.so
+
+#FIXME: Create these symlinks based on target
+ln -sf /opt/flexswitch/sharedlib/libsai.so.1.0.0 /opt/flexswitch/sharedlib/libsai.so.1
+ln -sf /opt/flexswitch/sharedlib/libsai.so.1.0.0 /opt/flexswitch/sharedlib/libsai.so
+ln -sf /opt/flexswitch/sharedlib/libsw_rm_int.so.1.0.0 /opt/flexswitch/sharedlib/libsw_rm_int.so.1
+ln -sf /opt/flexswitch/sharedlib/libsw_rm_int.so.1.0.0 /opt/flexswitch/sharedlib/libsw_rm_int.so
+ln -sf /opt/flexswitch/sharedlib/libsw_rm.so.1.0.0 /opt/flexswitch/sharedlib/libsw_rm.so.1
+ln -sf /opt/flexswitch/sharedlib/libsw_rm.so.1.0.0 /opt/flexswitch/sharedlib/libsw_rm.so
+ln -sf /opt/flexswitch/sharedlib/libsxapi.so.1.0.0 /opt/flexswitch/sharedlib/libsxapi.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxapi.so.1.0.0 /opt/flexswitch/sharedlib/libsxapi.so
+ln -sf /opt/flexswitch/sharedlib/libsxcomp.so.1.0.0 /opt/flexswitch/sharedlib/libsxcomp.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxcomp.so.1.0.0 /opt/flexswitch/sharedlib/libsxcomp.so
+ln -sf /opt/flexswitch/sharedlib/libsxcom.so.1.0.0 /opt/flexswitch/sharedlib/libsxcom.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxcom.so.1.0.0 /opt/flexswitch/sharedlib/libsxcom.so
+ln -sf /opt/flexswitch/sharedlib/libsxdemadparser.so.1.0.0 /opt/flexswitch/sharedlib/libsxdemadparser.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxdemad.so.1.0.0 /opt/flexswitch/sharedlib/libsxdemad.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxdemad.so.1.0.0 /opt/flexswitch/sharedlib/libsxdemad.so
+ln -sf /opt/flexswitch/sharedlib/libsxdev.so.1.0.0 /opt/flexswitch/sharedlib/libsxdev.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxdev.so.1.0.0 /opt/flexswitch/sharedlib/libsxdev.so
+ln -sf /opt/flexswitch/sharedlib/libsxdreg_access.so.1.0.0 /opt/flexswitch/sharedlib/libsxdreg_access.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxdreg_access.so.1.0.0 /opt/flexswitch/sharedlib/libsxdreg_access.so
+ln -sf /opt/flexswitch/sharedlib/libsxgenutils.so.1.0.0 /opt/flexswitch/sharedlib/libsxgenutils.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxgenutils.so.1.0.0 /opt/flexswitch/sharedlib/libsxgenutils.so
+ln -sf /opt/flexswitch/sharedlib/libsxlog.so.1.0.0 /opt/flexswitch/sharedlib/libsxlog.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxlog.so.1.0.0 /opt/flexswitch/sharedlib/libsxlog.so
+ln -sf /opt/flexswitch/sharedlib/libsxnet.so.1.0.0 /opt/flexswitch/sharedlib/libsxnet.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxnet.so.1.0.0 /opt/flexswitch/sharedlib/libsxnet.so
+ln -sf /opt/flexswitch/sharedlib/libsxutils.so.1.0.0 /opt/flexswitch/sharedlib/libsxutils.so.1
+ln -sf /opt/flexswitch/sharedlib/libsxutils.so.1.0.0 /opt/flexswitch/sharedlib/libsxutils.so
+
 /opt/flexswitch/sqlwebInstall.sh
 case "$1" in
     configure)

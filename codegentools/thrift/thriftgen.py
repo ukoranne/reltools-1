@@ -49,14 +49,22 @@ goToThirftTypeMap = {
 }
 
 class DaemonObjectsInfo (object) :
-    def __init__ (self, name, location):
+    def __init__ (self, name, location, svcName, finalSvcName=None):
         self.name   =  name
         self.location =  location
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
-        self.thriftUtilsFileName = THRIFT_UTILS_PATH + name + "dbthriftutil.go"
-        self.clientIfFileName = CLIENTIF_SRC_PATCH + name + "clientif.go"
-        self.servicesName = self.name
-        self.newDeamonName = self.servicesName.upper()
+        self.thriftUtilsFileName = THRIFT_UTILS_PATH + "gen_" + name + "dbthriftutil.go"
+        self.clientIfFileName = CLIENTIF_SRC_PATCH + "gen_" + name + "clientif.go"
+        print '## DMN %s svcName %s' %(name, finalSvcName)
+        if finalSvcName:
+            self.servicesName = finalSvcName
+        else: 
+            self.servicesName = self.name
+        self.SName = svcName
+        if "Services" in self.servicesName:
+            self.newDeamonName = self.servicesName.rstrip("Services").upper()
+        else:
+            self.newDeamonName = self.servicesName.upper()
         self.objectDict = {}
 
     def __str__(self):
@@ -79,7 +87,6 @@ class DaemonObjectsInfo (object) :
 
             info['membersInfo'] = objMembersStrData
             
-        #print self.objectDict
 
     def addGeneratedFilesNamesToListing (self):
         with open(GENERATED_FILES_LIST, 'a+') as fp:
@@ -87,40 +94,67 @@ class DaemonObjectsInfo (object) :
             fp.write(self.thriftUtilsFileName+ '\n')
             fp.write(self.clientIfFileName+ '\n')
 
+    def convertMemberInfoToOrderedList(self, structName, structInfo):
+
+        structInfoList = []
+        print 'Converting struct members to list: ', structName, len(structInfo)
+        for i in range(len(structInfo['membersInfo'])+1):
+            for attrName, attrInfo in structInfo['membersInfo'].iteritems():
+                if attrInfo['position'] == "%s" %(i,):
+                    yield (attrName, attrInfo)
+
     def generateThriftInterfaces(self, objectNames):
         thriftfd = open(self.thriftFileName, 'w+')
-        dmn = self.name
+        sName = self.SName
+        if sName != "nil" :
+            thriftfd.write("include \"%s.thrift\"\n" %(sName))
+        dmn = self.servicesName
         thriftfd.write("namespace go %s\n" %(dmn))                                                             
         thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
         for structName, structInfo in objectNames.objectDict.iteritems ():
             line = 'struct ' + structName + ' {'
             thriftfd.write(line + '\n')
             index = 0
-            for attrName, attrInfo in structInfo['membersInfo'].iteritems():
+
+            for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
                 index = index+1
                 if attrInfo['isArray'] != 'False' :
-                    nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
-                    thriftfd.write("\t%s : %s %s\n" % (index,
-                                                       nativetype,
-                                                       attrName))
+                    if str(attrInfo['type']) in goToThirftTypeMap:
+                        nativetype = "list<" + goToThirftTypeMap[str(attrInfo['type'])]["native_type"] + ">"
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           nativetype,
+                                                           attrName))
+                    else:
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                           "list<" + str(attrInfo['type']) + ">",
+                                                           attrName))
                 else:
                     if str(attrInfo['type']) in goToThirftTypeMap:
                         thriftfd.write("\t%s : %s %s\n" % (index,
                                                          goToThirftTypeMap[str(attrInfo['type'])]['native_type'],
                                                          attrName))
+                    else:
+                        thriftfd.write("\t%s : %s %s\n" % (index,
+                                                         str(attrInfo['type']),
+                                                         attrName))
              
             thriftfd.write('}\n')
-            if structInfo['access'] == 'r' :
+            if 'r' in structInfo['access']:
                 thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(structName, structName, structName))
 
 
-        thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        if sName == "nil" :
+            thriftfd.write("service %sServices {\n" % (dmn.upper()))
+        elif "Services" in dmn: 
+            thriftfd.write("service %sServices extends %s.%sServices {\n" % (dmn.rstrip("Services").upper(), sName, sName.upper()))
+        else :
+            thriftfd.write("service %sServices extends %s.%sServices {\n" % (dmn.upper(), sName, sName.upper()))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             s = structName
-            if structInfo['access'] == 'w' or structInfo['access'] == 'rw':
+            if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
-            else: # read only objects Counters/State
+            if 'r' in structInfo['access']: # read only objects Counters/State
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
         thriftfd.write("}")
         thriftfd.close()
@@ -139,17 +173,27 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if structInfo['access'] in ['w', 'rw']:
+            if structInfo['access'] in ['w', 'rw', 'r', '']:
                 thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, self.servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
                     attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
 
                     if v['isArray'] != 'False':
-                         thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
                                                         thriftobj.%s = append(thriftobj.%s, %s(data%s))
                                                     }\n""" %(i, k, k, k, attrType, i))
+                        else:
+                            thriftdbutilfd.write("""\nfor _, data%s := range dbobj.%s {
+                                                        thriftdata%s := new(%s.%s)
+                                                        Convert%s%sObjToThrift(&data%s, thriftdata%s)
+                                                        thriftobj.%s = append(thriftobj.%s, thriftdata%s)
+                                                    }\n""" %(i, k, i, self.servicesName, attrType, d, attrType, i, i, k, k, i))
                     else:
-                        thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
+                        else:
+                            thriftdbutilfd.write("""Convert%s%sObjToThrift(&dbobj.%s, thriftobj.%s)\n""" % (d, attrType, k, k)) 
                 thriftdbutilfd.write("""}\n""")
 
 
@@ -160,11 +204,21 @@ class DaemonObjectsInfo (object) :
                     #attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
                     attrType = attrInfo['type']
                     if attrInfo['isArray'] != 'False':
-                        thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""\nfor _, data%s := range thriftobj.%s {
                                                     dbobj.%s = append(dbobj.%s, %s(data%s))
                                                 }\n""" %(i, k, k, k, attrType, i))
+                        else:
+                            thriftdbutilfd.write("""\nfor _, thriftdata%s := range thriftobj.%s {
+                                                        dbobjdata%s := new(%s)
+                                                        ConvertThriftTo%s%sObj(thriftdata%s, dbobjdata%s)
+                                                        dbobj.%s = append(dbobj.%s, *dbobjdata%s)
+                                                    }\n""" %(i, k, i, attrType, d, attrType, i, i, k, k, i))
                     else:
-                        thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, attrType, k))
+                        if attrType in goToThirftTypeMap:
+                            thriftdbutilfd.write("""dbobj.%s = %s(thriftobj.%s)\n""" % (k, attrType, k))
+                        else:
+                            thriftdbutilfd.write("""ConvertThriftTo%s%sObj(thriftobj.%s, &dbobj.%s)\n""" % (d, attrType, k, k)) 
 
                 thriftdbutilfd.write("""}\n""")
         thriftdbutilfd.close()
@@ -197,9 +251,9 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
-        print 'clientIf Create Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
                             var objId int64
+                            var err error
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -212,12 +266,16 @@ class DaemonObjectsInfo (object) :
                                     conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
-                                    _, err := clnt.ClientHdl.Create%s(conf)
+                                    _, err = clnt.ClientHdl.Create%s(conf)
                                     if err != nil {
 								fmt.Println("Create failed:", err)
                                     return int64(0), false
                                     }
-                                    objId, _ = data.StoreObjectInDb(dbHdl)
+                                    objId, err = data.StoreObjectInDb(dbHdl)
+                                    if err != nil {
+								fmt.Println("Store object in DB failed:", err)
+                                    return objId, false
+                                    }
                                     break\n""" % (s,))
         clientIfFd.write("""default:
                                     break
@@ -227,7 +285,6 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, objectNames):
-        print 'clientIf Delete Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
 
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -257,13 +314,11 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        print 'clientIf Get Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (models.ConfigObj, bool) {\n""" % (self.newDeamonName,))
         clientIfFd.write("""return nil, false                                                                                                    
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        print 'clientIf Update Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
 
             var ok bool
@@ -292,7 +347,7 @@ class DaemonObjectsInfo (object) :
                         if ok {
                             updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
                         } else {
-                            panic(err)
+                            logger.Println("Update failed", err)
                         }
                     }
                     break\n""" %(s))
@@ -305,7 +360,6 @@ class DaemonObjectsInfo (object) :
                 }\n""")
 
     def createClientIfGetBulkObject(self, clientIfFd, objectNames):
-        print 'clientIf GetBulk Object for %s' %(self.name)
         clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, currMarker int64, count int64) (err error,
                                             objCount int64,
                                             nextMarker int64,
@@ -318,32 +372,24 @@ class DaemonObjectsInfo (object) :
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
-            if structInfo['access'] in ['r']:
+            d = self.name
+            if 'r' in structInfo['access']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
-                            var ret_obj models.%s
                         bulkInfo, err := clnt.ClientHdl.GetBulk%s(%s.Int(currMarker), %s.Int(count))
                         if bulkInfo != nil &&bulkInfo.Count != 0 {
                             objCount = int64(bulkInfo.Count)
                             more = bool(bulkInfo.More)
                             nextMarker = int64(bulkInfo.EndIdx)
                             for i := 0; i < int(bulkInfo.Count); i++ {
+                                ret_obj := new(models.%s)
                                 if len(objs) == 0 {
                                     objs = make([]models.ConfigObj, 0)
-                                }\n""" %(s, s, self.servicesName, self.servicesName))
+                                }\n""" %(s, self.servicesName, self.servicesName, s))
 
-                for k, v in structInfo['membersInfo'].iteritems():
-                    attrInfo = v
-                    attrType = attrInfo['type']
-                    if attrInfo['isArray'] != 'False':
-                        clientIfFd.write("""\nfor _, data := range bulkInfo.%sList[i].%s {
-                                ret_obj.%s = %s(data)
-                                }\n""" %(s, k, k, attrType))
-                    else:
-                        clientIfFd.write("""
-                                ret_obj.%s = %s(bulkInfo.%sList[i].%s)""" %(k, attrType, s, k))
+                clientIfFd.write("""\nmodels.ConvertThriftTo%s%sObj(bulkInfo.%sList[i], ret_obj)""" % (d, s, s))
                 clientIfFd.write("""\nobjs = append(objs, ret_obj)
                                         }
 
@@ -382,6 +428,8 @@ def generateThriftAndClientIfs():
     yangDmnDirsInfoJson = JSON_MODEL_REGISTRAION_PATH + 'yangObjInfo.json'
 
     ownerDirsInfo = {} 
+    ownerInternalServiceInfo = {}
+    ownerFinalServiceInfo = {}
     for dirFile  in [goDmnDirsInfoJson, yangDmnDirsInfoJson]:
         with open(dirFile) as locnFile:
             objData = json.load(locnFile)
@@ -389,6 +437,10 @@ def generateThriftAndClientIfs():
         for dmn, info in objData.iteritems():
             if not ownerDirsInfo.has_key(info['owner']):
                 ownerDirsInfo[info['owner']] = info['location']
+                ownerInternalServiceInfo[info['owner']] = info['svcName']
+                if info.has_key('finalSvcName'):
+                    ownerFinalServiceInfo[info['owner']] = info['finalSvcName']
+
 
     
     with open(genObjInfoJson) as infoFile:
@@ -396,12 +448,15 @@ def generateThriftAndClientIfs():
 
     ownerToObjMap = {}
     for name,  dtls in objData.iteritems():
+        finalSvcName =None 
+        if ownerFinalServiceInfo.has_key(dtls['owner']):
+            finalSvcName = ownerFinalServiceInfo[dtls['owner']]
+
         if ownerToObjMap.has_key(dtls['owner']):
             dmnObj = ownerToObjMap[dtls['owner']]
-        else:
-            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']]) 
+        else :
+            dmnObj = DaemonObjectsInfo (dtls['owner'], ownerDirsInfo[dtls['owner']], ownerInternalServiceInfo[dtls['owner']], finalSvcName)
             ownerToObjMap[dtls['owner']] = dmnObj
-
         dmnObj.objectDict[name] = dtls
     
     for dmn, entry in ownerToObjMap.iteritems():
@@ -423,8 +478,9 @@ def generateObjectMap():
         objData = json.load(infoFile)
 
     for name,  dtls in objData.iteritems():
-        line  = "\"%s\" :    &%s{}," %(name, name)
-        fd.write(line+"\n")
+        if "w" in dtls['access'] or "r" in dtls['access']:
+            line  = "\"%s\" :    &%s{}," %(name, name)
+            fd.write(line+"\n")
 
     fd.write("""}\n""")
     fd.close()

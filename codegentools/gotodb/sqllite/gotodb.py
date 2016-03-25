@@ -293,10 +293,13 @@ def createGetObjFromDb(fd, structName, goMemberTypeDict):
     
 def createGetKey(fd, structName, goMemberTypeDict):
     fd.write("\nfunc (obj %s) GetKey() (string, error) {" % structName)
+    fd.write('\n\tkeyName := "%s"' % structName)
+    fd.write('\n\tkeyName = strings.TrimSuffix(keyName, "Config")')
+    fd.write('\n\tkeyName = strings.TrimSuffix(keyName, "State")')
     keys = sorted([(m, key) for m, t, gt, key in goMemberTypeDict[structName] if key], key=lambda i: i[1])
     objKey = ' + "#" + '.join(['string(obj.%s)' % (m) for m, key in keys])
     if objKey:
-        fd.write('\n\tkey := ')
+        fd.write('\n\tkey := keyName + "#" + ')
         fd.write(objKey)
 
     fd.write("\n\treturn key, nil\n}\n")
@@ -307,9 +310,9 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
     keys = sorted([(m, key) for m, t, gt, key in goMemberTypeDict[structName] if key], key=lambda i: i[1])
     if keys:
         fd.write('\tkeys := strings.Split(objKey, "#")')
-        firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i)]) for i, (m, key) in enumerate(keys)]
+        firstKey = ['" = + \\\" + "'.join(['"%s"' % (m), 'keys[%d]' % (i+1)]) for i, (m, key) in enumerate(keys)]
         #print "firstKey =", firstKey
-        sqlKey = ' + " and " + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i)]) for i, (m, key) in enumerate(keys)])
+        sqlKey = ' + " and " + '.join(['+ "\\\"" + '.join(['"%s = "' % (m), 'keys[%d] + "\\\""' % (i+1)]) for i, (m, key) in enumerate(keys)])
         fd.write('\n\tsqlKey := ')
         fd.write(sqlKey)
         fd.write("\n\treturn sqlKey, nil\n}\n")
@@ -317,7 +320,8 @@ def createGetSqlKeyStr(fd, structName, goMemberTypeDict):
         fd.write("""\n\treturn "", nil\n}\n""")
 
 def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
-    fd.write("""\nfunc (obj *%s) GetAllObjFromDb(dbHdl *sql.DB) (objList []*%s, e error) {
+    fd.write("""\nfunc (obj %s) GetAllObjFromDb(dbHdl *sql.DB) (objList []ConfigObj, err error) {
+        var object %s
 	dbCmd := "select * from %s"
 	rows, err := dbHdl.Query(dbCmd)
 	if err != nil {
@@ -332,8 +336,7 @@ def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
             fd.write('\tvar tmp%s string\n' %(i))
 
     fd.write("""\tfor rows.Next() {\n
-             object := new(%s)
-             if err = rows.Scan(""" %(structName))
+             if err = rows.Scan(""")
     strList = ''
     for i, (m, t, gt, key) in enumerate(goMemberTypeDict[structName]):
         if t == "bool":
@@ -365,7 +368,7 @@ def createGetAllObjFromDb(fd, structName, goMemberTypeDict):
     fd.write("""\tobjList = append(objList, object)
     }
     return objList, nil
-    }""")
+    }\n""")
 
 
 def createUpdateObjInDb(fd, structName, goMemberTypeDict):
@@ -755,6 +758,8 @@ def generate_go_sqllite_funcs(fd, directory, gofilename, objectNames=[], goFd=No
                 #print lineSplit
                 lineSplit = filter(lambda a: a, lineSplit)
                 #print "after filtering, split =", lineSplit
+		if len(lineSplit) == 0:
+                    continue
 
                 elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
                 key = 0

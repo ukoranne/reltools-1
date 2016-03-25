@@ -93,8 +93,8 @@ def getDaemonsInfo (baseDir) :
 
                     {'name': 'vrrpd',
                      'params': '-params=' + baseDir + '/params'},
-
-                    {'name': 'confd',
+                    
+		    {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'sqlwebd',
