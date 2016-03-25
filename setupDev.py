@@ -263,7 +263,7 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
             data = json.load(data_file)                                                                                 
             gitReposToClone = data['repos']['snaproute']
 
-        #gitReposToClone = [ 'l2', 'mpls', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors', 'controller'] # (URL, DIR)
+        #gitReposToClone = [ 'l2', 'l3', 'utils', 'asicd', 'config', 'models', 'infra', 'vendors', 'controller'] # (URL, DIR)
     for repo in gitReposToClone:
         cloneGitRepo ( userRepoPrefix + repo, repo, dirLocation)
         os.chdir(repo)

@@ -1,6 +1,6 @@
 {
 	 "repos" : { 
-		  "snaproute": [ "l2", "l3", "utils", "asicd", "config", "models", "infra", "vendors", "controller", "test","flexSdk", "netfilter", "mpls"]
+		  "snaproute": [ "l2", "l3", "utils", "asicd", "config", "models", "infra", "vendors", "controller", "test","flexSdk", "netfilter"]
 	 },
 	 "srcLocation": "/snaproute/src/"
 }

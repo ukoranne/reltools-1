@@ -109,8 +109,8 @@ class DaemonObjectsInfo (object) :
         if sName != "nil" :
             thriftfd.write("include \"%s.thrift\"\n" %(sName))
         dmn = self.servicesName
-        thriftfd.write("namespace go %s\n" %(dmn))                                                             
-        thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")    
+        thriftfd.write("namespace go %s\n" %(dmn))
+        thriftfd.write("""typedef i32 int\ntypedef i16 uint16\n""")
         for structName, structInfo in objectNames.objectDict.iteritems ():
             line = 'struct ' + structName + ' {'
             thriftfd.write(line + '\n')
@@ -251,9 +251,9 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (int64, bool) {
-                            var objId int64
+        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *sql.DB) (error, bool) {
                             var err error
+                            var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -266,27 +266,29 @@ class DaemonObjectsInfo (object) :
                                     conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
-                                    _, err = clnt.ClientHdl.Create%s(conf)
-                                    if err != nil {
-								fmt.Println("Create failed:", err)
-                                    return int64(0), false
-                                    }
-                                    objId, err = data.StoreObjectInDb(dbHdl)
-                                    if err != nil {
-								fmt.Println("Store object in DB failed:", err)
-                                    return objId, false
+                                    ok, err = clnt.ClientHdl.Create%s(conf)
+                                    if err == nil && ok == true {
+                                        _, err = data.StoreObjectInDb(dbHdl)
+                                        if err != nil {
+				            fmt.Println("Store object in DB failed:", err)
+                                            return err, false
+                                        }
+                                    } else {
+				        fmt.Println("Create failed:", err)
+                                        return err, false
                                     }
                                     break\n""" % (s,))
         clientIfFd.write("""default:
                                     break
                                 }
 
-                                return objId, true
+                                return nil, true
                             }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) bool {
-
+        clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *sql.DB) (error, bool) {
+                                var err error
+                                var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -299,28 +301,32 @@ class DaemonObjectsInfo (object) :
                                     conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
                 clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
-                                    _, err := clnt.ClientHdl.Delete%s(conf)
-                                    if err != nil {
-								fmt.Println("Delete failed:", err)
-                                    return false
+                                    ok, err = clnt.ClientHdl.Delete%s(conf)
+                                    if err == nil && ok == true {
+                                        err = data.DeleteObjectFromDb(objKey, dbHdl)
+                                        if err != nil {
+				            fmt.Println("Delete object from DB failed:", err)
+                                            return err, false
+                                        }
+                                    } else {
+				        fmt.Println("Delete failed:", err)
+                                        return err, false
                                     }
-                                    data.DeleteObjectFromDb(objKey, dbHdl)
                                     break\n""" % (s,))
         clientIfFd.write("""default:
                                     break
                                 }
 
-                                return true
+                                return nil, true
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (models.ConfigObj, bool) {\n""" % (self.newDeamonName,))
-        clientIfFd.write("""return nil, false                                                                                                    
+        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (error, models.ConfigObj) {\n""" % (self.newDeamonName,))
+        clientIfFd.write("""return nil, nil
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) bool {
-
+        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) (error, bool) {
             var ok bool
             var err error
 	    logger.Println("### Update Object called %s", attrSet, objKey)
@@ -344,10 +350,15 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
-                        if ok {
-                            updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
+                        if err == nil && ok == true {
+                            err = updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
+                            if err != nil {
+			        fmt.Println("Update object in DB failed:", err)
+                                return err, false
+                            }
                         } else {
                             logger.Println("Update failed", err)
+                            return err, false
                         }
                     }
                     break\n""" %(s))
@@ -355,7 +366,7 @@ class DaemonObjectsInfo (object) :
         clientIfFd.write("""\ndefault:
                                     break
                                 }
-                    return ok
+                    return nil, true
 
                 }\n""")
 
