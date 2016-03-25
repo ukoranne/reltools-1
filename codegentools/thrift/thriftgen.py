@@ -100,7 +100,7 @@ class DaemonObjectsInfo (object) :
         print 'Converting struct members to list: ', structName, len(structInfo)
         for i in range(len(structInfo['membersInfo'])+1):
             for attrName, attrInfo in structInfo['membersInfo'].iteritems():
-                if attrInfo['position'] == "%s" %(i+1,):
+                if attrInfo['position'] == "%s" %(i,):
                     yield (attrName, attrInfo)
 
     def generateThriftInterfaces(self, objectNames):
