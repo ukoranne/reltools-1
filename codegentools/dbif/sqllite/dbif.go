@@ -40,6 +40,11 @@ type ObjectMembersInfo struct {
 	Position    int    `json:"position"`
 }
 
+type ObjectMemberAndInfo struct {
+	ObjectMembersInfo
+	MemberName string
+}
+
 // This structure represents the objects that are generated directly from go files instead of yang models
 type RawObjSrcInfo struct {
 	Owner string `json:"owner"`
