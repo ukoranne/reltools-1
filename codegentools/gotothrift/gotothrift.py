@@ -250,7 +250,10 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                 elif writingStruct:  # found element in struct
                     # print "found element line", line
                     lineSplit = [ x for x in line.split(' ') if x != '']
-                    # print lineSplit
+		    if len(lineSplit) == 0:
+                        continue
+
+                    #print line, lineSplit
                     elemtype = lineSplit[-3].rstrip('\n') if 'KEY' in lineSplit[-1] else lineSplit[-1].rstrip('\n')
 
                     #print "elemtype:", lineSplit, elemtype
