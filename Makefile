@@ -28,7 +28,7 @@ COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/infra\
 		$(SR_CODE_BASE)/snaproute/src/l3\
-		$(SR_CODE_BASE)/snaproute/src/l2\
+		$(SR_CODE_BASE)/snaproute/src/l2
 
 #FIXME: Add codegen once things are stable
 #all: codegen installdir ipc exe install

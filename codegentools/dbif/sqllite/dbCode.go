@@ -356,6 +356,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\"State\")\n")
 	lines = append(lines, "fmt.Println(\"key is \", keyName)\n")
 
+	prevKeyWasNum := false
 	numKeys := 0
 	keyStr := "key := keyName + \"#\" + "
 	reverseKeyStr := "sqlKey := \""
@@ -371,29 +372,36 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 						if numKeys == 0 {
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + " string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
+								reverseKeyStr = reverseKeyStr + varName + " = \" + keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = true
 							} else {
 								keyStr = keyStr + " string (obj." + varName + ") "
+								reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = false
 							}
-							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(numKeys+1) + "]"
 						} else {
+							if prevKeyWasNum == false {
+								reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+							}
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + "+ \"#\" + string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
+								reverseKeyStr = reverseKeyStr + " + " + " \" and \" + " + "\"" + varName + " = \"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = true
 							} else {
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
+								reverseKeyStr = reverseKeyStr + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = false
 							}
-
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
 						}
 						numKeys += 1
-
 					}
 				}
 			}
 		}
 	}
-	//	if numKeys == 1 {
-	reverseKeyStr = reverseKeyStr + " + \"\\\"\""
-	//	}
+	if prevKeyWasNum == false {
+		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
 						return key, nil
