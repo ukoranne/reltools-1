@@ -730,7 +730,7 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 
 func (obj *ObjectSrcInfo) ConvertObjecMemberstMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
 
-	for i := 0; i < len(attrMap); i++ {
+	for i := 1; i < len(attrMap)+1; i++ {
 		for attr, info := range attrMap {
 			if i == info.Position {
 				newMember := ObjectMemberAndInfo{
