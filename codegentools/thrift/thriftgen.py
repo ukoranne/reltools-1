@@ -97,7 +97,7 @@ class DaemonObjectsInfo (object) :
     def convertMemberInfoToOrderedList(self, structName, structInfo):
 
         structInfoList = []
-        print 'Converting struct members to list: ', structName, len(structInfo)
+        #print 'Converting struct members to list: ', structName, len(structInfo)
         for i in range(len(structInfo['membersInfo'])+1):
             for attrName, attrInfo in structInfo['membersInfo'].iteritems():
                 if attrInfo['position'] == "%s" %(i,):
