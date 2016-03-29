@@ -131,7 +131,7 @@ func main() {
 							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.ContainsAny(obj.Access, "rw") {
-								fmt.Println("Creating DBIF for", obj.ObjName)
+								//fmt.Println("Creating DBIF for", obj.ObjName)
 								listingsFd.WriteString(obj.DbFileName + "\n")
 								obj.WriteDBFunctions(str, membersInfo, objMap)
 							}

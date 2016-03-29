@@ -55,7 +55,6 @@ class DaemonObjectsInfo (object) :
         self.thriftFileName = SRC_BASE + location + '/'+  name + ".thrift"
         self.thriftUtilsFileName = THRIFT_UTILS_PATH + "gen_" + name + "dbthriftutil.go"
         self.clientIfFileName = CLIENTIF_SRC_PATCH + "gen_" + name + "clientif.go"
-        print '## DMN %s svcName %s' %(name, finalSvcName)
         if finalSvcName:
             self.servicesName = finalSvcName
         else: 
@@ -97,7 +96,6 @@ class DaemonObjectsInfo (object) :
     def convertMemberInfoToOrderedList(self, structName, structInfo):
 
         structInfoList = []
-        print 'Converting struct members to list: ', structName, len(structInfo)
         for i in range(len(structInfo['membersInfo'])+1):
             for attrName, attrInfo in structInfo['membersInfo'].iteritems():
                 if attrInfo['position'] == "%s" %(i,):
@@ -158,7 +156,7 @@ class DaemonObjectsInfo (object) :
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
         thriftfd.write("}")
         thriftfd.close()
-        print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
+        #print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
         return 
 
 

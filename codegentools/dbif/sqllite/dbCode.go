@@ -318,8 +318,8 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
 			switch fld.Type.(type) {
-			case *ast.ArrayType:
-				fmt.Println(fld.Names[0].String(), "Array type")
+			//case *ast.ArrayType:
+			//	fmt.Println(fld.Names[0].String(), "Array type")
 			default:
 				if !first {
 					attrNamesList = attrNamesList + ","
