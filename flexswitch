@@ -155,7 +155,8 @@ if __name__=="__main__":
         parser.print_usage()
         sys.exit(0)
  
-    determineMacAddress()
+    if not localBld:
+        determineMacAddress()
     pidFileDir = baseDir+'/bin/pids/'
     asicdBootModeFile = baseDir + '/params/asicdBootMode.conf'
     if opts.boot != None and opts.boot == 'cold':

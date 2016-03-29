@@ -17,13 +17,15 @@ class apiGenie (object) :
             with open(desc) as fileHdl:
                 objMembersData = json.load(fileHdl)                                                                        
                 for objName, objInfo in objMembersData.iteritems():
-                    if str(objInfo['access']) == 'w':
+                    #if objName != 'BGPNeighbor':
+                    #    continue
+                    if 'w' in str(objInfo['access']):
                         self.objDict[objName] = FlexConfigObject (objName, 
                                                                   objInfo['access'],
                                                                   objInfo['multiplicity'],
                                                                   self.attrBase + objName + "Members.json"
                                                                   )
-                    elif str(objInfo['access']) == 'r':
+                    elif 'r' in str(objInfo['access']):
                         self.objDict[objName] = FlexStateObject  (objName,
                                                                   objInfo['access'],
                                                                   objInfo['multiplicity'],
