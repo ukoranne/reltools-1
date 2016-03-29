@@ -647,6 +647,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 							}
 							idx++
 						}
+						dbCmd = TrimRight(dbCmd, ", ")
 						dbCmd += " where " + objSqlKey
 
 						for _, cmd := range secondaryTableCommands {
