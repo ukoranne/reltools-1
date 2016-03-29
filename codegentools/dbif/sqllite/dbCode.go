@@ -590,10 +590,10 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 								} else if fieldVal.Kind() == reflect.Bool {
 									fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, dbutils.ConvertBoolToInt(bool(fieldVal.Bool())))
 								} else if fieldVal.Kind() == reflect.Slice {
-                						cmd := "delete from BGPPolicyDefinition"+fieldTyp.Name+" where "+objSqlKey
+                						cmd := "delete from `+obj.ObjName+`" + fieldTyp.Name + " where " + objSqlKey
                 						secondaryTableCommands = append(secondaryTableCommands, cmd)
                 						for j := 0; j < fieldVal.Len(); j++ {
-					                    cmd = "INSERT into BGPPolicyDefinition"+fieldTyp.Name+" ("
+					                    cmd = "INSERT into `+obj.ObjName+`" + fieldTyp.Name+" ("
 					                    attrNameList := make([]string, 0)
 					                    valueList := make([]string, 0)
 					                    for _, key := range keys {
@@ -643,10 +643,11 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 								} else {
 									fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
 								}
-								dbCmd += fieldSqlStr
+								dbCmd += fieldSqlStr + ", "
 							}
 							idx++
 						}
+						dbCmd = strings.TrimRight(dbCmd, ", ")
 						dbCmd += " where " + objSqlKey
 
 						for _, cmd := range secondaryTableCommands {
