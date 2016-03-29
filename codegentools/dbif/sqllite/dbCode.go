@@ -356,6 +356,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	lines = append(lines, "keyName = strings.TrimSuffix(keyName,"+"\"State\")\n")
 	lines = append(lines, "fmt.Println(\"key is \", keyName)\n")
 
+	prevKeyWasNum := false
 	numKeys := 0
 	keyStr := "key := keyName + \"#\" + "
 	reverseKeyStr := "sqlKey := \""
@@ -371,29 +372,36 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 						if numKeys == 0 {
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + " string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
+								reverseKeyStr = reverseKeyStr + varName + " = \" + keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = true
 							} else {
 								keyStr = keyStr + " string (obj." + varName + ") "
+								reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = false
 							}
-							reverseKeyStr = reverseKeyStr + varName + " = \" + \"\\\"\" + keys [" + strconv.Itoa(numKeys+1) + "]"
 						} else {
+							if prevKeyWasNum == false {
+								reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+							}
 							if obj.IsNumericType(varType) {
 								keyStr = keyStr + "+ \"#\" + string (fmt.Sprintf(\"%d\", obj." + varName + ")) "
+								reverseKeyStr = reverseKeyStr + " + " + " \" and \" + " + "\"" + varName + " = \"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = true
 							} else {
 								keyStr = keyStr + "+ \"#\" + string (obj." + varName + ") "
+								reverseKeyStr = reverseKeyStr + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
+								prevKeyWasNum = false
 							}
-
-							reverseKeyStr = reverseKeyStr + " + " + "\"\\\"\"" + " +  \" and \" + " + "\"" + varName + " = \"  + \"\\\"\"  +  keys [" + strconv.Itoa(numKeys+1) + "]"
 						}
 						numKeys += 1
-
 					}
 				}
 			}
 		}
 	}
-	//	if numKeys == 1 {
-	reverseKeyStr = reverseKeyStr + " + \"\\\"\""
-	//	}
+	if prevKeyWasNum == false {
+		reverseKeyStr = reverseKeyStr + " + \"\\\"\""
+	}
 	lines = append(lines, keyStr)
 	lines = append(lines, `
 						return key, nil
@@ -582,10 +590,10 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 								} else if fieldVal.Kind() == reflect.Bool {
 									fieldSqlStr = fmt.Sprintf(" %s = '%d' ", fieldTyp.Name, dbutils.ConvertBoolToInt(bool(fieldVal.Bool())))
 								} else if fieldVal.Kind() == reflect.Slice {
-                						cmd := "delete from BGPPolicyDefinition"+fieldTyp.Name+" where "+objSqlKey
+                						cmd := "delete from `+obj.ObjName+`" + fieldTyp.Name + " where " + objSqlKey
                 						secondaryTableCommands = append(secondaryTableCommands, cmd)
                 						for j := 0; j < fieldVal.Len(); j++ {
-					                    cmd = "INSERT into BGPPolicyDefinition"+fieldTyp.Name+" ("
+					                    cmd = "INSERT into `+obj.ObjName+`" + fieldTyp.Name+" ("
 					                    attrNameList := make([]string, 0)
 					                    valueList := make([]string, 0)
 					                    for _, key := range keys {
@@ -635,10 +643,11 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 								} else {
 									fieldSqlStr = fmt.Sprintf(" %s = '%s' ", fieldTyp.Name, fieldVal.String())
 								}
-								dbCmd += fieldSqlStr
+								dbCmd += fieldSqlStr + ", "
 							}
 							idx++
 						}
+						dbCmd = strings.TrimRight(dbCmd, ", ")
 						dbCmd += " where " + objSqlKey
 
 						for _, cmd := range secondaryTableCommands {
@@ -730,7 +739,7 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 
 func (obj *ObjectSrcInfo) ConvertObjecMemberstMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
 
-	for i := 0; i < len(attrMap); i++ {
+	for i := 1; i < len(attrMap)+1; i++ {
 		for attr, info := range attrMap {
 			if i == info.Position {
 				newMember := ObjectMemberAndInfo{
