@@ -348,15 +348,18 @@ class DaemonObjectsInfo (object) :
             if 'r' in structInfo['access']:
                 clientIfFd.write("""
                                     case models.%s :
-                                    logger.Println("Get %s")\n""" % (s, s))
+                                    logger.Println("Get %s")
+                                    data := obj.(models.%s)
+                                    conf := %s.New%s()\n""" % (s, s, s, self.servicesName, s))
+                clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)\n""" %(d, s))
                 keyIndex = 1
                 keyList = ""
                 for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
                     if attrInfo['isKey'] != 'False':
                         if keyIndex == 1:
-                            keyList = keyList + "obj." + attrName
+                            keyList = keyList + "conf." + attrName
                         else:
-                            keyList = keyList + ", " + "obj." + attrName
+                            keyList = keyList + ", " + "conf." + attrName
                         keyIndex = keyIndex + 1
 
                 clientIfFd.write("""stateObj := new(models.%s)\n""" %(s))
