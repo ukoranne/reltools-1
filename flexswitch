@@ -96,7 +96,10 @@ def getDaemonsInfo (baseDir) :
                     
                     {'name': 'lldpd',
                      'params': '-params=' + baseDir + '/params'},
-		    
+
+                    {'name': 'vxland',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
 
