@@ -11,16 +11,26 @@ class FlexConfigObject(FlexObject) :
         spaces = ' ' * (len(lines[-1])  - len("self, "))
         objLines = [tabs + "obj =  { \n"]
         for (attr, attrInfo) in self.attrList:
+            assignmentStr = ''
             if attrInfo['default'] !="":
-                if isNumericAttr(attrInfo['type']):
+                if isNumericAttr(attrInfo):
                     lines.append("\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip())))
+                    assignmentStr = "int(%s)" %(attr)
                 elif isBoolean(attrInfo['type']):
                     lines.append("\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip())))
+                    assignmentStr = "True if %s else False" %(attr)
                 else:
+                    assignmentStr = "%s" %(attr)
                     lines.append("\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip()))
             else:
+                if isNumericAttr(attrInfo):
+                    assignmentStr = "int(%s)" %(attr)
+                elif isBoolean(attrInfo['type']):
+                    assignmentStr = "True if %s else False" %(attr)
+                else:
+                    assignmentStr = "%s" %(attr)
                 lines.append("\n" + spaces + "%s," %(attr))
-            objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, attr))
+            objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
         lines[-1] = lines[-1][0:lines[-1].find(',')]
         lines.append("):\n")
         objLines.append(tabs + tabs+"}\n")
@@ -74,7 +84,14 @@ class FlexConfigObject(FlexObject) :
             else:
                 lines.append("\n" + spaces + "%s," %(attr))
             objLines.append(tabs + "if %s != None :\n" %(attr))
-            objLines.append(tabs + self.TAB + "obj[\'%s\'] = %s\n\n" %(attr, attr))
+            assignmentStr =''
+            if isNumericAttr(attrInfo):
+                assignmentStr = "int(%s)" %(attr)
+            elif isBoolean(attrInfo['type']):
+                assignmentStr = "True if %s else False" %(attr)
+            else:
+                assignmentStr = "%s" %(attr)
+            objLines.append(tabs + self.TAB + "obj[\'%s\'] = %s\n\n" %(attr, assignmentStr))
         lines[-1] = lines[-1][0:lines[-1].find(',')]
         lines.append("):\n")
         lines = lines + objLines

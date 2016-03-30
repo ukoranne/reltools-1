@@ -9,9 +9,10 @@ def processReturnCode (method) :
     def returnDetails (self, *args, **kwargs) :
         r = method(self, *args, **kwargs)
         if r.status_code in self.httpSuccessCodes:
-            return r.json(), None
+            return (r.json(), None)
         else:
-            return {}, "Error"
+            print 'Error in executing request. Error code %s, Error Message ' %(r.status_code) 
+            return ({}, "Error")
     return returnDetails
 
 class FlexSwitch( object):                                                                                              
