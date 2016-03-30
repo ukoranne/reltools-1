@@ -13,7 +13,7 @@ class FlexConfigObject(FlexObject) :
         for (attr, attrInfo) in self.attrList:
             assignmentStr = ''
             if attrInfo['default'] !="":
-                if isNumericAttr(attrInfo['type']):
+                if isNumericAttr(attrInfo):
                     lines.append("\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip())))
                     assignmentStr = "int(%s)" %(attr)
                 elif isBoolean(attrInfo['type']):
@@ -23,7 +23,7 @@ class FlexConfigObject(FlexObject) :
                     assignmentStr = "%s" %(attr)
                     lines.append("\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip()))
             else:
-                if isNumericAttr(attrInfo['type']):
+                if isNumericAttr(attrInfo):
                     assignmentStr = "int(%s)" %(attr)
                 elif isBoolean(attrInfo['type']):
                     assignmentStr = "True if %s else False" %(attr)
@@ -85,7 +85,7 @@ class FlexConfigObject(FlexObject) :
                 lines.append("\n" + spaces + "%s," %(attr))
             objLines.append(tabs + "if %s != None :\n" %(attr))
             assignmentStr =''
-            if isNumericAttr(attrInfo['type']):
+            if isNumericAttr(attrInfo):
                 assignmentStr = "int(%s)" %(attr)
             elif isBoolean(attrInfo['type']):
                 assignmentStr = "True if %s else False" %(attr)
