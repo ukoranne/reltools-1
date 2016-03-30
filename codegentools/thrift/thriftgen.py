@@ -155,7 +155,24 @@ class DaemonObjectsInfo (object) :
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
             if 'r' in structInfo['access']: # read only objects Counters/State
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
-                thriftfd.write("""\t%s Get%s(1: %s stateObj, 2: list<bool> attrset);\n""" %(s, s, s))
+
+                keyIndex = 1
+                keyList = ""
+                for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
+                    if attrInfo['isKey'] != 'False':
+                        if str(attrInfo['type']) in goToThirftTypeMap:
+                            if keyIndex == 1:
+                                keyList = keyList + "%s: " % keyIndex + goToThirftTypeMap[str(attrInfo['type'])]['native_type'] + " " + attrName
+                            else:
+                                keyList = keyList + ", %s: " % keyIndex + goToThirftTypeMap[str(attrInfo['type'])]['native_type'] + " " + attrName
+                        else:
+                            if keyIndex == 1:
+                                keyList = keyList + "%s: " % keyIndex + str(attrInfo['type']) + " " + attrName
+                            else:
+                                keyList = keyList + ", %s: " % keyIndex + str(attrInfo['type']) + " " + attrName
+                        keyIndex = keyIndex + 1
+
+                thriftfd.write("""\t%s Get%s(%s);\n""" %(s, s, keyList))
         thriftfd.write("}")
         thriftfd.close()
         #print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
@@ -321,7 +338,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj, attrSet []bool) (err error, stateObj models.ConfigObj) {
+        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj) (error, models.ConfigObj) {
             logger.Println("GetObject called %s")
             switch obj.(type) {\n""" % (self.newDeamonName, self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
@@ -331,18 +348,25 @@ class DaemonObjectsInfo (object) :
             if 'r' in structInfo['access']:
                 clientIfFd.write("""
                                     case models.%s :
-                                    logger.Println("Get %s", attrSet)
-                                    data := obj.(models.%s)
-                                    conf := %s.New%s()\n""" % (s, s, s, self.servicesName, s))
-                clientIfFd.write(""" var retObj models.%s\n""" %(s))
-                clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)\n""" %(d, s))
+                                    logger.Println("Get %s")\n""" % (s, s))
+                keyIndex = 1
+                keyList = ""
+                for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
+                    if attrInfo['isKey'] != 'False':
+                        if keyIndex == 1:
+                            keyList = keyList + "obj." + attrName
+                        else:
+                            keyList = keyList + ", " + "obj." + attrName
+                        keyIndex = keyIndex + 1
 
+                clientIfFd.write("""stateObj := new(models.%s)\n""" %(s))
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
-                        retObj, err = clnt.ClientHdl.Get%s(conf, attrSet)
-                        if retObj != nil && err != nil {\n""" %(s))
+                        retObj, err := clnt.ClientHdl.Get%s(%s)
+                        if err != nil {\n""" %(s, keyList))
                 clientIfFd.write("""models.ConvertThriftTo%s%sObj(retObj, stateObj)\n""" % (d, s))
                 clientIfFd.write("""
+                            return err, stateObj
                         } else {
                             logger.Println("GetObject failed", err)
                             return err, nil
@@ -353,7 +377,7 @@ class DaemonObjectsInfo (object) :
         clientIfFd.write("""\ndefault:
                                     break
                                 }
-                        return err, stateObj
+                        return nil, nil
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
