@@ -103,8 +103,8 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'sqlwebd',
-                     'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
+                    #{'name': 'sqlwebd',
+                    # 'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
                     ]
     return daemonsToStart
 
