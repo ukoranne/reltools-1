@@ -38,6 +38,7 @@ type ObjectMembersInfo struct {
 	Description string `json:"description"`
 	DefaultVal  string `json:"default"`
 	Position    int    `json:"position"`
+	Selections  string `json:"selections"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -206,6 +207,8 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.IsKey = true
 			case "DESCRIPTION":
 				attrInfo.Description = keys[idx+1]
+			case "SELECTION":
+				attrInfo.Selections = keys[idx+1]
 			case "DEFAULT":
 				attrInfo.DefaultVal = keys[idx+1]
 			}
