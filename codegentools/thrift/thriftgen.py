@@ -153,6 +153,10 @@ class DaemonObjectsInfo (object) :
             if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+
+                if structInfo['accelerated']:
+                    thriftfd.write(
+                        """\toneway void OnewayCreate%s(1: %s config);\n\toneway void OnewayUpdate%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\toneway void OnewayDelete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
             if 'r' in structInfo['access']: # read only objects Counters/State
                 thriftfd.write("""\t%sGetInfo GetBulk%s(1: int fromIndex, 2: int count);\n""" %(s, s))
 
