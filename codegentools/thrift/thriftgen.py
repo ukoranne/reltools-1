@@ -370,7 +370,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
                         retObj, err := clnt.ClientHdl.Get%s(%s)
-                        if err != nil {\n""" %(s, keyList))
+                        if err == nil {\n""" %(s, keyList))
                 clientIfFd.write("""models.ConvertThriftTo%s%sObj(retObj, stateObj)\n""" % (d, s))
                 clientIfFd.write("""
                             return err, stateObj
