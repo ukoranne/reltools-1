@@ -177,6 +177,9 @@ class DaemonObjectsInfo (object) :
                         keyIndex = keyIndex + 1
 
                 thriftfd.write("""\t%s Get%s(%s);\n""" %(s, s, keyList))
+            if 'x' in structInfo['access']: # action objects
+                thriftfd.write(
+                    """\tExecuteAction%s(1: %s config);\n\n""" % (s, s))
         thriftfd.write("}")
         thriftfd.close()
         #print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
@@ -387,6 +390,32 @@ class DaemonObjectsInfo (object) :
                         return nil, nil
                             }\n""")
 
+    def createClientIfExecuteAction(self, clientIfFd, objectNames):
+        clientIfFd.write("""func (clnt *%sClient) ExecuteAction(obj models.ConfigObj) error {
+            logger.Println("ExecuteAction called %s")
+            switch obj.(type) {\n""" % (self.newDeamonName, self.newDeamonName))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            s = structName
+            d = self.name
+            if 'x' in structInfo['access']:
+                clientIfFd.write("""
+                                    case models.%s :
+                                    logger.Println("Exec %s")
+                                    data := obj.(models.%s)\n""" % (s, s, s))
+                clientIfFd.write("""
+                    if clnt.ClientHdl != nil {
+                        retObj, err := clnt.ClientHdl.ExecuteAction%s(data)
+                        return err\n""" %(s))
+                clientIfFd.write("""
+                    }
+                    break\n""")
+        clientIfFd.write("""\ndefault:
+                                    break
+                                }
+                        return nil
+                            }\n""")
+
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
         clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *sql.DB) (error, bool) {
             var ok bool
@@ -490,6 +519,7 @@ class DaemonObjectsInfo (object) :
         self.createClientIfUpdateObject(clientIfFd, objectNames)
         self.createClientIfGetBulkObject(clientIfFd, objectNames)
         self.createClientIfGetObject(clientIfFd, objectNames)
+        self.createClientIfExecuteAction(clientIfFd, objectNames)
         
         clientIfFd.close()
 
