@@ -14,6 +14,7 @@ import (
    "fmt"
    "reflect"
    "strings"
+   "strconv"
    "utils/dbutils"
 )
 
@@ -447,11 +448,60 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 		}
 	}
 	lines = append(lines, stmt)
-	lines = append(lines, `fmt.Println("Db method Scan failed when interating over OspfAreaEntryConfig")
+	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	lines = append(lines, `
 		}
 		objList = append(objList, object)
 		}
 		return objList, nil
+		}`+"\n")
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
+
+func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+	var lines []string
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetBulkObjFromDb(startIndex int64, count int64, dbHdl *sql.DB) (err error, objCount int64, nextMarker int64, moreExist bool, objList []ConfigObj) { \n")
+	lines = append(lines, "var object "+obj.ObjName+"\n")
+	dbCmdStr := "dbCmd := \"select * from " + obj.ObjName + " limit \"+" + " strconv.Itoa(int(startIndex)) +\", \"+ strconv.Itoa(int(count))"
+	lines = append(lines, dbCmdStr+"\n")
+	lines = append(lines, `
+						rows, err := dbHdl.Query(dbCmd)
+						if err != nil {
+						 return err, 0, 0, false, nil
+						 }
+						defer rows.Close()
+						objList = make([]ConfigObj, 0)
+						for rows.Next() {`+"\n")
+
+	stmt := "if err = rows.Scan("
+	for idx, fld := range str.Fields.List {
+		if fld.Names != nil {
+			if idx != len(str.Fields.List)-1 {
+				stmt = stmt + "&object." + fld.Names[0].String() + ", "
+			} else {
+				stmt = stmt + "&object." + fld.Names[0].String() + "); err != nil {\n"
+			}
+		}
+	}
+	lines = append(lines, stmt)
+	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	lines = append(lines, `return err, 0, 0, false, nil`+"\n")
+	lines = append(lines, `
+		}
+		objList = append(objList, object)
+		objCount++
+		}
+		if objCount == count {
+		moreExist = true
+		nextMarker = startIndex+objCount+1
+		} else {
+		moreExist = false
+		nextMarker = 0
+		}
+		return nil, objCount, nextMarker, moreExist, objList
 		}`+"\n")
 	for _, line := range lines {
 		fd.WriteString(line)
@@ -780,6 +830,7 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
 		dbFile.WriteString(fileHeaderForState)
 		obj.WriteKeyRelatedFcns(str, dbFile, attrMapSlice, objMap)
