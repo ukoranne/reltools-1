@@ -179,7 +179,7 @@ class DaemonObjectsInfo (object) :
                 thriftfd.write("""\t%s Get%s(%s);\n""" %(s, s, keyList))
             if 'x' in structInfo['access']: # action objects
                 thriftfd.write(
-                    """\tExecuteAction%s(1: %s config);\n\n""" % (s, s))
+                    """\tbool ExecuteAction%s(1: %s config);\n\n""" % (s, s))
         thriftfd.write("}")
         thriftfd.close()
         #print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
@@ -197,7 +197,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if structInfo['access'] in ['w', 'rw', 'r', '']:
+            if structInfo['access'] in ['w', 'rw', 'r', 'x', '']:
                 thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, self.servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
                     attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
@@ -401,11 +401,12 @@ class DaemonObjectsInfo (object) :
             if 'x' in structInfo['access']:
                 clientIfFd.write("""
                                     case models.%s :
-                                    logger.Println("Exec %s")
-                                    data := obj.(models.%s)\n""" % (s, s, s))
+                                    data := obj.(models.%s)
+                                    conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
+                clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
-                        retObj, err := clnt.ClientHdl.ExecuteAction%s(data)
+                        _, err := clnt.ClientHdl.ExecuteAction%s(conf)
                         return err\n""" %(s))
                 clientIfFd.write("""
                     }
