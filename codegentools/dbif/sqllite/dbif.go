@@ -28,6 +28,7 @@ type ObjectInfoJson struct {
 	Owner        string `json:"owner"`
 	SrcFile      string `json:"srcfile"`
 	Multiplicity string `json:"multiplicity"`
+	Accelerated  bool   `json:"accelerated"`
 }
 
 // This structure represents the a golang Structure for a config object
@@ -38,6 +39,8 @@ type ObjectMembersInfo struct {
 	Description string `json:"description"`
 	DefaultVal  string `json:"default"`
 	Position    int    `json:"position"`
+	Selections  string `json:"selections"`
+	Accelerated bool   `json:"accelerated"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -206,8 +209,12 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.IsKey = true
 			case "DESCRIPTION":
 				attrInfo.Description = keys[idx+1]
+			case "SELECTION":
+				attrInfo.Selections = keys[idx+1]
 			case "DEFAULT":
 				attrInfo.DefaultVal = keys[idx+1]
+			case "ACCELERATED":
+				attrInfo.Accelerated = true
 			}
 		}
 	}
@@ -332,6 +339,9 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 												case "MULTIPLICITY":
 													tmpString := strings.Trim(splits[1], "`")
 													obj.Multiplicity = strings.Trim(tmpString, "\"")
+
+												case "ACCELERATED":
+													obj.Accelerated = true
 												}
 											}
 										}
