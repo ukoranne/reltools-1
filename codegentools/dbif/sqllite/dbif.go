@@ -362,7 +362,7 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 							}
 						}
 						objMap[typ.Name.Name] = obj
-						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") {
+						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") || strings.Contains(obj.Access, "x") {
 							marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
 							marshalFcnsLine = append(marshalFcnsLine, `
 													var err error
