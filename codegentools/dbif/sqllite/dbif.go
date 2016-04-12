@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
-	//"strconv"
+	"strconv"
 	"strings"
 )
 
@@ -41,6 +41,9 @@ type ObjectMembersInfo struct {
 	Position    int    `json:"position"`
 	Selections  string `json:"selections"`
 	Accelerated bool   `json:"accelerated"`
+	Min         int    `json:"min"`
+	Max         int    `json:"max"`
+	Len         int    `json:"len"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -215,6 +218,15 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.DefaultVal = keys[idx+1]
 			case "ACCELERATED":
 				attrInfo.Accelerated = true
+			case "MIN":
+				attrInfo.Min = 0 //strconv.Atoi(keys[idx+1])
+			case "MAX":
+				attrInfo.Min = 10 //strconv.Atoi(keys[idx+1])
+			case "RANGE":
+				attrInfo.Min = 0  //keys[idx+1]
+				attrInfo.Max = 10 //keys[idx+1]
+			case "LEN":
+				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
 			}
 		}
 	}

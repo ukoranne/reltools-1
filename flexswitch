@@ -186,7 +186,7 @@ if __name__=="__main__":
                     cmd = nonSnapRouteDmns[dmn['name']]
 
                 pargs = (cmd, dmn['params'])
-                time.sleep(2)
+                time.sleep(0.02)
                 pid = os.fork()
                 if pid == 0:
                     dmnInst = FlexSwitchDaemon (pidFile,
