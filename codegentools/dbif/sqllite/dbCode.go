@@ -436,17 +436,24 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 						defer rows.Close()
 						objList = make([]ConfigObj, 0)
 						for rows.Next() {`+"\n")
-
 	stmt := "if err = rows.Scan("
-	for idx, fld := range str.Fields.List {
+	first := true
+	for _, fld := range str.Fields.List {
 		if fld.Names != nil {
-			if idx != len(str.Fields.List)-1 {
-				stmt = stmt + "&object." + fld.Names[0].String() + ", "
-			} else {
-				stmt = stmt + "&object." + fld.Names[0].String() + "); err != nil {\n"
+			switch fld.Type.(type) {
+			case *ast.ArrayType:
+				continue
+			default:
+				if !first {
+					stmt = stmt + ","
+				}
+				stmt = stmt + "&object." + fld.Names[0].String()
+				first = false
+
 			}
 		}
 	}
+	stmt = stmt + "); err != nil {\n"
 	lines = append(lines, stmt)
 	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
 	lines = append(lines, `
