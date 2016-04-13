@@ -142,5 +142,5 @@ class FlexConfigObject(FlexObject) :
         self.createDeleteByIdMethod(fileHdl)
         self.createGetMethod(fileHdl)
         self.createGetByIdMethod(fileHdl)
-        self.createGetAllMethod(fileHdl)
+        self.createGetAllMethod(fileHdl, 'self.cfgUrlBase')
 
