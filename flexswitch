@@ -233,6 +233,9 @@ if __name__=="__main__":
         for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
             try:
                 pidFile = pidFileDir + dmn['name']+'.pid'
+                pf = file(pidFile, 'r')
+                pid = int(pf.read().strip())
+                pf.close()
                 try :
                     #Check if cleanup completed
                     os.kill(pid, 0)
@@ -240,8 +243,8 @@ if __name__=="__main__":
                     #Process with pid successfully cleaned up
                     os.remove(pidFile)
                     continue
-                    #Force kill by sending SIGTERM
-                    os.kill(pid, signal.SIGTERM)
-                    os.remove(pidFile)
+                #Force kill by sending SIGTERM
+                os.kill(pid, signal.SIGTERM)
+                os.remove(pidFile)
             except:
                 print '*** Failed to Kill process [%s]' %(dmn['name'])
