@@ -40,6 +40,7 @@ type ObjectMembersInfo struct {
 	DefaultVal  string `json:"default"`
 	Position    int    `json:"position"`
 	Selections  string `json:"selections"`
+	QueryParam  string `json:"queryparam"`
 	Accelerated bool   `json:"accelerated"`
 	Min         int    `json:"min"`
 	Max         int    `json:"max"`
@@ -227,6 +228,8 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.Max = 10 //keys[idx+1]
 			case "LEN":
 				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
+			case "QPARAM":
+				attrInfo.QueryParam = keys[idx+1]
 			}
 		}
 	}

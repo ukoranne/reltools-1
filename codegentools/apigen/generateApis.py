@@ -33,7 +33,7 @@ class apiGenie (object) :
                                                                   )
 
     def writeApiCode(self) :
-        outputFile = 'tmp.py'
+        outputFile = self.outputDir + 'flexswitchV2.py'
         with open(outputFile, 'w+') as fileHdl:
             with open('baseCode.txt', 'r') as base:
                 fileHdl.writelines(base.readlines())
@@ -50,6 +50,6 @@ if __name__ == '__main__':
                        #baseDir + '/snaproute/src/models/' + 'handCodedObjInfo.json'
                      ]
     attrDescriptorsLocation = baseDir+'/reltools/codegentools/._genInfo/'
-    outputDir = baseDir+'snaproute/src/flexSdk/py'
+    outputDir = baseDir+'/snaproute/src/flexSdk/py/'
     gen = apiGenie( outputDir, objDescriptors, attrDescriptorsLocation)
     gen.writeApiCode()

@@ -11,7 +11,13 @@ def processReturnCode (method) :
         if r.status_code in self.httpSuccessCodes:
             return (r.json(), None)
         else:
-            print 'Error in executing request. Error code %s, Error Message: %s' %(r.status_code, r.json()['Error']) 
+            ret = {}
+            try:
+                ret = r.json()
+            except:
+                print 'Did not receive Json. HTTP Status %s: Code %s ' %(r.reason, r.status_code) 
+                return ret, r.reason
+            print 'Error from server. Error code %s, Error Message: %s' %(r.status_code, r.json()['Error']) 
             return (r.json(), "Error")
     return returnDetails
 
@@ -23,19 +29,19 @@ class FlexSwitch( object):
         self.cfgUrlBase = 'http://%s:%s/public/v1/config/'%(ip,str(port))                                                         
         self.stateUrlBase = 'http://%s:%s/public/v1/state/'%(ip,str(port))                                                         
 
-    def getObjects(self, objName):                                                                                         
+    def getObjects(self, objName, urlPath):
         currentMarker = 0                                                                                                  
         nextMarker = 0                                                                                                     
-        count = 10                                                                                                         
+        count = 10
         more = True                                                                                                        
         entries = []                                                                                                       
         while more == True:                                                                                                
-            qry = 'http://%s:8080/public/v1/state/%ss?CurrentMarker=%d&NextMarker=%d&Count=%d' %(self.ip, objName, currentMarker, nextMarker, count)
+            qry = '%s/%ss?CurrentMarker=%d&NextMarker=%d&Count=%d' %(urlPath, objName, currentMarker, nextMarker, count)
             response = requests.get(qry)                                                                                   
             data = response.json()                                                                                         
             more =  data['MoreExist']                                                                                      
             currentMarker =  data['NextMarker']                                                                            
             NextMarker    =  data['NextMarker']                                                                            
-            if data['StateObjects'] != None:                                                                               
-                entries.extend(data['StateObjects'])                                                                       
+            if data['Objects'] != None:                                                                               
+                entries.extend(data['Objects'])                                                                       
         return entries
