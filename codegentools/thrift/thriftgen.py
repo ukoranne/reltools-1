@@ -254,6 +254,7 @@ class DaemonObjectsInfo (object) :
                                 }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
         clientIfFd.write("""
                             func (clnt *%sClient) Initialize(name string, address string) {
+                                clnt.Name = name
                                 clnt.Address = address
                                 return
                             }\n""" % (self.newDeamonName,))
@@ -272,6 +273,9 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
         clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
                                 return clnt.IsConnected
+                            }\n""" % (self.newDeamonName,))
+        clientIfFd.write("""func (clnt *%sClient) GetServerName() string {
+                                return clnt.Name
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
