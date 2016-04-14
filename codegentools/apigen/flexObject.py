@@ -55,7 +55,11 @@ class FlexObject(object) :
         lines = [ "\n"+ tabs + "@processReturnCode"]
         lines.append("\n"+ tabs + "def get" + self.name + "ById(self, objectId ):\n")
         tabs = tabs + self.TAB
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'" %(self.name.rstrip('State')))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'" %(objName))
         lines[-1] = lines[-1] + "+\"/%s\"%(objectId)\n"
         lines.append(tabs + "r = requests.get(reqUrl, data=None, headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
@@ -76,7 +80,11 @@ class FlexObject(object) :
         lines.append("):\n")
         objLines.append(tabs + tabs+"}\n")
         lines = lines + objLines
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(self.name.rstrip('State')))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(objName))
         lines.append(tabs + "r = requests.get(reqUrl, data=json.dumps(obj), headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
@@ -86,10 +94,13 @@ class FlexObject(object) :
         lines = [ "\n"+ tabs + "def getAll" + self.name+"s" + "(self):\n"]
         tabs = tabs + self.TAB
         if 'r' in self.access:
-            objName = self.name.rstrip('State')
+            if self.name.endswith('State'):
+                objName = self.name[:-5]
+            else:
+                objName = self.name
         else:
             objName = self.name
-        lines.append (tabs + "return self.getObjects( \'%s\', %s) \n\n" %(objName, urlPath))
+        lines.append (tabs + "return self.getObjects( \'%s\', %s)\n\n" %(objName, urlPath))
         fileHdl.writelines(lines)
 
     def writeAllMethods (self, fileHdl):
