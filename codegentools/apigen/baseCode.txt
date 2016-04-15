@@ -36,12 +36,16 @@ class FlexSwitch( object):
         more = True                                                                                                        
         entries = []                                                                                                       
         while more == True:                                                                                                
+            more = False
             qry = '%s/%ss?CurrentMarker=%d&NextMarker=%d&Count=%d' %(urlPath, objName, currentMarker, nextMarker, count)
             response = requests.get(qry)                                                                                   
-            data = response.json()                                                                                         
-            more =  data['MoreExist']                                                                                      
-            currentMarker =  data['NextMarker']                                                                            
-            NextMarker    =  data['NextMarker']                                                                            
-            if data['Objects'] != None:                                                                               
-                entries.extend(data['Objects'])                                                                       
+            if response.status_code in self.httpSuccessCodes:
+                data = response.json()                                                                                         
+                more =  data['MoreExist']                                                                                      
+                currentMarker =  data['NextMarker']                                                                            
+                NextMarker    =  data['NextMarker']                                                                            
+                if data['Objects'] != None:                                                                               
+                    entries.extend(data['Objects'])                                                                       
+            else:
+                print 'Server returned Error for %s' %(qry)
         return entries
