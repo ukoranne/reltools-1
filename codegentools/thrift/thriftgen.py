@@ -177,6 +177,9 @@ class DaemonObjectsInfo (object) :
                         keyIndex = keyIndex + 1
 
                 thriftfd.write("""\t%s Get%s(%s);\n""" %(s, s, keyList))
+            if 'x' in structInfo['access']: # action objects
+                thriftfd.write(
+                    """\tbool ExecuteAction%s(1: %s config);\n\n""" % (s, s))
         thriftfd.write("}")
         thriftfd.close()
         #print 'Thrift file for %s is %s' %(dmn, self.thriftFileName)
@@ -194,7 +197,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if structInfo['access'] in ['w', 'rw', 'r', '']:
+            if structInfo['access'] in ['w', 'rw', 'r', 'x', '']:
                 thriftdbutilfd.write("""\nfunc Convert%s%sObjToThrift(dbobj *%s, thriftobj *%s.%s) { """ %(d, s, s, self.servicesName, s))
                 for i, (k, v) in enumerate(structInfo['membersInfo'].iteritems()):
                     attrType = v['type'][1:] if v['type'].startswith('u') else v['type']
@@ -251,6 +254,7 @@ class DaemonObjectsInfo (object) :
                                 }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
         clientIfFd.write("""
                             func (clnt *%sClient) Initialize(name string, address string) {
+                                clnt.Name = name
                                 clnt.Address = address
                                 return
                             }\n""" % (self.newDeamonName,))
@@ -269,6 +273,9 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
         clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
                                 return clnt.IsConnected
+                            }\n""" % (self.newDeamonName,))
+        clientIfFd.write("""func (clnt *%sClient) GetServerName() string {
+                                return clnt.Name
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
@@ -370,7 +377,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
                         retObj, err := clnt.ClientHdl.Get%s(%s)
-                        if err != nil {\n""" %(s, keyList))
+                        if err == nil {\n""" %(s, keyList))
                 clientIfFd.write("""models.ConvertThriftTo%s%sObj(retObj, stateObj)\n""" % (d, s))
                 clientIfFd.write("""
                             return err, stateObj
@@ -385,6 +392,33 @@ class DaemonObjectsInfo (object) :
                                     break
                                 }
                         return nil, nil
+                            }\n""")
+
+    def createClientIfExecuteAction(self, clientIfFd, objectNames):
+        clientIfFd.write("""func (clnt *%sClient) ExecuteAction(obj models.ConfigObj) error {
+            logger.Println("ExecuteAction called %s")
+            switch obj.(type) {\n""" % (self.newDeamonName, self.newDeamonName))
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            s = structName
+            d = self.name
+            if 'x' in structInfo['access']:
+                clientIfFd.write("""
+                                    case models.%s :
+                                    data := obj.(models.%s)
+                                    conf := %s.New%s()\n""" % (s, s, self.servicesName, s))
+                clientIfFd.write("""models.Convert%s%sObjToThrift(&data, conf)""" %(d, s))
+                clientIfFd.write("""
+                    if clnt.ClientHdl != nil {
+                        _, err := clnt.ClientHdl.ExecuteAction%s(conf)
+                        return err\n""" %(s))
+                clientIfFd.write("""
+                    }
+                    break\n""")
+        clientIfFd.write("""\ndefault:
+                                    break
+                                }
+                        return nil
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
@@ -490,6 +524,7 @@ class DaemonObjectsInfo (object) :
         self.createClientIfUpdateObject(clientIfFd, objectNames)
         self.createClientIfGetBulkObject(clientIfFd, objectNames)
         self.createClientIfGetObject(clientIfFd, objectNames)
+        self.createClientIfExecuteAction(clientIfFd, objectNames)
         
         clientIfFd.close()
 

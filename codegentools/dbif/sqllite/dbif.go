@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
-	//"strconv"
+	"strconv"
 	"strings"
 )
 
@@ -40,7 +40,11 @@ type ObjectMembersInfo struct {
 	DefaultVal  string `json:"default"`
 	Position    int    `json:"position"`
 	Selections  string `json:"selections"`
+	QueryParam  string `json:"queryparam"`
 	Accelerated bool   `json:"accelerated"`
+	Min         int    `json:"min"`
+	Max         int    `json:"max"`
+	Len         int    `json:"len"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -215,6 +219,17 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.DefaultVal = keys[idx+1]
 			case "ACCELERATED":
 				attrInfo.Accelerated = true
+			case "MIN":
+				attrInfo.Min = 0 //strconv.Atoi(keys[idx+1])
+			case "MAX":
+				attrInfo.Min = 10 //strconv.Atoi(keys[idx+1])
+			case "RANGE":
+				attrInfo.Min = 0  //keys[idx+1]
+				attrInfo.Max = 10 //keys[idx+1]
+			case "LEN":
+				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
+			case "QPARAM":
+				attrInfo.QueryParam = keys[idx+1]
 			}
 		}
 	}
@@ -350,7 +365,7 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 							}
 						}
 						objMap[typ.Name.Name] = obj
-						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") {
+						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") || strings.Contains(obj.Access, "x") {
 							marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
 							marshalFcnsLine = append(marshalFcnsLine, `
 													var err error

@@ -14,6 +14,7 @@ import (
    "fmt"
    "reflect"
    "strings"
+   "strconv"
    "utils/dbutils"
 )
 
@@ -435,10 +436,133 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 						defer rows.Close()
 						objList = make([]ConfigObj, 0)
 						for rows.Next() {`+"\n")
+	stmt := "if err = rows.Scan("
+	first := true
+	for _, fld := range str.Fields.List {
+		if fld.Names != nil {
+			switch fld.Type.(type) {
+			case *ast.ArrayType:
+				continue
+			default:
+				if !first {
+					stmt = stmt + ","
+				}
+				stmt = stmt + "&object." + fld.Names[0].String()
+				first = false
+
+			}
+		}
+	}
+	stmt = stmt + "); err != nil {\n"
+	lines = append(lines, stmt)
+	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	lines = append(lines, `
+		}
+		objList = append(objList, object)
+		}
+		return objList, nil
+		}`+"\n")
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
+func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn (str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
+	var lines []string
+	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
+		return lines
+	}
+	lines = append(lines,"var frnKey string\n")
+	for _, attrInfo := range attrMap {
+		if attrInfo.IsArray == true {
+			arrayName := attrInfo.MemberName + "List"
+	        lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map := make(map[string][] " + attrInfo.VarType + " ) \n")
+			lines = append(lines," var " + arrayName +" []" + attrInfo.VarType+"\n")
+			objName := "secObj" + attrInfo.MemberName
+			lines = append(lines, " var "+objName+" "+ attrInfo.VarType+"\n")
+			attrs := make([]string, 0)
+			if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
+				memberAttrMap := getObjectMemberInfo(objMap, attrInfo.VarType)
+				for memAttrName, _ := range memberAttrMap {
+					attrs = append(attrs, memAttrName)
+				}
+			} else {
+				attrs = append(attrs, attrInfo.MemberName)
+			}
+			dbCmdStr := "dbCmd = \"select * from " + obj.ObjName+attrInfo.MemberName + "\""
+	        lines = append(lines, dbCmdStr+"\n")
+	        lines = append(lines, `
+						rows, err = dbHdl.Query(dbCmd)
+						if err != nil {
+						 return err, 0, 0, false, nil
+						 }
+						defer rows.Close()`+"\n")
+			lines = append(lines,arrayName+" = make([]" +attrInfo.VarType+", 0)\n")
+			lines = append(lines," for rows.Next() { \n")
+			stmt := "if err = rows.Scan( &frnKey," 
+			for idx,attr := range attrs {
+				if idx != len(attrs) -1 {
+				    if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {	
+				        stmt = stmt + "&"+objName+"." + attr + ", "
+				    } else {
+					    stmt = stmt + "&"+objName+ ", "
+				    }
+				} else {
+					if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {	
+					    stmt = stmt + "&"+objName+"." + attr + "); err != nil {\n"
+					    } else {
+						   stmt = stmt + "&"+objName+ "); err != nil {\n"
+					    }
+				    }
+			}
+	        lines = append(lines, stmt)
+	        lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	        lines = append(lines, `return err, 0, 0, false, nil`+"\n } \n")
+			lines = append(lines, arrayName +" = append("+arrayName + "," + objName +"  )\n } \n")
+			lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map[frnKey]=" + arrayName+"\n")
+			lines = append(lines, "\n")
+		}
+    }
+	return lines
+}
+func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+	var lines []string
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetBulkObjFromDb(startIndex int64, count int64, dbHdl *sql.DB) (err error, objCount int64, nextMarker int64, moreExist bool, objList []ConfigObj) { \n")
+	lines = append(lines, "var object "+obj.ObjName+"\n")
+	lines = append(lines, "var rows *sql.Rows \n")
+	lines = append(lines, "var dbCmd string \n")
+/*	lines = append(lines, "var ok bool \n")
+	secondaryLines := obj.WriteGetBulkSecondaryTableFromDBFcn(str, fd, attrMap, objMap)
+	if len(secondaryLines) > 0 {
+		lines = append(lines, secondaryLines...)
+	}
+	var key string
+	for _,info := range attrMap {
+		if info.IsKey == true {
+			key = info.MemberName
+		}
+	}*/
+	dbCmdStr := "dbCmd = \"select * from " + obj.ObjName + " limit \"+" + " strconv.Itoa(int(startIndex)) +\", \"+ strconv.Itoa(int(count))"
+	lines = append(lines, dbCmdStr+"\n")
+	lines = append(lines, `
+						rows, err = dbHdl.Query(dbCmd)
+						if err != nil {
+						 return err, 0, 0, false, nil
+						 }
+						defer rows.Close()
+						objList = make([]ConfigObj, 0)
+						for rows.Next() {`+"\n")
 
 	stmt := "if err = rows.Scan("
 	for idx, fld := range str.Fields.List {
 		if fld.Names != nil {
+			switch fld.Type.(type) {
+			case *ast.ArrayType:
+			    if  idx == len(str.Fields.List) -1 {
+					stmt = stmt + "); err != nil {\n"
+				}
+				continue
+			}
 			if idx != len(str.Fields.List)-1 {
 				stmt = stmt + "&object." + fld.Names[0].String() + ", "
 			} else {
@@ -447,12 +571,37 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 		}
 	}
 	lines = append(lines, stmt)
-	lines = append(lines, `fmt.Println("Db method Scan failed when interating over OspfAreaEntryConfig")
+	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	lines = append(lines, `return err, 0, 0, false, nil`+"\n")
+/*	for idx, fld := range str.Fields.List {
+		if fld.Names != nil {
+			switch fld.Type.(type) {
+			case *ast.ArrayType:
+			    if  idx == len(str.Fields.List) -1 {
+					stmt = stmt + "); err != nil {\n"
+				}
+	            lines  = append(lines, "\n"+fld.Names[0].String() + "val,ok := secondaryObj"+fld.Names[0].String()  +"Map[object."+key + "]\n")
+	            lines = append(lines, " if ok { \n")
+	            lines = append(lines, "object." + fld.Names[0].String() + " = " + fld.Names[0].String() + "val \n")
+	            lines = append(lines, "}\n")
+			}
+		}
+	}*/
+	lines = append(lines, `
 		}
 		objList = append(objList, object)
+		objCount++
 		}
-		return objList, nil
+		if objCount == count {
+		moreExist = true
+		nextMarker = startIndex+objCount+1
+		} else {
+		moreExist = false
+		nextMarker = 0
+		}
+		return nil, objCount, nextMarker, moreExist, objList
 		}`+"\n")
+
 	for _, line := range lines {
 		fd.WriteString(line)
 	}
@@ -780,6 +929,7 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
 		dbFile.WriteString(fileHeaderForState)
 		obj.WriteKeyRelatedFcns(str, dbFile, attrMapSlice, objMap)
