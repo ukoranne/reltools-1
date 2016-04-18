@@ -115,11 +115,18 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 	}
 	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
-			attrs := make([]string, 0)
+			var attrs []string//:= make([]string, 0)
+			count := 0 
 			if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
 				memberAttrMap := getObjectMemberInfo(objMap, attrInfo.VarType)
-				for memAttrName, _ := range memberAttrMap {
-					attrs = append(attrs, memAttrName)
+				count = 0
+				for name,val := range memberAttrMap {
+					fmt.Println("array member: ", name, " position = ", val.Position)
+					count++
+				}
+				attrs = make([]string,count)
+				for name,val := range memberAttrMap {
+				   attrs[val.Position] = name	
 				}
 			} else {
 				attrs = append(attrs, attrInfo.MemberName)
@@ -467,24 +474,30 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 	}
 	fd.Sync()
 }
-func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn (str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
+func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn (str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo, keyType string) []string {
 	var lines []string
+	//if !strings.Contains(obj.ObjName, "Policy") { // Temporary hack. Need to fix it. Hari. TODO
 	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
 		return lines
 	}
-	lines = append(lines,"var frnKey string\n")
 	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
-			arrayName := attrInfo.MemberName + "List"
-	        lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map := make(map[string][] " + attrInfo.VarType + " ) \n")
-			lines = append(lines," var " + arrayName +" []" + attrInfo.VarType+"\n")
+			lines = append(lines, "// Fetch values for " + attrInfo.MemberName + " attribute\n")
+	        lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map := make(map[", keyType, "][] " + attrInfo.VarType + " ) \n")
 			objName := "secObj" + attrInfo.MemberName
 			lines = append(lines, " var "+objName+" "+ attrInfo.VarType+"\n")
-			attrs := make([]string, 0)
+			var attrs []string
+			count := 0 
 			if _, ok := goTypesToSqliteMap[attrInfo.VarType]; !ok {
 				memberAttrMap := getObjectMemberInfo(objMap, attrInfo.VarType)
-				for memAttrName, _ := range memberAttrMap {
-					attrs = append(attrs, memAttrName)
+				count = 0
+				for name,val := range memberAttrMap {
+					fmt.Println("array member: ", name, " position = ", val.Position)
+					count++
+				}
+				attrs = make([]string,count)
+				for name,val := range memberAttrMap {
+				   attrs[val.Position] = name	
 				}
 			} else {
 				attrs = append(attrs, attrInfo.MemberName)
@@ -497,7 +510,6 @@ func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn (str *ast.StructTy
 						 return err, 0, 0, false, nil
 						 }
 						defer rows.Close()`+"\n")
-			lines = append(lines,arrayName+" = make([]" +attrInfo.VarType+", 0)\n")
 			lines = append(lines," for rows.Next() { \n")
 			stmt := "if err = rows.Scan( &frnKey," 
 			for idx,attr := range attrs {
@@ -516,10 +528,14 @@ func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn (str *ast.StructTy
 				    }
 			}
 	        lines = append(lines, stmt)
-	        lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
+	        lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+attrInfo.MemberName+`")`+"\n")
 	        lines = append(lines, `return err, 0, 0, false, nil`+"\n } \n")
-			lines = append(lines, arrayName +" = append("+arrayName + "," + objName +"  )\n } \n")
-			lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map[frnKey]=" + arrayName+"\n")
+			//lines = append(lines, arrayName +" = append("+arrayName + "," + objName +"  )\n } \n")
+			lines = append(lines, "if secondaryObj" + attrInfo.MemberName + "Map[frnKey]== nil {\n")
+			lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map[frnKey] = make([]" + attrInfo.VarType+ ", 0)\n")
+			lines = append(lines, "}\n")
+			lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map[frnKey]  = append("+"secondaryObj" + attrInfo.MemberName + "Map[frnKey] ," + objName +"  )\n } \n")
+			//lines = append(lines, "secondaryObj" + attrInfo.MemberName + "Map[frnKey]=" + arrayName+"\n")
 			lines = append(lines, "\n")
 		}
     }
@@ -531,17 +547,20 @@ func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.F
 	lines = append(lines, "var object "+obj.ObjName+"\n")
 	lines = append(lines, "var rows *sql.Rows \n")
 	lines = append(lines, "var dbCmd string \n")
-/*	lines = append(lines, "var ok bool \n")
-	secondaryLines := obj.WriteGetBulkSecondaryTableFromDBFcn(str, fd, attrMap, objMap)
-	if len(secondaryLines) > 0 {
-		lines = append(lines, secondaryLines...)
-	}
 	var key string
+	var keyType string
 	for _,info := range attrMap {
 		if info.IsKey == true {
 			key = info.MemberName
+			keyType = info.VarType
 		}
-	}*/
+	}
+	secondaryLines := obj.WriteGetBulkSecondaryTableFromDBFcn(str, fd, attrMap, objMap, keyType)
+	if len(secondaryLines) > 0 {
+	    lines = append(lines,"var frnKey ", keyType, "\n")//string\n")
+	    lines = append(lines, "var keyVal ", keyType, "\n") //string\n")
+		lines = append(lines, secondaryLines...)
+	}
 	dbCmdStr := "dbCmd = \"select * from " + obj.ObjName + " limit \"+" + " strconv.Itoa(int(startIndex)) +\", \"+ strconv.Itoa(int(count))"
 	lines = append(lines, dbCmdStr+"\n")
 	lines = append(lines, `
@@ -573,22 +592,25 @@ func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.F
 	lines = append(lines, stmt)
 	lines = append(lines, `fmt.Println("Db method Scan failed when iterating over `+obj.ObjName+`")`+"\n")
 	lines = append(lines, `return err, 0, 0, false, nil`+"\n")
-/*	for idx, fld := range str.Fields.List {
-		if fld.Names != nil {
-			switch fld.Type.(type) {
-			case *ast.ArrayType:
-			    if  idx == len(str.Fields.List) -1 {
-					stmt = stmt + "); err != nil {\n"
-				}
-	            lines  = append(lines, "\n"+fld.Names[0].String() + "val,ok := secondaryObj"+fld.Names[0].String()  +"Map[object."+key + "]\n")
-	            lines = append(lines, " if ok { \n")
-	            lines = append(lines, "object." + fld.Names[0].String() + " = " + fld.Names[0].String() + "val \n")
-	            lines = append(lines, "}\n")
-			}
-		}
-	}*/
+	lines = append(lines, "}\n")
+	if len(secondaryLines) > 0 {
+	    for idx, fld := range str.Fields.List {
+		    if fld.Names != nil {
+			    switch fld.Type.(type) {
+			    case *ast.ArrayType:
+			        if  idx == len(str.Fields.List) -1 {
+					    stmt = stmt + "); err != nil {\n"
+				    }
+		            lines = append(lines, "keyVal = object."+key+"\n")
+	                lines  = append(lines, "\n"+fld.Names[0].String() + "val,ok := secondaryObj"+fld.Names[0].String()  +"Map[keyVal]\n")
+	                lines = append(lines, " if ok { \n")
+	                lines = append(lines, "object." + fld.Names[0].String() + " = " + fld.Names[0].String() + "val \n")
+	                lines = append(lines, "}\n")
+			    }
+		    }
+	    }
+	}
 	lines = append(lines, `
-		}
 		objList = append(objList, object)
 		objCount++
 		}
@@ -886,7 +908,7 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) ConvertObjecMemberstMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
+func (obj *ObjectSrcInfo) ConvertObjectMembersMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
 
 	for i := 1; i < len(attrMap)+1; i++ {
 		for attr, info := range attrMap {
@@ -916,7 +938,7 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		return
 	}
 	defer dbFile.Close()
-	attrMapSlice := obj.ConvertObjecMemberstMapToOrderedSlice(attrMap)
+	attrMapSlice := obj.ConvertObjectMembersMapToOrderedSlice(attrMap)
 
 	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
 		dbFile.WriteString(fileHeader)
