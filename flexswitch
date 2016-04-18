@@ -61,10 +61,10 @@ def isProcessRunning(pidFile):
 def getDaemonsInfo (baseDir) :
 
     daemonsToStart = [
-                    {'name': 'asicd',
+                    {'name': 'sysd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'sysd',
+                    {'name': 'asicd',
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ribd',
