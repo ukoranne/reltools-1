@@ -138,6 +138,11 @@ if __name__=="__main__":
                       action='store',
                       help="Type of subsequent boot operation (cold/warm) ")
 
+    parser.add_option("-n", "--name",
+                      dest="name",
+                      action='store',
+                      help="Daemon name")
+
     (opts, args) = parser.parse_args()
     localBld = False
     if opts.directory != None:
@@ -157,6 +162,10 @@ if __name__=="__main__":
     if opts.op != 'stop' and opts.boot != None:
         parser.print_usage()
         sys.exit(0)
+
+    if opts.name != None and opts.op not in ['start', 'stop']:
+        parser.print_usage()
+        sys.exit(0)
  
     if not localBld:
         determineMacAddress()
@@ -174,6 +183,8 @@ if __name__=="__main__":
         start = datetime.datetime.now()
         dmnCount = 0
         for dmn in getDaemonsInfo(baseDir):
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
             dmnCount += 1
             pidFile = pidFileDir + dmn['name']+'.pid'
@@ -201,6 +212,8 @@ if __name__=="__main__":
         print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:
         for dmn in getDaemonsInfo(baseDir):
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             try:
                 print "Stopping Daemon %s" %( dmn['name'])
                 pidFile = pidFileDir + dmn['name']+'.pid'
@@ -231,6 +244,8 @@ if __name__=="__main__":
                 print '*** Failed to stop process [%s]' %(dmn['name'])
         time.sleep(10)
         for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             try:
                 pidFile = pidFileDir + dmn['name']+'.pid'
                 pf = file(pidFile, 'r')
