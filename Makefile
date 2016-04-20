@@ -11,7 +11,7 @@ else
 	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
 	BUILD_DIR=flexswitch-0.0.1
 endif
-ALL_DEPS=codegenv2 installdir ipc exe install
+ALL_DEPS=codegen installdir ipc exe install
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
@@ -30,8 +30,6 @@ COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/l3\
 		$(SR_CODE_BASE)/snaproute/src/l2
 
-#FIXME: Add codegen once things are stable
-#all: codegen installdir ipc exe install
 all: $(ALL_DEPS)
 
 installdir:
@@ -39,17 +37,15 @@ installdir:
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/kmod
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/models
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/params
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
-codegenv2:
+codegen:
 	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
 
 codegenclean:
 	$(SR_CODE_BASE)/reltools/codegentools/cleangencode.sh
-
-codegen:
-	$(MAKE) -f $(SR_CODE_BASE)/reltools/codegentools/Makefile
 
 exe: $(COMPS)
 	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";)
@@ -78,6 +74,8 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 	install $(SRCDIR)/$(BUILD_DIR)/sysd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/lldpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/vxland $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/apps/cfgmon $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SR_CODE_BASE)/reltools/codegentools/._genInfo/  $(DESTDIR)/$(EXT_INSTALL_PATH)/models
 endif
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
