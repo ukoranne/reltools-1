@@ -37,6 +37,7 @@ installdir:
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/kmod
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/models
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/params
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
@@ -73,6 +74,8 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 	install $(SRCDIR)/$(BUILD_DIR)/sysd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/lldpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/vxland $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SRCDIR)/$(BUILD_DIR)/apps/cfgmon $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
+	install $(SR_CODE_BASE)/reltools/codegentools/._genInfo/  $(DESTDIR)/$(EXT_INSTALL_PATH)/models
 endif
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
