@@ -33,9 +33,13 @@ class apiGenie (object) :
                                                                   )
 
     def writeApiCode(self) :
+        filePath = ''
+        basePath= os.getenv('SR_CODE_BASE')
+        if basePath!= None:
+            filePath = basePath + '/reltools/codegentools/apigen/'
         outputFile = self.outputDir + 'flexswitchV2.py'
         with open(outputFile, 'w+') as fileHdl:
-            with open('baseCode.txt', 'r') as base:
+            with open(filePath + 'baseCode.txt', 'r') as base:
                 fileHdl.writelines(base.readlines())
             for objName, obj in self.objDict.iteritems():
                 obj.writeAllMethods(fileHdl)
