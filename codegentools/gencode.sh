@@ -17,4 +17,6 @@ then
 	   gofmt -w $srcFile
 fi
 done    
+cd $SR_CODE_BASE/reltools/codegentools/apigen
+python generateApis.py 
 
