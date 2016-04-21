@@ -23,7 +23,9 @@ COMPS=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/config\
 		$(SR_CODE_BASE)/snaproute/src/infra\
 		$(SR_CODE_BASE)/snaproute/src/l3\
-		$(SR_CODE_BASE)/snaproute/src/l2
+		$(SR_CODE_BASE)/snaproute/src/l2\
+		$(SR_CODE_BASE)/snaproute/src/flexSdk\
+		$(SR_CODE_BASE)/snaproute/src/apps
 
 COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/infra\
@@ -74,9 +76,9 @@ ifeq (,$(findstring $(PKG_BUILD), FALSE))
 	install $(SRCDIR)/$(BUILD_DIR)/sysd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/lldpd $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
 	install $(SRCDIR)/$(BUILD_DIR)/vxland $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
-	install $(SRCDIR)/$(BUILD_DIR)/apps/cfgmon $(DESTDIR)/$(EXT_INSTALL_PATH)/bin
-	install $(SR_CODE_BASE)/reltools/codegentools/._genInfo/  $(DESTDIR)/$(EXT_INSTALL_PATH)/models
 endif
+	install $(SR_CODE_BASE)/reltools/codegentools/._genInfo/*.json  $(DESTDIR)/$(EXT_INSTALL_PATH)/models/
+	install $(SRCDIR)/models/genObjectConfig.json  $(DESTDIR)/$(EXT_INSTALL_PATH)/models/
 	install $(SR_CODE_BASE)/external/src/github.com/nanomsg/nanomsg/.libs/libnanomsg.so.4.0.0 $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
 clean: $(COMPS)
