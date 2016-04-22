@@ -480,7 +480,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access']:
+            if 'r' in structInfo['access'] and not(structInfo['usesRedis']):
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""

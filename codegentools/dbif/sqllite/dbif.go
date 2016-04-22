@@ -18,6 +18,7 @@ type ObjectSrcInfo struct {
 	Access     string `json:"access"`
 	Owner      string `json:"owner"`
 	SrcFile    string `json:"srcfile"`
+	UsesRedis  bool   `json:"usesRedis"`
 	ObjName    string
 	DbFileName string
 	AttrList   []string
@@ -29,6 +30,7 @@ type ObjectInfoJson struct {
 	SrcFile      string `json:"srcfile"`
 	Multiplicity string `json:"multiplicity"`
 	Accelerated  bool   `json:"accelerated"`
+	UsesRedis    bool   `json:"usesRedis"`
 }
 
 // This structure represents the a golang Structure for a config object
@@ -45,6 +47,7 @@ type ObjectMembersInfo struct {
 	Min         int    `json:"min"`
 	Max         int    `json:"max"`
 	Len         int    `json:"len"`
+	UsesRedis   bool   `json:"usesRedis"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -136,6 +139,11 @@ func main() {
 						str, ok := typ.Type.(*ast.StructType)
 						if ok && name == typ.Name.Name {
 							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
+							for _, val := range membersInfo {
+								if val.UsesRedis == true {
+									obj.UsesRedis = true
+								}
+							}
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.ContainsAny(obj.Access, "rw") {
 								//fmt.Println("Creating DBIF for", obj.ObjName)
@@ -230,6 +238,8 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
+			case "USESREDIS":
+				attrInfo.UsesRedis = true
 			}
 		}
 	}
@@ -357,6 +367,9 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 
 												case "ACCELERATED":
 													obj.Accelerated = true
+
+												case "USESREDIS":
+													obj.UsesRedis = true
 												}
 											}
 										}
