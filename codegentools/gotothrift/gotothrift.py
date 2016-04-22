@@ -242,7 +242,7 @@ def generate_thirft_structs_and_func(thriftfd, d, goStructToListersDict, accessD
                 elif line == '\n' or \
                     "#" in line or \
                     "package" in line or \
-                    "BaseObj" in line or \
+                    "ConfigObj" in line or \
                     ("/*" in line and "*/" in line):
                     continue
                 elif "/*" in line:

@@ -15,13 +15,13 @@ import (
 
 // This structure represents the json layout for config objects
 type ObjectSrcInfo struct {
-	Access     string `json:"access"`
-	Owner      string `json:"owner"`
-	SrcFile    string `json:"srcfile"`
-	UsesRedis  bool   `json:"usesRedis"`
-	ObjName    string
-	DbFileName string
-	AttrList   []string
+	Access      string `json:"access"`
+	Owner       string `json:"owner"`
+	SrcFile     string `json:"srcfile"`
+	UsesStateDB bool   `json:"usesStateDB"`
+	ObjName     string
+	DbFileName  string
+	AttrList    []string
 }
 
 type ObjectInfoJson struct {
@@ -30,7 +30,7 @@ type ObjectInfoJson struct {
 	SrcFile      string `json:"srcfile"`
 	Multiplicity string `json:"multiplicity"`
 	Accelerated  bool   `json:"accelerated"`
-	UsesRedis    bool   `json:"usesRedis"`
+	UsesStateDB  bool   `json:"usesStateDB"`
 }
 
 // This structure represents the a golang Structure for a config object
@@ -47,7 +47,7 @@ type ObjectMembersInfo struct {
 	Min         int    `json:"min"`
 	Max         int    `json:"max"`
 	Len         int    `json:"len"`
-	UsesRedis   bool   `json:"usesRedis"`
+	UsesStateDB bool   `json:"usesStateDB"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -140,8 +140,8 @@ func main() {
 						if ok && name == typ.Name.Name {
 							membersInfo := generateMembersInfoForAllObjects(str, dirStore+typ.Name.Name+"Members.json")
 							for _, val := range membersInfo {
-								if val.UsesRedis == true {
-									obj.UsesRedis = true
+								if val.UsesStateDB == true {
+									obj.UsesStateDB = true
 								}
 							}
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
@@ -238,8 +238,8 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
-			case "USESREDIS":
-				attrInfo.UsesRedis = true
+			case "USESTATEDB":
+				attrInfo.UsesStateDB = true
 			}
 		}
 	}
@@ -368,8 +368,8 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 												case "ACCELERATED":
 													obj.Accelerated = true
 
-												case "USESREDIS":
-													obj.UsesRedis = true
+												case "USESTATEDB":
+													obj.UsesStateDB = true
 												}
 											}
 										}
