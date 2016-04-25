@@ -227,6 +227,10 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'net',
                        'renamedst'   : 'golang.org/x/net'
                      },
+                     { 'repo'        : 'redigo',
+                       'renamesrc'   : 'redigo',
+                       'renamedst'   : 'github.com/garyburd/redigo'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
