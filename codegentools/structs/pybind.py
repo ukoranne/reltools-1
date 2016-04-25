@@ -1047,8 +1047,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
     for name, elemtype in parentChildrenLeaf.iteritems():
         attrDescriptionDict[name] = elemtype[2]
 
-    # lets add the default interface functions from the BaseObj
-    elements_str += "\tBaseObj\n"
+    # lets add the default interface functions from the ConfigObj
+    elements_str += "\tConfigObj\n"
 
     elementList = []
 
