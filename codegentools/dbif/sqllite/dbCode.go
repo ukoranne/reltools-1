@@ -162,11 +162,13 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 			fmt.Println("Failed to get obj from DB", obj)
 			return object, errors.New("Failed to get obj from DB")
 		}
-		err = redis.ScanStruct(val, &object)
+		_ = redis.ScanStruct(val, &object)
+		`)
+	/*
 		if err != nil {
 			fmt.Println("Failed to construct config obj from DB data", obj)
 			return object, err
-		}`)
+		}`)*/
 	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
 			if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
@@ -176,7 +178,7 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 				}
 				//Member is a slice of structs
 				lines = append(lines, `
-				    strVal, err = redis.String(dbHdl.Do("GET", obj.GetKey()+"`+attrInfo.MemberName+`"))
+				    strVal, err = redis.String(dbHdl.Do("GET", objKey+"`+attrInfo.MemberName+`"))
 					if err != nil {
 						fmt.Println("Failed to get obj from DB data", obj)
 						return object, err
@@ -193,13 +195,13 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 				}
 				//Member is a slice of native data type elements
 				lines = append(lines, `
-				    listLen, err = redis.Int(dbHdl.Do("LLEN", obj.GetKey()+"`+attrInfo.MemberName+`"))
+				    listLen, err = redis.Int(dbHdl.Do("LLEN", objKey+"`+attrInfo.MemberName+`"))
 					if err != nil {
 						fmt.Println("Failed to retrieve list len for secondary table", obj)
 						return object, err
 					}
 					for idx = 0; idx < listLen; idx++ {
-						val, err := redis.`+goTypeToRedisTypeMap[attrInfo.VarType]+`(dbHdl.Do("LPOP", obj.GetKey()+"`+attrInfo.MemberName+`"))
+						val, err := redis.`+goTypeToRedisTypeMap[attrInfo.VarType]+`(dbHdl.Do("LINDEX", objKey+"`+attrInfo.MemberName+`",idx))
 						if err != nil {
 							fmt.Println("Failed to reconstruct list for secondary table", obj)
 							return object, err
@@ -280,6 +282,15 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 			return nil, err
 		}
 		for idx := 0; idx < len(keys); idx++ {
+		keyType, err := redis.String(dbHdl.Do("Type", keys[idx]))
+		if err != nil {
+			fmt.Println("Error getting keyType")
+			return nil, err
+		}
+		if keyType != "hash" {
+			fmt.Println("Do not process list object")
+			continue
+		}
 			object, err := obj.GetObjectFromDb(keys[idx], dbHdl)
 			if err != nil {
 				fmt.Println("Failed to get object from db", obj)
