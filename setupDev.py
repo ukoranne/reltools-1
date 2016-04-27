@@ -231,6 +231,11 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'redigo',
                        'renamedst'   : 'github.com/garyburd/redigo'
                      },
+                     {
+                        'repo'      : 'libovsdb',
+                        'renamesrc' : 'libovsdb',
+                        'renamedst' : 'github.com/socketplane/libovsdb'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
