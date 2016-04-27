@@ -50,7 +50,7 @@ codegenclean:
 	$(SR_CODE_BASE)/reltools/codegentools/cleangencode.sh
 
 exe: $(COMPS)
-	$(foreach f,$^, make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";)
+	@$(foreach f,$^, echo "Build Started for $(f) `date`";make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib"; echo "Build Completed for $f `date`";)
 
 ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
