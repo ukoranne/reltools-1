@@ -32,6 +32,11 @@ COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 		$(SR_CODE_BASE)/snaproute/src/l3\
 		$(SR_CODE_BASE)/snaproute/src/l2
 
+define timedMake
+@echo -n "Building component $(1) started at :`date`\n"
+make -C $(1) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";
+@echo -n "Done building component $(1) at :`date`\n\n"
+endef
 all: $(ALL_DEPS)
 
 installdir:
@@ -50,7 +55,7 @@ codegenclean:
 	$(SR_CODE_BASE)/reltools/codegentools/cleangencode.sh
 
 exe: $(COMPS)
-	@$(foreach f,$^, echo "Build Started for $(f) `date`";make -C $(f) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib"; echo "Build Completed for $f `date`";)
+	@$(foreach f,$^, $(call timedMake, $(f)))
 
 ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
