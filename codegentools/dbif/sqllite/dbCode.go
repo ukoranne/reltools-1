@@ -28,7 +28,9 @@ import (
    "github.com/garyburd/redigo/redis"
    "errors"
 //   "strings"
-)
+`
+var endFileHeaderState = 
+`)
 //Dummy import
 var _ = redis.Args{}
 var _ = errors.New("")
@@ -93,7 +95,6 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
 			if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
-				//Member is a slice of structs
 				lines = append(lines, `
 					bytes, err := json.Marshal(obj.`+attrInfo.MemberName+`)
 					if err != nil {
@@ -641,6 +642,7 @@ func (obj *ObjectSrcInfo) ConvertObjectMembersMapToOrderedSlice(attrMap map[stri
 }
 
 func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+	fileHeaderOptionalForState := ""
 	dbFile, err := os.Create(obj.DbFileName)
 	if err != nil {
 		fmt.Println("Failed to open the file", obj.DbFileName)
@@ -661,7 +663,21 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
+		if obj.UsesStateDB {
+			fmt.Println("obj:", obj.ObjName, " usesStateDB = ", obj.UsesStateDB)
+	        for _, attrInfo := range attrMap {
+		        if attrInfo.IsArray == true {
+			        if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
+						fmt.Println("adding encoding/json")
+				        fileHeaderOptionalForState = fileHeaderOptionalForState + 
+				`       "encoding/json"`
+			        }
+		        }
+	        }
+		}
 		dbFile.WriteString(fileHeaderForState)
+		dbFile.WriteString(fileHeaderOptionalForState)
+		dbFile.WriteString(endFileHeaderState)
 		obj.WriteKeyRelatedFcns(str, dbFile, attrMapSlice, objMap)
 		if obj.UsesStateDB {
 			obj.WriteStoreObjectInDBFcn(str, dbFile, attrMapSlice, objMap)
