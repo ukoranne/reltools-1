@@ -518,7 +518,7 @@ class DaemonObjectsInfo (object) :
             elif structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
-                        err, objCount, nextMarker, more, objs := obj.GetBulkObjFromDb(currMarker, count, dbHdl) 
+                        err, objCount, nextMarker, more, objs = obj.GetBulkObjFromDb(currMarker, count, dbHdl)
                         if err != nil {
                             return nil, objCount, nextMarker, more, objs
                         }
