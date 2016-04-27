@@ -93,7 +93,14 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 	for _, attrInfo := range attrMap {
 		if attrInfo.IsArray == true {
 			if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
-				//Member is a slice of structs
+                if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {				//Member is a slice of structs
+				} else{
+					fileHeaderForState = append(fileHeaderForState,
+					`import (
+					         "encoding/json"
+					)`
+					)
+				}
 				lines = append(lines, `
 					bytes, err := json.Marshal(obj.`+attrInfo.MemberName+`)
 					if err != nil {
