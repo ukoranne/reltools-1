@@ -29,8 +29,7 @@ import (
    "errors"
 //   "strings"
 `
-var endFileHeaderState = 
-`)
+var endFileHeaderState = `)
 //Dummy import
 var _ = redis.Args{}
 var _ = errors.New("")
@@ -276,7 +275,7 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl redis.Conn) (objList []ConfigObj, err error) { \n")
 	lines = append(lines,
-		`keyStr := "`+obj.ObjName+`*"
+		`keyStr := "`+obj.ObjName+`#*"
 		keys, err := redis.Strings(dbHdl.Do("KEYS", keyStr))
 		if err != nil {
 			fmt.Println("Failed to get all object keys from db", obj)
@@ -665,15 +664,15 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 	} else {
 		if obj.UsesStateDB {
 			fmt.Println("obj:", obj.ObjName, " usesStateDB = ", obj.UsesStateDB)
-	        for _, attrInfo := range attrMap {
-		        if attrInfo.IsArray == true {
-			        if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
+			for _, attrInfo := range attrMap {
+				if attrInfo.IsArray == true {
+					if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
 						fmt.Println("adding encoding/json")
-				        fileHeaderOptionalForState = fileHeaderOptionalForState + 
-				`       "encoding/json"`
-			        }
-		        }
-	        }
+						fileHeaderOptionalForState = fileHeaderOptionalForState +
+							`       "encoding/json"`
+					}
+				}
+			}
 		}
 		dbFile.WriteString(fileHeaderForState)
 		dbFile.WriteString(fileHeaderOptionalForState)
