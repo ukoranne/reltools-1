@@ -217,7 +217,8 @@ class DaemonObjectsInfo (object) :
                         if attrType in goToThirftTypeMap:
                             thriftdbutilfd.write("""thriftobj.%s = %s(dbobj.%s)\n""" % (k, attrType, k)) 
                         else:
-                            thriftdbutilfd.write("""Convert%s%sObjToThrift(&dbobj.%s, thriftobj.%s)\n""" % (d, attrType, k, k)) 
+                            thriftdbutilfd.write("""thriftobj.%s = new(%s.%s)\n""" % (k, self.servicesName, attrType))
+                            thriftdbutilfd.write("""Convert%s%sObjToThrift(&dbobj.%s, thriftobj.%s)\n""" % (d, attrType, k, k))
                 thriftdbutilfd.write("""}\n""")
 
 
