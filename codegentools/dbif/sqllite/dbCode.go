@@ -33,6 +33,7 @@ var endFileHeaderState = `)
 //Dummy import
 var _ = redis.Args{}
 var _ = errors.New("")
+var _ = fmt.Sprintln("")
 
 `
 var goBasicTypesMap = map[string]bool{
@@ -262,7 +263,6 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 		}
 	}
 	lines = append(lines, keyStr, `
-		fmt.Println("Key for object `+obj.ObjName+` ", key)
 		return key
 		}`)
 	for _, line := range lines {

@@ -182,6 +182,8 @@ if __name__=="__main__":
  
     if not localBld:
         determineMacAddress()
+    else:
+        SYS_PROFILE = baseDir + '/params/systemProfile.json'
     pidFileDir = baseDir+'/bin/pids/'
     asicdBootModeFile = baseDir + '/params/asicdBootMode.conf'
     if opts.boot != None and opts.boot == 'cold':
