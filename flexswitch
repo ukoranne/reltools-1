@@ -10,6 +10,7 @@ import json
 import subprocess
 from optparse import OptionParser
 ASICD_CONF_FILE='/opt/flexswitch/params/asicd.conf'
+SYS_PROFILE ='/opt/flexswitch/sysprofile/systemProfile.json'
 
 nonSnapRouteDmns = {
     'sqlwebd' : '/usr/local/bin/sqlite_web'
@@ -60,7 +61,7 @@ def isProcessRunning(pidFile):
 
 def getDaemonsInfo (baseDir) :
 
-    daemonsToStart = [
+    daemonsList = [
                     {'name': 'sysd',
                      'params': '-params=' + baseDir + '/params'},
 
@@ -106,6 +107,18 @@ def getDaemonsInfo (baseDir) :
                     #{'name': 'sqlwebd',
                     # 'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
                     ]
+
+    disabledDaemons = []
+    daemonsToStart = []
+    with open(SYS_PROFILE) as fd:
+        sysCfg = json.load(fd)
+        dmnsInfo = sysCfg['Daemons']
+        disabledDaemons = [ dmn['Name'] for dmn in dmnsInfo if not dmn['Enable']]
+
+    for dmn in daemonsList:
+        if dmn['name'] not in disabledDaemons:
+            daemonsToStart.append(dmn)
+            
     return daemonsToStart
 
 class FlexSwitchDaemon (daemon.Daemon):
@@ -242,7 +255,7 @@ if __name__=="__main__":
                     os.kill(pid, signal.SIGHUP)
             except:
                 print '*** Failed to stop process [%s]' %(dmn['name'])
-        time.sleep(10)
+        time.sleep(1)
         for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
             if opts.name != None and opts.name != dmn['name']:
                 continue
