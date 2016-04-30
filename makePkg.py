@@ -32,6 +32,8 @@ if __name__ == '__main__':
                       action='store',
                       help="Target platform to use for opennsl plugin (currently unused)")
 
+    cmd = 'python  buildInfoGen.py'
+    executeCommand(cmd)
     with open("pkgInfo.json", "r") as cfgFile:
         pkgInfo = cfgFile.read().replace('\n', '')
         parsedPkgInfo = json.loads(pkgInfo)
