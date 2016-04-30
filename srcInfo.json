@@ -1,0 +1,9 @@
+{
+	"repos": {
+		"snaproute": {
+			"package": ["l2", "l3", "utils", "asicd", "config", "models", "infra", "vendors", "flexSdk", "apps"],
+			"nonpackage": ["test", "netfilter"]
+		}
+	},
+	"srcLocation": "/snaproute/src/"
+}
