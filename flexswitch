@@ -12,9 +12,6 @@ from optparse import OptionParser
 ASICD_CONF_FILE='/opt/flexswitch/params/asicd.conf'
 SYS_PROFILE ='/opt/flexswitch/sysprofile/systemProfile.json'
 
-nonSnapRouteDmns = {
-    'sqlwebd' : '/usr/local/bin/sqlite_web'
-}
 def determineMacAddress ():
     print 'Getting MAC address'
     process = subprocess.Popen('ifconfig -a' ,
@@ -104,8 +101,6 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'confd',
                      'params': '-params=' + baseDir + '/params'},
 
-                    #{'name': 'sqlwebd',
-                    # 'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
                     ]
 
     disabledDaemons = []
@@ -206,11 +201,7 @@ if __name__=="__main__":
             if isProcessRunning(pidFile):
                 print "process %s is already running" %(dmn['name'])
             else:
-                if dmn['name'] not in nonSnapRouteDmns:
-                    cmd = baseDir +'/bin/'+ dmn['name']
-                else:
-                    cmd = nonSnapRouteDmns[dmn['name']]
-
+                cmd = baseDir +'/bin/'+ dmn['name']
                 pargs = (cmd, dmn['params'])
                 time.sleep(0.02)
                 pid = os.fork()

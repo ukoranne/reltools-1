@@ -663,11 +663,9 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
 		if obj.UsesStateDB {
-			fmt.Println("obj:", obj.ObjName, " usesStateDB = ", obj.UsesStateDB)
 			for _, attrInfo := range attrMap {
 				if attrInfo.IsArray == true {
 					if _, ok := goBasicTypesMap[attrInfo.VarType]; !ok {
-						fmt.Println("adding encoding/json")
 						fileHeaderOptionalForState = fileHeaderOptionalForState +
 							`       "encoding/json"`
 					}
