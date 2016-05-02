@@ -2,7 +2,7 @@ import json
 import operator
 def isNumericAttr (attrInfo) :
     if attrInfo['isArray'] == 'False':
-        return attrInfo['type'] in ["int32", "uint32", "uint8"]
+        return attrInfo['type'] in ["int32", "uint32", "uint8", "uint16", "int16"]
     else:
         return False
 

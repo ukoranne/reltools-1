@@ -228,14 +228,15 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 			case "ACCELERATED":
 				attrInfo.Accelerated = true
 			case "MIN":
-				attrInfo.Min = 0 //strconv.Atoi(keys[idx+1])
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "MAX":
-				attrInfo.Min = 10 //strconv.Atoi(keys[idx+1])
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "RANGE":
-				attrInfo.Min = 0  //keys[idx+1]
-				attrInfo.Max = 10 //keys[idx+1]
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
+				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
 			case "LEN":
-				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
+				fmt.Println(keys)
+				attrInfo.Len, _ = strconv.Atoi(keys[idx])
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
 			case "USESTATEDB":

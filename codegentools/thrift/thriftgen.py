@@ -153,8 +153,8 @@ class DaemonObjectsInfo (object) :
             if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
                     """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
-
-                if structInfo['accelerated']:
+                #import ipdb; ipdb.set_trace()
+                if 'accelerated' in structInfo and structInfo['accelerated']:
                     thriftfd.write(
                         """\toneway void OnewayCreate%s(1: %s config);\n\toneway void OnewayUpdate%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\toneway void OnewayDelete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
             if 'r' in structInfo['access']: # read only objects Counters/State
@@ -357,7 +357,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access'] and not(structInfo['usesStateDB']):
+            if 'r' in structInfo['access'] and 'usesStateDB' in structInfo and not(structInfo['usesStateDB']):
                 clientIfFd.write("""
                                     case models.%s :
                                     logger.Println("Get %s")
@@ -388,7 +388,7 @@ class DaemonObjectsInfo (object) :
                         }
                     }
                     break\n""")
-            elif structInfo['usesStateDB']:
+            elif 'usesStateDB' in structInfo and structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
                         retObj, err := obj.GetObjectFromDb(obj.GetKey(), dbHdl)
@@ -491,7 +491,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access'] and not(structInfo['usesStateDB']):
+            if 'r' in structInfo['access'] and 'usesStateDB' in structInfo and not (structInfo['usesStateDB']):
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""
@@ -516,7 +516,7 @@ class DaemonObjectsInfo (object) :
                             }
                     }
                     break\n""")
-            elif structInfo['usesStateDB']:
+            elif 'usesStateDB' in structInfo and structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
                         err, objCount, nextMarker, more, objs = obj.GetBulkObjFromDb(currMarker, count, dbHdl)
