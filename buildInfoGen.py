@@ -18,10 +18,13 @@ def executeCommand (command) :
     return out
 
 class repo (object):
-    def __init__ (self, repo):
-        self.name = repo
+    def __init__ (self, base, repoName):
+        self.name = repoName
+        self.base = base
+        self.repoDir = base + '/snaproute/src/'
 
     def writeRepoInfo (self) :
+        os.chdir(self.repoDir + self.name)
         op = executeCommand('git show')
         gitHash = ''
         timeStamp = ''
@@ -42,10 +45,14 @@ class repo (object):
 
 if __name__ == '__main__':
     repos = []
-    with open(SRC_INFO_FILE) as infoFd:
+    baseDir = os.getenv('SR_CODE_BASE',None)
+    if not baseDir:
+        print 'Environment variable SR_CODE_BASE is not set'
+    srcFile = baseDir + '/reltools/' + SRC_INFO_FILE
+    with open(srcFile) as infoFd:
         info = json.load(infoFd)
         for rp in info ['repos'] ['snaproute'] ['package']:
-            repos.append(repo(rp))
+            repos.append(repo(baseDir, rp))
     reposInfoList = []
     with open(BUILD_INFO_FILE, 'w') as bldFile: 
         for rp in repos:
