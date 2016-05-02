@@ -48,10 +48,12 @@ installdir:
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/params
 	$(MKDIR) $(DESTDIR)/$(EXT_INSTALL_PATH)/sharedlib
 
+.PHONY:buildinfogen
 buildinfogen:
 	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 
 codegen:
+	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
 
 codegenclean:
