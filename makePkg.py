@@ -38,13 +38,14 @@ if __name__ == '__main__':
         pkgInfo = cfgFile.read().replace('\n', '')
         parsedPkgInfo = json.loads(pkgInfo)
     cfgFile.close()
-    build_dir = "flexswitch-" + parsedPkgInfo['version']
+    pkgVersion = parsedPkgInfo['major']+ '.' + parsedPkgInfo['minor'] +  '.' + parsedPkgInfo['patch'] + '.' + parsedPkgInfo['build']
+    build_dir = "flexswitch-" + pkgVersion
     preProcess = [
             'cp -a tmplPkgDir ' + build_dir,
             'cp Makefile ' + build_dir,
             'sed -i s/' + TEMPLATE_BUILD_DIR +'/' + build_dir + '/ ' + build_dir +'/Makefile',
             'sed -i s/' + TEMPLATE_BUILD_TYPE +'/' + PACKAGE_BUILD + '/ ' + build_dir + '/Makefile',
-            'sed -i s/' + TEMPLATE_CHANGELOG_VER + '/' + parsedPkgInfo['version'] + '/ ' + build_dir + '/debian/changelog',
+            'sed -i s/' + TEMPLATE_CHANGELOG_VER + '/' + pkgVersion+ '/ ' + build_dir + '/debian/changelog',
             ]
     executeCommand(preProcess)
 
