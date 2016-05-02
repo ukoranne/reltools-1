@@ -236,6 +236,11 @@ def getExternalGoDeps() :
                         'renamesrc' : 'libovsdb',
                         'renamedst' : 'github.com/socketplane/libovsdb'
                      },
+                     {
+                        'repo'      : 'netfilter',
+                        'renamesrc' : 'netfilter',
+                        'renamedst' : 'github.com/netfilter'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
@@ -265,6 +270,9 @@ def getExternalGoDeps() :
                 executeCommand(cmd)
             if dep['repo'] == 'nanomsg':
                 installNanoMsgLib(dirLocation + dep['renamedst'] + dep['renamesrc'])
+            if dep['repo'] == 'netfilter':
+                setupIpTablelib()
+                
 
 def cloneSnapRouteGitRepos( gitReposToClone = None):
     if gitProtocol == "ssh":
@@ -303,12 +311,14 @@ def setupOpenNslLibLink ():
         executeCommand(cmd)
 
 def setupIpTablelib ():
-    nfLoc = gHomeDir + SNAP_ROUTE_SRC + 'netfilter/'
+    nfLoc = gHomeDir + EXTERNAL_SRC + 'github.com/netfilter/'
     if gitProtocol == "ssh":
         repoUrl = 'git@github.com:'+ 'SnapRoute/netfilter'
     else:
         repoUrl= 'https://github.com/'+ 'SnapRoute/netfilter'
-    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + SNAP_ROUTE_SRC)
+    print nfLoc
+    print repoUrl
+    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + EXTERNAL_SRC + 'github.com/')
     libipDir = 'libiptables'
     allLibs = ['libmnl', 'libnftnl', 'iptables']
     os.chdir(nfLoc)
