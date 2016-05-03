@@ -988,7 +988,7 @@ def setSelectionFromElemtype(elemtype,):
         else:
             #import ipdb; ipdb.set_trace()
             if type(elemtype['restriction_dict']) == dict:
-                print elemtype['restriction_dict']
+                #print elemtype['restriction_dict']
                 for k, v in elemtype['restriction_dict'].iteritems():
                     if k == 'range':
                         range = v.split("..")
