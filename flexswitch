@@ -79,6 +79,9 @@ def getDaemonsInfo (baseDir) :
                      'runlevel' : 5,
                      'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'dhcpd',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'bgpd',
                      'runlevel' : 8,
                      'params': '-params=' + baseDir + '/params'},
