@@ -281,7 +281,7 @@ class DaemonObjectsInfo (object) :
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl redis.Conn) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, bool) {
                             var err error
                             var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -298,7 +298,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                                     ok, err = clnt.ClientHdl.Create%s(conf)
                                     if err == nil && ok == true {
-                                        err = data.StoreObjectInDb(dbHdl)
+                                        err = dbHdl.StoreObjectInDb(data)
                                         if err != nil {
 				            fmt.Println("Store object in DB failed:", err)
                                             return err, false
@@ -316,7 +316,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl redis.Conn) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
                                 var err error
                                 var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -333,7 +333,7 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                                     ok, err = clnt.ClientHdl.Delete%s(conf)
                                     if err == nil && ok == true {
-                                        err = data.DeleteObjectFromDb(dbHdl)
+                                        err = dbHdl.DeleteObjectFromDb(data)
                                         if err != nil {
 				            fmt.Println("Delete object from DB failed:", err)
                                             return err, false
@@ -351,7 +351,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj, dbHdl redis.Conn) (error, models.ConfigObj) {
+        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, models.ConfigObj) {
             logger.Println("GetObject called %s")
             switch obj.(type) {\n""" % (self.newDeamonName, self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
@@ -392,7 +392,7 @@ class DaemonObjectsInfo (object) :
             elif structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
-                        retObj, err := obj.GetObjectFromDb(obj.GetKey(), dbHdl)
+                        retObj, err := dbHdl.GetObjectFromDb(obj, obj.GetKey())
                         if err != nil {
                             return err, nil
                         } else {
@@ -434,7 +434,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl redis.Conn) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    logger.Println("### Update Object called %s", attrSet, objKey)
@@ -459,7 +459,7 @@ class DaemonObjectsInfo (object) :
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
                         if err == nil && ok == true {
-                            err = updatedata.UpdateObjectInDb(dbObj, attrSet, dbHdl)
+                            err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
                             if err != nil {
 			        fmt.Println("Update object in DB failed:", err)
                                 return err, false
@@ -479,7 +479,7 @@ class DaemonObjectsInfo (object) :
                 }\n""")
 
     def createClientIfGetBulkObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, dbHdl redis.Conn, currMarker int64, count int64) (err error,
+        clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil, currMarker int64, count int64) (err error,
                                             objCount int64,
                                             nextMarker int64,
                                             more bool,
@@ -520,7 +520,7 @@ class DaemonObjectsInfo (object) :
             elif structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
-                        err, objCount, nextMarker, more, objs = obj.GetBulkObjFromDb(currMarker, count, dbHdl)
+                        err, objCount, nextMarker, more, objs = dbHdl.GetBulkObjFromDb(obj, currMarker, count)
                         if err != nil {
                             return nil, objCount, nextMarker, more, objs
                         }
@@ -538,7 +538,7 @@ class DaemonObjectsInfo (object) :
         clientIfFd.write("package main\n")
         #if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
         # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"github.com/garyburd/redigo/redis"\n)\n""" % self.servicesName)
+        clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"utils/dbutils"\n)\n""" % self.servicesName)
         self.clientIfBasicHelper(clientIfFd)
         self.createClientIfCreateObject(clientIfFd, objectNames)
         self.createClientIfDeleteObject(clientIfFd, objectNames)
