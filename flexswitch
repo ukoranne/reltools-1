@@ -74,6 +74,9 @@ def getDaemonsInfo (baseDir) :
                     {'name': 'arpd',
                      'params': '-params=' + baseDir + '/params'},
 
+                    {'name': 'dhcpd',
+                     'params': '-params=' + baseDir + '/params'},
+
                     {'name': 'bgpd',
                      'params': '-params=' + baseDir + '/params'},
 
