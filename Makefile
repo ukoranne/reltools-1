@@ -7,11 +7,12 @@ SAI_TARGET=mlnx
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	EXT_INSTALL_PATH=
 	BUILD_DIR=out
+	ALL_DEPS=codegen installdir ipc exe install
 else
 	EXT_INSTALL_PATH=/opt/$(PROD_NAME)
 	BUILD_DIR=flexswitch-0.0.1
+	ALL_DEPS=buildinfogen codegen installdir ipc exe install
 endif
-ALL_DEPS=buildinfogen codegen installdir ipc exe install
 SRCDIR=$(SR_CODE_BASE)/snaproute/src
 DESTDIR=$(SR_CODE_BASE)/snaproute/src/$(BUILD_DIR)
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
@@ -53,7 +54,6 @@ buildinfogen:
 	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 
 codegen:
-	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
 
 codegenclean:
