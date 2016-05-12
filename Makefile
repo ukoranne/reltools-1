@@ -53,7 +53,6 @@ buildinfogen:
 	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 
 codegen:
-	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 	$(SR_CODE_BASE)/reltools/codegentools/gencode.sh
 
 codegenclean:
