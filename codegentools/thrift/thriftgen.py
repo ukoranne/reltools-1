@@ -154,7 +154,7 @@ class DaemonObjectsInfo (object) :
             s = structName
             if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
-                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset, 4: string op);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
 
                 if structInfo['accelerated']:
                     thriftfd.write(
@@ -431,7 +431,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op string, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    ok = false
@@ -453,7 +453,7 @@ class DaemonObjectsInfo (object) :
                 models.Convert%s%sObjToThrift(&updatedata, updateconf)""" %(d, s, d, s))
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
-                        ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet)
+                        ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet, op)
                         if err == nil && ok == true {
                             err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
                             if err != nil {
