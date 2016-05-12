@@ -482,8 +482,14 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(inObj ConfigObj, attrSet []bool, dbHdl redis.Conn) error {\n")
+	lines = append(lines,
+		`_, err := dbHdl.Do("HMSET", redis.Args{}.Add(obj.GetKey()).AddFlat(obj)...) 
+		if err != nil {
+			fmt.Println("Failed to store object in DB", obj)
+			return err
+		}`)
 	lines = append(lines, `
-						primaryArgs := redis.Args{}.Add(obj.GetKey())
+						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -507,7 +513,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 									fieldVal.Kind() == reflect.Uint64 || 
 									fieldVal.Kind() == reflect.Bool || 
 									fieldVal.Kind() == reflect.String {
-										primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
+						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
 								} else if fieldVal.Kind() == reflect.Slice {
 					                    secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
@@ -535,10 +541,10 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 							}
 							idx++
 						}
-						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-						if err != nil {
-							return err
-						}
+//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
+//						if err != nil {
+//							return err
+//						}
 						return nil
 					}`)
 	for _, line := range lines {
@@ -714,7 +720,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 			obj.WriteDeleteObjectFromDbFcn(str, dbFile, attrMapSlice, objMap)
 			obj.WriteGetObjectFromDbFcn(str, dbFile, attrMapSlice, objMap)
 			obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
-			obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
 			obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 		}
 	}
