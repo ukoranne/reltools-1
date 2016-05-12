@@ -482,8 +482,14 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(inObj ConfigObj, attrSet []bool, dbHdl redis.Conn) error {\n")
+	lines = append(lines,
+		`_, err := dbHdl.Do("HMSET", redis.Args{}.Add(obj.GetKey()).AddFlat(obj)...) 
+		if err != nil {
+			fmt.Println("Failed to store object in DB", obj)
+			return err
+		}`)
 	lines = append(lines, `
-						primaryArgs := redis.Args{}.Add(obj.GetKey())
+						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -507,7 +513,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 									fieldVal.Kind() == reflect.Uint64 || 
 									fieldVal.Kind() == reflect.Bool || 
 									fieldVal.Kind() == reflect.String {
-										primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
+						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
 								} else if fieldVal.Kind() == reflect.Slice {
 					                    secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
@@ -535,10 +541,10 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 							}
 							idx++
 						}
-						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-						if err != nil {
-							return err
-						}
+//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
+//						if err != nil {
+//							return err
+//						}
 						return nil
 					}`)
 	for _, line := range lines {
@@ -546,7 +552,41 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 	}
 	fd.Sync()
 }
-
+func (obj *ObjectSrcInfo) WriteCopyRecursiveFcn(str *ast.StructType, fd *os.File) {
+	var lines []string
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+")")
+	lines = append(lines, ` CopyRecursive(dest, src reflect.Value) {
+	                       fmt.Println("copyRecursive")
+	                       switch src.Kind() {
+	                           case reflect.Slice:
+		                       fmt.Println("Slice")
+		                       dest.Set(reflect.MakeSlice(src.Type(), src.Len(), src.Cap()))
+		                       for i := 0; i < src.Len(); i++ { 
+	                               obj.CopyRecursive(src.Index(i), dest.Index(i))
+	                           }
+	                           case reflect.Struct:
+		                       fmt.Println("struct")
+		                       for i := 0; i < src.NumField(); i++ {
+                                    obj.CopyRecursive(src.Field(i), dest.Field(i))
+	                          }
+	                           case reflect.String:
+		                       dest.SetString(src.Interface().(string))
+ 	                           case reflect.Int:
+		                       dest.SetInt(int64(src.Interface().(int)))
+	                           case reflect.Bool:
+		                       dest.SetBool(src.Interface().(bool))
+	                           case reflect.Float64:
+		                       dest.SetFloat(src.Interface().(float64))
+	                           default:
+		                       dest.Set(src)
+	                       }
+                       }`)
+	lines = append(lines, "\n")
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
 func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObj(dbObj ConfigObj, attrSet []bool) (ConfigObj, error) {\n")
@@ -579,8 +619,8 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 								} else if dbObjField.Kind() == reflect.Bool {
 									mergedObjVal.Elem().Field(i).SetBool(objField.Bool())
 								} else if dbObjField.Kind() == reflect.Slice {
-									reflect.Copy(mergedObjVal.Elem().Field(i), objField)
-								} else {
+                                         obj.CopyRecursive(mergedObjVal.Elem().Field(i), objField)
+                                   } else {
 									mergedObjVal.Elem().Field(i).SetString(objField.String())
 								}
 							} else {
@@ -599,8 +639,8 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 								} else if dbObjField.Kind() == reflect.Bool {
 									mergedObjVal.Elem().Field(i).SetBool(dbObjField.Bool())
 								} else if dbObjField.Kind() == reflect.Slice {
-									reflect.Copy(mergedObjVal.Elem().Field(i), dbObjField)
-								} else {
+                                     obj.CopyRecursive(mergedObjVal.Elem().Field(i), dbObjField)
+                                   } else {
 									mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
 								}
 							}
@@ -609,7 +649,6 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 						}
 						return mergedObject , nil
 					}
-
 					`)
 	for _, line := range lines {
 		fd.WriteString(line)
@@ -649,7 +688,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 	}
 	defer dbFile.Close()
 	attrMapSlice := obj.ConvertObjectMembersMapToOrderedSlice(attrMap)
-
 	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
 		dbFile.WriteString(fileHeader)
 		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMapSlice, objMap)
@@ -659,6 +697,7 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteCopyRecursiveFcn(str, dbFile)
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
