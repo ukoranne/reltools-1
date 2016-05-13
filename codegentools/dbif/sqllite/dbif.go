@@ -156,6 +156,7 @@ func main() {
 			}
 		}
 	}
+	generateSerializers(listingsFd, fileBase, dirStore, objMap)
 }
 
 func getObjectMemberInfo(objMap map[string]ObjectSrcInfo, objName string) (membersInfo map[string]ObjectMembersInfo) {
@@ -333,8 +334,6 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 		return err
 	}
 
-	var marshalFcnsLine []string
-
 	for _, dec := range f.Decls {
 		tk, ok := dec.(*ast.GenDecl)
 		if ok {
@@ -347,8 +346,6 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 					typ := spec.(*ast.TypeSpec)
 					str, ok := typ.Type.(*ast.StructType)
 					if ok == true {
-						marshalFcnFile := fileBase + "gen_" + strings.Split(srcFile, ".")[0] + "_serializer.go"
-						listingsFd.WriteString(marshalFcnFile + "\n")
 						for _, fld := range str.Fields.List {
 							if fld.Names != nil {
 								switch fld.Type.(type) {
@@ -378,10 +375,83 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 							}
 						}
 						objMap[typ.Name.Name] = obj
-						if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") || strings.Contains(obj.Access, "x") {
-							marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+typ.Name.Name+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
-							marshalFcnsLine = append(marshalFcnsLine, `
-													var err error
+					}
+				}
+				lines, err := json.MarshalIndent(objMap, "", " ")
+				if err != nil {
+					fmt.Println("Error is ", err)
+				} else {
+					genFile, err := os.Create(genObjInfoFile)
+					if err != nil {
+						fmt.Println("Failed to open the file", genObjInfoFile)
+						return err
+					}
+					defer genFile.Close()
+					genFile.WriteString(string(lines))
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, objMap map[string]ObjectSrcInfo) error {
+	objectsByOwner := make(map[string][]ObjectSrcInfo, 1)
+	for name, obj := range objMap {
+		obj.ObjName = name
+		objectsByOwner[obj.Owner] = append(objectsByOwner[obj.Owner], obj)
+	}
+
+	for owner, objList := range objectsByOwner {
+		if len(objList) > 0 {
+			srcFile := objList[0].SrcFile
+			if owner != "lacpd" || owner != "ospfd" {
+				generateUnmarshalFcn(listingsFd, fileBase, dirStore, owner, srcFile, objList)
+			}
+		}
+	}
+	return nil
+}
+
+func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string, ownerName string, srcFile string, objList []ObjectSrcInfo) error {
+	var marshalFcnsLine []string
+	marshalFcnFile := fileBase + "gen_" + ownerName + "Objects_serializer.go"
+	marshalFcnFd, err := os.Create(marshalFcnFile)
+	if err != nil {
+		fmt.Println("Failed to open the file", marshalFcnFile)
+		return err
+	}
+	defer marshalFcnFd.Close()
+	for _, obj := range objList {
+		listingsFd.WriteString(marshalFcnFile + "\n")
+		if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "r") || strings.Contains(obj.Access, "x") {
+			marshalFcnsLine = append(marshalFcnsLine, "\nfunc (obj "+obj.ObjName+") UnmarshalObject(body []byte) (ConfigObj, error) {\n")
+			marshalFcnsLine = append(marshalFcnsLine, "var err error \n")
+
+			// Check all attributes and write default constructor
+			membersInfoFile := dirStore + obj.ObjName + "Members.json"
+			var objMembers map[string]ObjectMembersInfo
+			objMembers = make(map[string]ObjectMembersInfo, 1)
+			bytes, err := ioutil.ReadFile(membersInfoFile)
+			if err != nil {
+				fmt.Println("Error in reading Object configuration file", membersInfoFile)
+				return err
+			}
+			err = json.Unmarshal(bytes, &objMembers)
+			if err != nil {
+				fmt.Printf("Error in unmarshaling data from \n", membersInfoFile, err)
+				return err
+			}
+			for attrName, attrInfo := range objMembers {
+				if attrInfo.DefaultVal != "" {
+					if attrInfo.VarType == "string" {
+						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+" = "+"\""+attrInfo.DefaultVal+"\""+"\n")
+					} else {
+						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+" = "+attrInfo.DefaultVal+"\n")
+					}
+				}
+			}
+			marshalFcnsLine = append(marshalFcnsLine, `
 													if len(body) > 0 {
 													    if err = json.Unmarshal(body, &obj); err != nil {
 													         fmt.Println("###  called, unmarshal failed", obj, err)
@@ -390,14 +460,12 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 													   return obj, err
 													}
 													`)
+			//fmt.Println(marshalFcnsLine)
 
-							marshalFcnFd, err := os.Create(marshalFcnFile)
-							if err != nil {
-								fmt.Println("Failed to open the file", marshalFcnFile)
-								return err
-							}
-							defer marshalFcnFd.Close()
-							marshalFcnFd.WriteString(`package models
+		}
+	}
+	if len(marshalFcnsLine) > 0 {
+		marshalFcnFd.WriteString(`package models
 
 													import (
 													   "encoding/json"
@@ -405,27 +473,8 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 													   "fmt"
 													)`)
 
-							for _, marshalLine := range marshalFcnsLine {
-								marshalFcnFd.WriteString(string(marshalLine))
-							}
-							//marshalFcnFd.WriteString("}\n")
-						}
-
-					}
-				}
-			}
-			lines, err := json.MarshalIndent(objMap, "", " ")
-			if err != nil {
-				fmt.Println("Error is ", err)
-			} else {
-				genFile, err := os.Create(genObjInfoFile)
-				if err != nil {
-					fmt.Println("Failed to open the file", genObjInfoFile)
-					return err
-				}
-				defer genFile.Close()
-				genFile.WriteString(string(lines))
-			}
+		for _, marshalLine := range marshalFcnsLine {
+			marshalFcnFd.WriteString(string(marshalLine))
 		}
 	}
 	return nil
