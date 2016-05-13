@@ -24,11 +24,12 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-s", "--sai",
                       dest="saiTarget",
+                      default="mlnx",
                       action='store',
                       help="Taget platform to use for SAI plugin (mlnx/bfoot)")
     parser.add_option("-o", "--opennsl",
                       dest="opennslTarget",
-                      default="start",
+                      default="cel_redstone",
                       action='store',
                       help="Target platform to use for opennsl plugin (currently unused)")
 
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     pkgRecipe = [
             'fakeroot debian/rules clean',
             'fakeroot debian/rules build',
-            'fakeroot debian/rules binary',
+            'fakeroot debian/rules binary'
             'make clean'
             ]
     executeCommand(pkgRecipe)
