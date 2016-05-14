@@ -63,7 +63,7 @@ if __name__ == '__main__':
     pkgRecipe = [
             'fakeroot debian/rules clean',
             'fakeroot debian/rules build',
-            'fakeroot debian/rules binary'
+            'fakeroot debian/rules binary',
             'make clean'
             ]
     executeCommand(pkgRecipe)
