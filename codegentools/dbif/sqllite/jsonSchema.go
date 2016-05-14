@@ -116,14 +116,17 @@ func writeJson(extSchemaFile string, jsonSchema SchemaInfo) {
 // dirStore := base + "/reltools/codegentools/._genInfo/"
 func genJsonSchema(dirStore string, objectsByOwner map[string][]ObjectInfoJson) {
 	for owner, objList := range objectsByOwner {
-		if owner != "bgpd" {
-			continue
-		}
+		//if owner != "bgpd" {
+		//	continue
+		//}
 		var jsonSchema SchemaInfo
 		ovsTables := make(map[string]TableInfo)
 		jsonSchema.Name = owner
 		jsonSchema.Version = "0.0.1"
 		for _, obj := range objList {
+			if obj.Access == "x" {
+				continue
+			}
 			jsonFileName := dirStore + obj.ObjName + MEMBER_JSON
 			bytes, err := ioutil.ReadFile(jsonFileName)
 			if err != nil {
