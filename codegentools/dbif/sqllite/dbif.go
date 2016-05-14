@@ -14,6 +14,7 @@ import (
 )
 
 // This structure represents the json layout for config objects
+/*
 type ObjectSrcInfo struct {
 	Access      string `json:"access"`
 	Owner       string `json:"owner"`
@@ -23,14 +24,18 @@ type ObjectSrcInfo struct {
 	DbFileName  string
 	AttrList    []string
 }
+*/
 
 type ObjectInfoJson struct {
-	Access       string `json:"access"`
-	Owner        string `json:"owner"`
-	SrcFile      string `json:"srcfile"`
-	Multiplicity string `json:"multiplicity"`
-	Accelerated  bool   `json:"accelerated"`
-	UsesStateDB  bool   `json:"usesStateDB"`
+	Access       string   `json:"access"`
+	Owner        string   `json:"owner"`
+	SrcFile      string   `json:"srcfile"`
+	Multiplicity string   `json:"multiplicity"`
+	Accelerated  bool     `json:"accelerated"`
+	UsesStateDB  bool     `json:"usesStateDB"`
+	ObjName      string   `json:"-"`
+	DbFileName   string   `json:"-"`
+	AttrList     []string `json:"-"`
 }
 
 // This structure represents the a golang Structure for a config object
@@ -69,7 +74,7 @@ func main() {
 	}
 	jsonFile := base + "/snaproute/src/models/genObjectConfig.json"
 	fileBase := base + "/snaproute/src/models/"
-	var objMap map[string]ObjectSrcInfo
+	var objMap map[string]ObjectInfoJson
 
 	//
 	// Create a directory to store all the temporary files
@@ -156,10 +161,17 @@ func main() {
 			}
 		}
 	}
-	generateSerializers(listingsFd, fileBase, dirStore, objMap)
+	objectsByOwner := make(map[string][]ObjectInfoJson, 1)
+	for name, obj := range objMap {
+		obj.ObjName = name
+		objectsByOwner[obj.Owner] = append(objectsByOwner[obj.Owner], obj)
+	}
+
+	generateSerializers(listingsFd, fileBase, dirStore, objectsByOwner)
+	//genJsonSchema(dirStore, objectsByOwner)
 }
 
-func getObjectMemberInfo(objMap map[string]ObjectSrcInfo, objName string) (membersInfo map[string]ObjectMembersInfo) {
+func getObjectMemberInfo(objMap map[string]ObjectInfoJson, objName string) (membersInfo map[string]ObjectMembersInfo) {
 	fset := token.NewFileSet() // positions are relative to fset
 	base := os.Getenv("SR_CODE_BASE")
 	if len(base) <= 0 {
@@ -395,13 +407,7 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 	return nil
 }
 
-func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, objMap map[string]ObjectSrcInfo) error {
-	objectsByOwner := make(map[string][]ObjectSrcInfo, 1)
-	for name, obj := range objMap {
-		obj.ObjName = name
-		objectsByOwner[obj.Owner] = append(objectsByOwner[obj.Owner], obj)
-	}
-
+func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, objectsByOwner map[string][]ObjectInfoJson) error {
 	for owner, objList := range objectsByOwner {
 		if len(objList) > 0 {
 			srcFile := objList[0].SrcFile
@@ -413,7 +419,7 @@ func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, 
 	return nil
 }
 
-func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string, ownerName string, srcFile string, objList []ObjectSrcInfo) error {
+func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string, ownerName string, srcFile string, objList []ObjectInfoJson) error {
 	var marshalFcnsLine []string
 	marshalFcnFile := fileBase + "gen_" + ownerName + "Objects_serializer.go"
 	marshalFcnFd, err := os.Create(marshalFcnFile)
