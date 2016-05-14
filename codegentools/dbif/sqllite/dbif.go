@@ -168,7 +168,7 @@ func main() {
 	}
 
 	generateSerializers(listingsFd, fileBase, dirStore, objectsByOwner)
-	//genJsonSchema(dirStore, objectsByOwner)
+	genJsonSchema(dirStore, objectsByOwner)
 }
 
 func getObjectMemberInfo(objMap map[string]ObjectInfoJson, objName string) (membersInfo map[string]ObjectMembersInfo) {

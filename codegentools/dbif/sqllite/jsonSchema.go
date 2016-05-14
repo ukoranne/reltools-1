@@ -58,7 +58,7 @@ func createSchema(objMap map[string]ObjectMembersInfo, objConfig ObjectInfoJson)
 		}
 
 		switch obj.VarType {
-		case "uint32":
+		case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32":
 			info.Type.Key.VarType = "integer"
 		case "bool":
 			info.Type.Key.VarType = "boolean"
