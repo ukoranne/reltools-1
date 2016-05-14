@@ -72,6 +72,7 @@ func createSchema(objMap map[string]ObjectMembersInfo, objConfig ObjectInfoJson)
 			indexes = append(indexes, name)
 			table.IsRoot = true
 		}
+		//@TODO: jgheewala add support for min, max, minInteger, maxInteger, minLength, maxLength
 		//info.Min = obj.Min
 		//info.Max = obj.Max
 		ovsColumns[name] = info
@@ -116,9 +117,6 @@ func writeJson(extSchemaFile string, jsonSchema SchemaInfo) {
 // dirStore := base + "/reltools/codegentools/._genInfo/"
 func genJsonSchema(dirStore string, objectsByOwner map[string][]ObjectInfoJson) {
 	for owner, objList := range objectsByOwner {
-		//if owner != "bgpd" {
-		//	continue
-		//}
 		var jsonSchema SchemaInfo
 		ovsTables := make(map[string]TableInfo)
 		jsonSchema.Name = owner
@@ -142,7 +140,6 @@ func genJsonSchema(dirStore string, objectsByOwner map[string][]ObjectInfoJson) 
 			}
 			table := createSchema(objMap, obj)
 			ovsTables[obj.ObjName] = table
-			//			}
 		}
 		jsonSchema.Tables = ovsTables
 		extSchemaFile := dirStore + owner + ".extschema"
