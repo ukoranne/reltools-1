@@ -442,6 +442,10 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
+            array_obj = 'False'
+            for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
+                if attrInfo['isArray'] != 'False' :
+                    array_obj = 'True'				
             if structInfo['access'] in ['w', 'rw']:
                 clientIfFd.write("""\ncase models.%s :""" % (s,))
                 clientIfFd.write("""\n// cast original object
@@ -454,17 +458,40 @@ class DaemonObjectsInfo (object) :
                 clientIfFd.write("""
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet, op)
-                        if err == nil && ok == true {
-                            err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
-                            if err != nil {
-			        fmt.Println("Update object in DB failed:", err)
-                                return err, false
-                            }
-                        } else {
-                            return err, false
-                        }
-                    }
-                    break\n""" %(s))
+                        if err == nil && ok == true {\n""" %s)
+                if array_obj == 'True' :
+                    clientIfFd.write("""    
+				         if op == "add" {
+					        fmt.Println("Add operation in update")
+					        if attrSet != nil {
+						        objTyp := reflect.TypeOf(*origconf)
+				                fmt.Println("attr set not nil, set individual attributes")
+						        for i := 0; i < objTyp.NumField(); i++ {
+							        objName := objTyp.Field(i).Name\n""")
+                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
+                         if attrInfo['isArray'] != 'False' :
+                              clientIfFd.write("""    
+							        if attrSet[i] && objName == "%s" {
+									    fmt.Println("add ", objName)
+									    for i := 0; i < len(origdata.%s); i++ {
+										    updatedata.%s = append(updatedata.%s, origdata.%s[i])
+									    }
+							        }\n"""%(attrName, attrName, attrName, attrName, attrName))
+                    clientIfFd.write("""
+						        }
+					        }
+					    }\n""")
+                clientIfFd.write(""" 
+                              err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
+                              if err != nil {
+			                     fmt.Println("Update object in DB failed:", err)
+                                  return err, false
+                              } 
+						} else {
+                                  return err, false
+                          }
+					}
+                    break\n""" )
 
         clientIfFd.write("""\ndefault:
                                     break
@@ -527,11 +554,20 @@ class DaemonObjectsInfo (object) :
                 }\n""")
 
     def generate_clientif(self, objectNames):
+        array_obj = 'False'
+        for structName, structInfo in objectNames.objectDict.iteritems ():
+            structName = str(structName)
+            for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
+                if attrInfo['isArray'] != 'False' :
+                    array_obj = 'True'				
         clientIfFd = open(self.clientIfFileName, 'w+')
         clientIfFd.write("package clients\n")
         #if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
         # BELOW CODE WILL BE FORMATED BY GOFMT
-        clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"utils/dbutils"\n)\n""" % self.servicesName)
+        clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"utils/dbutils"\n""" % self.servicesName)
+        if array_obj == 'True' :
+            clientIfFd.write(""" "reflect"\n""" )		
+        clientIfFd.write(""")\n""")
         self.clientIfBasicHelper(clientIfFd)
         self.createClientIfCreateObject(clientIfFd, objectNames)
         self.createClientIfDeleteObject(clientIfFd, objectNames)
