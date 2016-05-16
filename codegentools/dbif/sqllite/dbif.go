@@ -40,19 +40,20 @@ type ObjectInfoJson struct {
 
 // This structure represents the a golang Structure for a config object
 type ObjectMembersInfo struct {
-	VarType     string `json:"type"`
-	IsKey       bool   `json:"isKey"`
-	IsArray     bool   `json:"isArray"`
-	Description string `json:"description"`
-	DefaultVal  string `json:"default"`
-	Position    int    `json:"position"`
-	Selections  string `json:"selections"`
-	QueryParam  string `json:"queryparam"`
-	Accelerated bool   `json:"accelerated"`
-	Min         int    `json:"min"`
-	Max         int    `json:"max"`
-	Len         int    `json:"len"`
-	UsesStateDB bool   `json:"usesStateDB"`
+	VarType      string `json:"type"`
+	IsKey        bool   `json:"isKey"`
+	IsArray      bool   `json:"isArray"`
+	Description  string `json:"description"`
+	DefaultVal   string `json:"default"`
+    IsDefaultSet bool   `json:"isDefaultSet"`
+	Position     int    `json:"position"`
+	Selections   string `json:"selections"`
+	QueryParam   string `json:"queryparam"`
+	Accelerated  bool   `json:"accelerated"`
+	Min          int    `json:"min"`
+	Max          int    `json:"max"`
+	Len          int    `json:"len"`
+	UsesStateDB  bool   `json:"usesStateDB"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -233,11 +234,12 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 			case "SNAPROUTE":
 				attrInfo.IsKey = true
 			case "DESCRIPTION":
-				attrInfo.Description = keys[idx+1]
+				attrInfo.Description = strings.TrimSpace(keys[idx+1])
 			case "SELECTION":
 				attrInfo.Selections = keys[idx+1]
 			case "DEFAULT":
-				attrInfo.DefaultVal = keys[idx+1]
+				attrInfo.DefaultVal = strings.TrimSpace(keys[idx+1])
+                attrInfo.IsDefaultSet = true
 			case "ACCELERATED":
 				attrInfo.Accelerated = true
 			case "MIN":
@@ -449,7 +451,7 @@ func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string,
 				return err
 			}
 			for attrName, attrInfo := range objMembers {
-				if attrInfo.DefaultVal != "" {
+				if attrInfo.IsDefaultSet {
 					if attrInfo.VarType == "string" {
 						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+" = "+"\""+attrInfo.DefaultVal+"\""+"\n")
 					} else {
