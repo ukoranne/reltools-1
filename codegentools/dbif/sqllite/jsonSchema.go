@@ -58,7 +58,7 @@ func createSchema(objMap map[string]ObjectMembersInfo, objConfig ObjectInfoJson)
 		}
 
 		switch obj.VarType {
-		case "uint32":
+		case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32":
 			info.Type.Key.VarType = "integer"
 		case "bool":
 			info.Type.Key.VarType = "boolean"
@@ -72,6 +72,7 @@ func createSchema(objMap map[string]ObjectMembersInfo, objConfig ObjectInfoJson)
 			indexes = append(indexes, name)
 			table.IsRoot = true
 		}
+		//@TODO: jgheewala add support for min, max, minInteger, maxInteger, minLength, maxLength
 		//info.Min = obj.Min
 		//info.Max = obj.Max
 		ovsColumns[name] = info
@@ -116,14 +117,14 @@ func writeJson(extSchemaFile string, jsonSchema SchemaInfo) {
 // dirStore := base + "/reltools/codegentools/._genInfo/"
 func genJsonSchema(dirStore string, objectsByOwner map[string][]ObjectInfoJson) {
 	for owner, objList := range objectsByOwner {
-		if owner != "bgpd" {
-			continue
-		}
 		var jsonSchema SchemaInfo
 		ovsTables := make(map[string]TableInfo)
 		jsonSchema.Name = owner
 		jsonSchema.Version = "0.0.1"
 		for _, obj := range objList {
+			if obj.Access == "x" {
+				continue
+			}
 			jsonFileName := dirStore + obj.ObjName + MEMBER_JSON
 			bytes, err := ioutil.ReadFile(jsonFileName)
 			if err != nil {
@@ -139,7 +140,6 @@ func genJsonSchema(dirStore string, objectsByOwner map[string][]ObjectInfoJson) 
 			}
 			table := createSchema(objMap, obj)
 			ovsTables[obj.ObjName] = table
-			//			}
 		}
 		jsonSchema.Tables = ovsTables
 		extSchemaFile := dirStore + owner + ".extschema"
