@@ -473,10 +473,50 @@ class DaemonObjectsInfo (object) :
                               clientIfFd.write("""    
 							        if attrSet[i] && objName == "%s" {
 									    fmt.Println("add ", objName)
-									    for i := 0; i < len(origdata.%s); i++ {
-										    updatedata.%s = append(updatedata.%s, origdata.%s[i])
+									    for j := 0; j < len(origdata.%s); j++ {
+										    updatedata.%s = append(updatedata.%s, origdata.%s[j])
 									    }
 							        }\n"""%(attrName, attrName, attrName, attrName, attrName))
+                    clientIfFd.write("""
+						        }
+					        }
+					    }\n""")
+                    clientIfFd.write("""    
+				         if op == "remove" {
+					        fmt.Println("remove operation in update")
+					        if attrSet != nil {
+						        objTyp := reflect.TypeOf(*origconf)
+				                fmt.Println("attr set not nil, set individual attributes")
+						        for i := 0; i < objTyp.NumField(); i++ {
+							        objName := objTyp.Field(i).Name\n""")
+                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
+                         if attrInfo['isArray'] != 'False' :
+                              clientIfFd.write("""    
+							        if attrSet[i] && objName == "%s" {
+									    fmt.Println("remove ", objName)
+										for i1 := 0; i1< len(updatedata.%s); i1++ {
+											found := false
+											match := -1
+											for i2 := 0; i2 < len(origdata.%s) ; i2++ {
+												if origdata.%s[i2] == updatedata.%s[i1] {
+													found = true
+													match = i2
+													break
+												}
+											}
+											if !found {
+											} else {
+												origdata.%s[match] = origdata.%s[len(origdata.%s) - 1]
+										         origdata.%s = origdata.%s[:(len(origdata.%s)-1)]
+											}
+										}
+										updatedata.%s = updatedata.%s[:0]
+									    for i3 := 0; i3 < len(origdata.%s); i3++ {
+										    updatedata.%s = append(updatedata.%s, origdata.%s[i3])
+									    }
+							        }\n"""%(attrName, attrName, attrName, attrName, attrName, attrName,
+                                               attrName, attrName, attrName, attrName, attrName, attrName,
+											attrName, attrName, attrName, attrName, attrName))
                     clientIfFd.write("""
 						        }
 					        }
