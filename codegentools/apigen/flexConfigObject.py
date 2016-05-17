@@ -17,7 +17,7 @@ class FlexConfigObject(FlexObject) :
             assignmentStr = ''
             argStr = ''
             docStr = tabs + ":param %s %s : %s " %(attrInfo['type'], attr, attrInfo['description'])
-            if attrInfo['default'] !="":
+            if attrInfo['isDefaultSet'] == 'True':
                 if isNumericAttr(attrInfo):
                     argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
                     assignmentStr = "int(%s)" %(attr)

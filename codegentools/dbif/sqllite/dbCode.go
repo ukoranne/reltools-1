@@ -66,7 +66,7 @@ var goTypeToRedisTypeMap = map[string]string{
 	"float64": "Float64",
 }
 
-func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") StoreObjectInDb(dbHdl redis.Conn) error {\n")
 	lines = append(lines,
@@ -87,7 +87,7 @@ func (obj *ObjectSrcInfo) WriteStoreObjectInDBFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
+func (obj *ObjectInfoJson) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) []string {
 	var lines []string
 	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
 		return lines
@@ -122,7 +122,7 @@ func (obj *ObjectSrcInfo) WriteSecondaryTableInsertIntoDBFcn(str *ast.StructType
 	return lines
 }
 
-func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") DeleteObjectFromDb(dbHdl redis.Conn) error {\n")
 	//Delete primary key
@@ -152,7 +152,7 @@ func (obj *ObjectSrcInfo) WriteDeleteObjectFromDbFcn(str *ast.StructType, fd *os
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	var firstListOfStructs, firstList bool = true, true
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetObjectFromDb(objKey string, dbHdl redis.Conn) (ConfigObj, error) {\n")
@@ -219,7 +219,7 @@ func (obj *ObjectSrcInfo) WriteGetObjectFromDbFcn(str *ast.StructType, fd *os.Fi
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
+func (obj *ObjectInfoJson) IsNumericType(typeVal string) bool {
 	switch typeVal {
 	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "float32", "float64", "complex64", "complex128", "byte", "rune":
 		return true
@@ -229,7 +229,7 @@ func (obj *ObjectSrcInfo) IsNumericType(typeVal string) bool {
 	return false
 }
 
-func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetKey() string {\n")
 	numKeys := 0
@@ -271,7 +271,7 @@ func (obj *ObjectSrcInfo) WriteKeyRelatedFcns(str *ast.StructType, fd *os.File, 
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetAllObjFromDb(dbHdl redis.Conn) (objList []ConfigObj, err error) { \n")
 	lines = append(lines,
@@ -308,7 +308,7 @@ func (obj *ObjectSrcInfo) WriteGetAllObjFromDbFcn(str *ast.StructType, fd *os.Fi
 
 //FIXME: GetBulk for secondary table will be implemented as part of actual GetBulk implementation
 /*
-func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) []string {
+func (obj *ObjectInfoJson) WriteGetBulkSecondaryTableFromDBFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) []string {
 	var lines []string
 	//if !strings.Contains(obj.ObjName, "Policy") { // Temporary hack. Need to fix it. Hari. TODO
 	if strings.HasPrefix(obj.ObjName, "Vxlan") { // Temporary hack. Need to fix it. Hari. TODO
@@ -375,7 +375,7 @@ func (obj *ObjectSrcInfo) WriteGetBulkSecondaryTableFromDBFcn(str *ast.StructTyp
 */
 
 //FIXME: GetBulk is currently implemented to call GetAllObj
-func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") GetBulkObjFromDb(startIndex int64, count int64, dbHdl redis.Conn) (err error, objCount int64, nextMarker int64, moreExist bool, objList []ConfigObj) { \n")
 	lines = append(lines,
@@ -392,7 +392,7 @@ func (obj *ObjectSrcInfo) WriteGetBulkObjFromDbFcn(str *ast.StructType, fd *os.F
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") CompareObjectsAndDiff(updateKeys map[string]bool, inObj ConfigObj) ([]bool, error) {\n")
 	lines = append(lines, "dbObj := inObj.("+obj.ObjName+")")
@@ -479,11 +479,17 @@ func (obj *ObjectSrcInfo) WriteCompareObjectsAndDiffFcn(str *ast.StructType, fd 
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") UpdateObjectInDb(inObj ConfigObj, attrSet []bool, dbHdl redis.Conn) error {\n")
+	lines = append(lines,
+		`_, err := dbHdl.Do("HMSET", redis.Args{}.Add(obj.GetKey()).AddFlat(obj)...) 
+		if err != nil {
+			fmt.Println("Failed to store object in DB", obj)
+			return err
+		}`)
 	lines = append(lines, `
-						primaryArgs := redis.Args{}.Add(obj.GetKey())
+						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -507,7 +513,7 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 									fieldVal.Kind() == reflect.Uint64 || 
 									fieldVal.Kind() == reflect.Bool || 
 									fieldVal.Kind() == reflect.String {
-										primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
+						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
 								} else if fieldVal.Kind() == reflect.Slice {
 					                    secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
@@ -535,10 +541,10 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 							}
 							idx++
 						}
-						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-						if err != nil {
-							return err
-						}
+//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
+//						if err != nil {
+//							return err
+//						}
 						return nil
 					}`)
 	for _, line := range lines {
@@ -546,8 +552,42 @@ func (obj *ObjectSrcInfo) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.F
 	}
 	fd.Sync()
 }
-
-func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteCopyRecursiveFcn(str *ast.StructType, fd *os.File) {
+	var lines []string
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+")")
+	lines = append(lines, ` CopyRecursive(dest, src reflect.Value) {
+	                       fmt.Println("copyRecursive")
+	                       switch src.Kind() {
+	                           case reflect.Slice:
+		                       fmt.Println("Slice")
+		                       dest.Set(reflect.MakeSlice(src.Type(), src.Len(), src.Cap()))
+		                       for i := 0; i < src.Len(); i++ { 
+	                               obj.CopyRecursive(src.Index(i), dest.Index(i))
+	                           }
+	                           case reflect.Struct:
+		                       fmt.Println("struct")
+		                       for i := 0; i < src.NumField(); i++ {
+                                    obj.CopyRecursive(src.Field(i), dest.Field(i))
+	                          }
+	                           case reflect.String:
+		                       dest.SetString(src.Interface().(string))
+ 	                           case reflect.Int:
+		                       dest.SetInt(int64(src.Interface().(int)))
+	                           case reflect.Bool:
+		                       dest.SetBool(src.Interface().(bool))
+	                           case reflect.Float64:
+		                       dest.SetFloat(src.Interface().(float64))
+	                           default:
+		                       dest.Set(src)
+	                       }
+                       }`)
+	lines = append(lines, "\n")
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
+func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObj(dbObj ConfigObj, attrSet []bool) (ConfigObj, error) {\n")
 	lines = append(lines, "var mergedObject  "+obj.ObjName+"\n")
@@ -579,8 +619,8 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 								} else if dbObjField.Kind() == reflect.Bool {
 									mergedObjVal.Elem().Field(i).SetBool(objField.Bool())
 								} else if dbObjField.Kind() == reflect.Slice {
-									reflect.Copy(mergedObjVal.Elem().Field(i), objField)
-								} else {
+                                         obj.CopyRecursive(mergedObjVal.Elem().Field(i), objField)
+                                   } else {
 									mergedObjVal.Elem().Field(i).SetString(objField.String())
 								}
 							} else {
@@ -599,8 +639,8 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 								} else if dbObjField.Kind() == reflect.Bool {
 									mergedObjVal.Elem().Field(i).SetBool(dbObjField.Bool())
 								} else if dbObjField.Kind() == reflect.Slice {
-									reflect.Copy(mergedObjVal.Elem().Field(i), dbObjField)
-								} else {
+                                     obj.CopyRecursive(mergedObjVal.Elem().Field(i), dbObjField)
+                                   } else {
 									mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
 								}
 							}
@@ -609,7 +649,6 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 						}
 						return mergedObject , nil
 					}
-
 					`)
 	for _, line := range lines {
 		fd.WriteString(line)
@@ -617,7 +656,7 @@ func (obj *ObjectSrcInfo) WriteMergeDbAndConfigObjFcn(str *ast.StructType, fd *o
 	fd.Sync()
 }
 
-func (obj *ObjectSrcInfo) ConvertObjectMembersMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
+func (obj *ObjectInfoJson) ConvertObjectMembersMapToOrderedSlice(attrMap map[string]ObjectMembersInfo) (attrMapSlice []ObjectMemberAndInfo) {
 
 	for i := 1; i < len(attrMap)+1; i++ {
 		for attr, info := range attrMap {
@@ -640,7 +679,7 @@ func (obj *ObjectSrcInfo) ConvertObjectMembersMapToOrderedSlice(attrMap map[stri
 	return
 }
 
-func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectSrcInfo) {
+func (obj *ObjectInfoJson) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectInfoJson) {
 	fileHeaderOptionalForState := ""
 	dbFile, err := os.Create(obj.DbFileName)
 	if err != nil {
@@ -649,7 +688,6 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 	}
 	defer dbFile.Close()
 	attrMapSlice := obj.ConvertObjectMembersMapToOrderedSlice(attrMap)
-
 	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
 		dbFile.WriteString(fileHeader)
 		obj.WriteStoreObjectInDBFcn(str, dbFile, attrMapSlice, objMap)
@@ -659,6 +697,7 @@ func (obj *ObjectSrcInfo) WriteDBFunctions(str *ast.StructType, attrMap map[stri
 		obj.WriteGetAllObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteCompareObjectsAndDiffFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteCopyRecursiveFcn(str, dbFile)
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
