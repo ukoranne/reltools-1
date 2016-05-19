@@ -10,10 +10,8 @@ import json
 import subprocess
 from optparse import OptionParser
 ASICD_CONF_FILE='/opt/flexswitch/params/asicd.conf'
+SYS_PROFILE ='/opt/flexswitch/sysprofile/systemProfile.json'
 
-nonSnapRouteDmns = {
-    'sqlwebd' : '/usr/local/bin/sqlite_web'
-}
 def determineMacAddress ():
     print 'Getting MAC address'
     process = subprocess.Popen('ifconfig -a' ,
@@ -60,52 +58,80 @@ def isProcessRunning(pidFile):
 
 def getDaemonsInfo (baseDir) :
 
-    daemonsToStart = [
-                    {'name': 'asicd',
+    daemonsList = [
+                    {'name': 'sysd',
+                     'runlevel' : 0,
                      'params': '-params=' + baseDir + '/params'},
 
-                    {'name': 'sysd',
+                    {'name': 'asicd',
+                     'runlevel' : 1,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ribd',
+                     'runlevel' : 6,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'bfdd',
+                     'runlevel' : 7,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'arpd',
+                     'runlevel' : 5,
+                     'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'dhcpd',
+                     'runlevel' : 10,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'bgpd',
+                     'runlevel' : 8,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ospfd',
+                     'runlevel' : 9,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'lacpd',
+                     'runlevel' : 2,
                     'params': '-params=' + baseDir + '/params'},
                     
                     {'name': 'dhcprelayd',
+                     'runlevel' : 11,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'stpd',
+                     'runlevel' : 3,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'vrrpd',
+                     'runlevel' : 12,
                      'params': '-params=' + baseDir + '/params'},
                     
                     {'name': 'lldpd',
+                     'runlevel' : 4,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'vxland',
+                     'runlevel' : 13,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
+                     'runlevel' : 14,
                      'params': '-params=' + baseDir + '/params'},
 
-                    #{'name': 'sqlwebd',
-                    # 'params': ['', '--port=8000 ' , '--host=0.0.0.0 ' ,  baseDir + '/params/UsrConfDb.db']},
                     ]
+
+    disabledDaemons = []
+    daemonsToStart = []
+    with open(SYS_PROFILE) as fd:
+        sysCfg = json.load(fd)
+        dmnsInfo = sysCfg['Daemons']
+        disabledDaemons = [ dmn['Name'] for dmn in dmnsInfo if not dmn['Enable']]
+
+    for dmn in daemonsList:
+        if dmn['name'] not in disabledDaemons:
+            daemonsToStart.append(dmn)
+            
     return daemonsToStart
 
 class FlexSwitchDaemon (daemon.Daemon):
@@ -138,6 +164,11 @@ if __name__=="__main__":
                       action='store',
                       help="Type of subsequent boot operation (cold/warm) ")
 
+    parser.add_option("-n", "--name",
+                      dest="name",
+                      action='store',
+                      help="Daemon name")
+
     (opts, args) = parser.parse_args()
     localBld = False
     if opts.directory != None:
@@ -157,9 +188,15 @@ if __name__=="__main__":
     if opts.op != 'stop' and opts.boot != None:
         parser.print_usage()
         sys.exit(0)
+
+    if opts.name != None and opts.op not in ['start', 'stop']:
+        parser.print_usage()
+        sys.exit(0)
  
     if not localBld:
         determineMacAddress()
+    else:
+        SYS_PROFILE = baseDir + '/params/systemProfile.json'
     pidFileDir = baseDir+'/bin/pids/'
     asicdBootModeFile = baseDir + '/params/asicdBootMode.conf'
     if opts.boot != None and opts.boot == 'cold':
@@ -174,19 +211,17 @@ if __name__=="__main__":
         start = datetime.datetime.now()
         dmnCount = 0
         for dmn in getDaemonsInfo(baseDir):
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             print "Starting Daemon %s Params: %s" %( dmn['name'], dmn['params'])
             dmnCount += 1
             pidFile = pidFileDir + dmn['name']+'.pid'
             if isProcessRunning(pidFile):
                 print "process %s is already running" %(dmn['name'])
             else:
-                if dmn['name'] not in nonSnapRouteDmns:
-                    cmd = baseDir +'/bin/'+ dmn['name']
-                else:
-                    cmd = nonSnapRouteDmns[dmn['name']]
-
+                cmd = baseDir +'/bin/'+ dmn['name']
                 pargs = (cmd, dmn['params'])
-                time.sleep(2)
+                time.sleep(0.02)
                 pid = os.fork()
                 if pid == 0:
                     dmnInst = FlexSwitchDaemon (pidFile,
@@ -200,7 +235,12 @@ if __name__=="__main__":
         end = datetime.datetime.now()
         print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:
-        for dmn in getDaemonsInfo(baseDir):
+        allDmns = getDaemonsInfo(baseDir)
+        sortedDmns = reversed(sorted(allDmns,key= lambda dmn:dmn['runlevel']))
+
+        for dmn in sortedDmns:
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             try:
                 print "Stopping Daemon %s" %( dmn['name'])
                 pidFile = pidFileDir + dmn['name']+'.pid'
@@ -229,10 +269,15 @@ if __name__=="__main__":
                     os.kill(pid, signal.SIGHUP)
             except:
                 print '*** Failed to stop process [%s]' %(dmn['name'])
-        time.sleep(10)
+        time.sleep(1)
         for dmn in getDaemonsInfo(baseDir if not localBld else baseDir+'/bin'):
+            if opts.name != None and opts.name != dmn['name']:
+                continue
             try:
                 pidFile = pidFileDir + dmn['name']+'.pid'
+                pf = file(pidFile, 'r')
+                pid = int(pf.read().strip())
+                pf.close()
                 try :
                     #Check if cleanup completed
                     os.kill(pid, 0)
@@ -240,8 +285,8 @@ if __name__=="__main__":
                     #Process with pid successfully cleaned up
                     os.remove(pidFile)
                     continue
-                    #Force kill by sending SIGTERM
-                    os.kill(pid, signal.SIGTERM)
-                    os.remove(pidFile)
+                #Force kill by sending SIGTERM
+                os.kill(pid, signal.SIGTERM)
+                os.remove(pidFile)
             except:
                 print '*** Failed to Kill process [%s]' %(dmn['name'])

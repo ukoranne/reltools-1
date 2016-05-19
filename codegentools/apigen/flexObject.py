@@ -2,7 +2,7 @@ import json
 import operator
 def isNumericAttr (attrInfo) :
     if attrInfo['isArray'] == 'False':
-        return attrInfo['type'] in ["int32", "uint32", "uint8"]
+        return attrInfo['type'] in ["int32", "uint32", "uint8", "uint16", "int16"]
     else:
         return False
 
@@ -52,10 +52,15 @@ class FlexObject(object) :
                 
     def createGetByIdMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def get" + self.name + "ById(self, objectId ):\n")
         tabs = tabs + self.TAB
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'" %(self.name))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'" %(objName))
         lines[-1] = lines[-1] + "+\"/%s\"%(objectId)\n"
         lines.append(tabs + "r = requests.get(reqUrl, data=None, headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
@@ -63,33 +68,58 @@ class FlexObject(object) :
 
     def createGetMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def get" + self.name + "(self,")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))
         objLines = [tabs + "obj =  { \n"]
+        argStr = ''
         for (attr, attrInfo) in self.attrList:
             if attrInfo['isKey'] == 'True':
-                lines.append("\n" + spaces + "%s," %(attr))
-                objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, attr))
+                argStr = "\n" + spaces + "%s," %(attr)
+                assignmentStr = "%s" %(attr)
+
+                if isNumericAttr(attrInfo):
+                    #argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
+                    assignmentStr = "int(%s)" %(attr)
+                elif isBoolean(attrInfo['type']):
+                    #argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
+                    assignmentStr = "True if %s else False" %(attr)
+                
+                lines.append(argStr)
+                objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
+
+
         lines[-1] = lines[-1][0:lines[-1].find(',')]
         lines.append("):\n")
         objLines.append(tabs + tabs+"}\n")
         lines = lines + objLines
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(self.name))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(objName))
         lines.append(tabs + "r = requests.get(reqUrl, data=json.dumps(obj), headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
 
-    def createGetAllMethod (self, fileHdl):
+    def createGetAllMethod (self, fileHdl, urlPath):
         tabs = self.TAB
         lines = [ "\n"+ tabs + "def getAll" + self.name+"s" + "(self):\n"]
         tabs = tabs + self.TAB
-        lines.append (tabs + "return self.getObjects( \'%s\') \n\n" %(self.name))
+        if 'r' in self.access:
+            if self.name.endswith('State'):
+                objName = self.name[:-5]
+            else:
+                objName = self.name
+        else:
+            objName = self.name
+        lines.append (tabs + "return self.getObjects( \'%s\', %s)\n\n" %(objName, urlPath))
         fileHdl.writelines(lines)
 
     def writeAllMethods (self, fileHdl):
         self.createGetMethod(fileHdl)
         self.createGetByIdMethod(fileHdl)
-        self.createGetAllMethod(fileHdl)
+        self.createGetAllMethod(fileHdl, 'self.stateUrlBase')
 
