@@ -52,7 +52,8 @@ class FlexObject(object) :
                 
     def createGetByIdMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def get" + self.name + "ById(self, objectId ):\n")
         tabs = tabs + self.TAB
         if self.name.endswith('State'):
@@ -67,15 +68,30 @@ class FlexObject(object) :
 
     def createGetMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def get" + self.name + "(self,")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))
         objLines = [tabs + "obj =  { \n"]
+        argStr = ''
         for (attr, attrInfo) in self.attrList:
-            if attrInfo['isKey'] == 'True':
-                lines.append("\n" + spaces + "%s," %(attr))
-                objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, attr))
+            if attrInfo['isDefaultSet'] == 'True':
+                if isNumericAttr(attrInfo):
+                    argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
+                    assignmentStr = "int(%s)" %(attr)
+                elif isBoolean(attrInfo['type']):
+                    argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
+                    assignmentStr = "True if %s else False" %(attr)
+                else:
+                    argStr = "\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip())
+                    assignmentStr = "%s" %(attr)
+                argStr = "\n" + spaces + "%s," %(attr)
+
+                lines.append(argStr)
+                objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
+
+
         lines[-1] = lines[-1][0:lines[-1].find(',')]
         lines.append("):\n")
         objLines.append(tabs + tabs+"}\n")

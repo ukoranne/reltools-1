@@ -183,12 +183,12 @@ class BTPyGOClass(plugin.PyangPlugin):
                   "func": open(name + "_serializer.go", 'w+b')}
 
         modelFileName  = fd.name.strip('.tmp')
-        serializerName = modelFileName.strip('.go') + '_serializer.go'
+        #serializerName = modelFileName.strip('.go') + '_serializer.go'
         build_pybind(ctx, modules, fdDict)
 
         with open(GENERATED_FILES_LIST, 'a+') as fp:
             fp.write(modelFileName + '\n')
-            fp.write(serializerName+ '\n')
+            #fp.write(serializerName+ '\n')
 
         objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
         with open(objsData, 'w+') as fp:
@@ -364,10 +364,10 @@ def build_pybind(ctx, modules, fdDict):
         fd.write(ctx.pybind_common_hdr)
 
 
-    fdDict["func"].write("import (\n")
-    fdDict["func"].write("""\t \"encoding/json\"\n
-    \t\"fmt\"\n
-    )\n""")
+    #fdDict["func"].write("import (\n")
+    #fdDict["func"].write("""\t \"encoding/json\"\n
+    #\t\"fmt\"\n
+    #)\n""")
 
     #fdDict["func"].write("""type ConfigObj interface {
     #     UnmarshalObject(data []byte) (ConfigObj, error)
@@ -961,16 +961,16 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
 def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     structName = CreateStructSkeleton(module, nfd, parent, path, write=False)
-    if structName != '':
-        nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
-        var err error
-        if len(body) > 0 {
-            if err = json.Unmarshal(body, &obj); err != nil  {
-                fmt.Println("### %s called, unmarshal failed", obj, err)
-            }
-        }
-        return obj, err
-        }\n""" %(structName, structName))
+    #if structName != '':
+    #    nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
+    #    var err error
+    #    if len(body) > 0 {
+    #        if err = json.Unmarshal(body, &obj); err != nil  {
+    #            fmt.Println("### %s called, unmarshal failed", obj, err)
+    #        }
+    #    }
+    #    return obj, err
+    #    }\n""" %(structName, structName))
 
     return structName
 

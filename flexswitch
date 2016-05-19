@@ -60,45 +60,63 @@ def getDaemonsInfo (baseDir) :
 
     daemonsList = [
                     {'name': 'sysd',
+                     'runlevel' : 0,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'asicd',
+                     'runlevel' : 1,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ribd',
+                     'runlevel' : 6,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'bfdd',
+                     'runlevel' : 7,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'arpd',
+                     'runlevel' : 5,
+                     'params': '-params=' + baseDir + '/params'},
+
+                    {'name': 'dhcpd',
+                     'runlevel' : 10,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'bgpd',
+                     'runlevel' : 8,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'ospfd',
+                     'runlevel' : 9,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'lacpd',
+                     'runlevel' : 2,
                     'params': '-params=' + baseDir + '/params'},
                     
                     {'name': 'dhcprelayd',
+                     'runlevel' : 11,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'stpd',
+                     'runlevel' : 3,
                     'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'vrrpd',
+                     'runlevel' : 12,
                      'params': '-params=' + baseDir + '/params'},
                     
                     {'name': 'lldpd',
+                     'runlevel' : 4,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'vxland',
+                     'runlevel' : 13,
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
+                     'runlevel' : 14,
                      'params': '-params=' + baseDir + '/params'},
 
                     ]
@@ -217,7 +235,10 @@ if __name__=="__main__":
         end = datetime.datetime.now()
         print 'Total time taken to start all %s daemons is  %s' %(dmnCount, end -start)
     else:
-        for dmn in getDaemonsInfo(baseDir):
+        allDmns = getDaemonsInfo(baseDir)
+        sortedDmns = reversed(sorted(allDmns,key= lambda dmn:dmn['runlevel']))
+
+        for dmn in sortedDmns:
             if opts.name != None and opts.name != dmn['name']:
                 continue
             try:

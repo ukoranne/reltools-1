@@ -10,6 +10,6 @@ Homepage:http://www.snaproute.com
 
 Package: flexswitch
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, redis-server(>=2.8)
 Description: <FlexSwitch : Opensource Network Protocols Stacks>
  <OpenSource Protocol Suite developed by SnapRoute>
