@@ -4,7 +4,7 @@ import json
 import urllib2                                                                                                          
                                                                                                                         
 headers = {'Accept' : 'application/json', 'Content-Type' : 'application/json'}                                          
-
+'''
 def processReturnCode (method) :
     def returnDetails (self, *args, **kwargs) :
         r = method(self, *args, **kwargs)
@@ -20,7 +20,7 @@ def processReturnCode (method) :
             print 'Error from server. Error code %s, Error Message: %s' %(r.status_code, r.json()['Error']) 
             return (r.json(), "Error")
     return returnDetails
-
+'''
 class FlexSwitch( object):                                                                                              
     httpSuccessCodes = [200, 201, 202, 204]
     def  __init__ (self, ip, port):                                                                                     
