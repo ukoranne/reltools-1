@@ -76,18 +76,17 @@ class FlexObject(object) :
         objLines = [tabs + "obj =  { \n"]
         argStr = ''
         for (attr, attrInfo) in self.attrList:
-            if attrInfo['isDefaultSet'] == 'True':
+            if attrInfo['isKey'] == 'True':
+                argStr = "\n" + spaces + "%s," %(attr)
+                assignmentStr = "%s" %(attr)
+
                 if isNumericAttr(attrInfo):
-                    argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
+                    #argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
                     assignmentStr = "int(%s)" %(attr)
                 elif isBoolean(attrInfo['type']):
-                    argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
+                    #argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
                     assignmentStr = "True if %s else False" %(attr)
-                else:
-                    argStr = "\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip())
-                    assignmentStr = "%s" %(attr)
-                argStr = "\n" + spaces + "%s," %(attr)
-
+                
                 lines.append(argStr)
                 objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
 
