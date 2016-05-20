@@ -34,7 +34,7 @@ class FlexConfigObject(FlexObject) :
                 elif isListAttr(attrInfo):
                     if attrInfo['isKey'] != 'True':
                         argStr = "\n" + spaces + "%s=%s," %(attr, '[]')
-                        assignmentStr = "%s=[]" %(attr)
+                        assignmentStr = "%s" %(attr)
                     else:
                         assignmentStr = "'%s'" %(attrInfo['default'].lstrip())
                 else:
