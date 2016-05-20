@@ -346,7 +346,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access'] and not(structInfo['usesStateDB']):
+            if 'r' in structInfo['access'] and 'usesStateDB' in structInfo and not(structInfo['usesStateDB']):
                 clientIfFd.write("""
                                     case models.%s :
                                     data := obj.(models.%s)
@@ -375,7 +375,7 @@ class DaemonObjectsInfo (object) :
                         }
                     }
                     break\n""")
-            elif structInfo['usesStateDB']:
+            elif 'usesStateDB' in structInfo and structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
                         retObj, err := dbHdl.GetObjectFromDb(obj, obj.GetKey())
@@ -541,7 +541,7 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             s = structName
             d = self.name
-            if 'r' in structInfo['access'] and not(structInfo['usesStateDB']):
+            if 'r' in structInfo['access'] and 'usesStateDB' in structInfo and not (structInfo['usesStateDB']):
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
 
                 clientIfFd.write("""
@@ -565,7 +565,7 @@ class DaemonObjectsInfo (object) :
                             }
                     }
                     break\n""")
-            elif structInfo['usesStateDB']:
+            elif 'usesStateDB' in structInfo and structInfo['usesStateDB']:
                 clientIfFd.write("""\ncase models.%s :\n""" % (s,))
                 clientIfFd.write("""
                         err, objCount, nextMarker, more, objs = dbHdl.GetBulkObjFromDb(obj, currMarker, count)

@@ -5,7 +5,8 @@ class FlexConfigObject(FlexObject) :
 
     def createCreateMethod(self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append( "\n"+ tabs + "def create" + self.name + "(self,")
         docLines = [ "\n" + tabs + "\"\"\"" +"\n" + tabs + ".. automethod :: create%s(self,\n" %(self.name)]
         #docLines.append("\n"+ tabs + "Parameters")
@@ -19,14 +20,23 @@ class FlexConfigObject(FlexObject) :
             docStr = tabs + ":param %s %s : %s " %(attrInfo['type'], attr, attrInfo['description'])
             if attrInfo['isDefaultSet'] == 'True':
                 if isNumericAttr(attrInfo):
-                    argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
-                    assignmentStr = "int(%s)" %(attr)
+                    if attrInfo['isKey'] != 'True':
+                        argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
+                        assignmentStr = "int(%s)" %(attr)
+                    else:
+                        assignmentStr = "int(%s)" %(int(attrInfo['default'].lstrip()))
                 elif isBoolean(attrInfo['type']):
-                    argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
-                    assignmentStr = "True if %s else False" %(attr)
+                    if attrInfo['isKey'] != 'True':
+                        argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
+                        assignmentStr = "True if %s else False" %(attr)
+                    else:
+                        assignmentStr = "%s" %(boolFromString(attrInfo['default'].lstrip()))
                 else:
-                    argStr = "\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip())
-                    assignmentStr = "%s" %(attr)
+                    if attrInfo['isKey'] != 'True':
+                        argStr = "\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip())
+                        assignmentStr = "%s" %(attr)
+                    else:
+                        assignmentStr = "'%s'" %(attrInfo['default'].lstrip())
             else:
                 if isNumericAttr(attrInfo):
                     assignmentStr = "int(%s)" %(attr)
@@ -54,7 +64,8 @@ class FlexConfigObject(FlexObject) :
 
     def createDeleteMethod(self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def delete" + self.name + "(self,")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))
@@ -74,7 +85,8 @@ class FlexConfigObject(FlexObject) :
 
     def createDeleteByIdMethod(self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def delete" + self.name + "ById(self, objectId ):\n")
         tabs = tabs + self.TAB
         lines.append (tabs + "reqUrl =  self.cfgUrlBase+" +"\'%s\'" %(self.name))
@@ -85,7 +97,8 @@ class FlexConfigObject(FlexObject) :
 
     def createUpdateMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def update" + self.name + "(self,")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))
@@ -115,7 +128,8 @@ class FlexConfigObject(FlexObject) :
 
     def createUpdateByIdMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "@processReturnCode"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
         lines.append("\n"+ tabs + "def update" + self.name + "ById(self,\n")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))

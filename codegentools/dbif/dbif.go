@@ -33,6 +33,7 @@ type ObjectInfoJson struct {
 	Multiplicity string   `json:"multiplicity"`
 	Accelerated  bool     `json:"accelerated"`
 	UsesStateDB  bool     `json:"usesStateDB"`
+	AutoCreate   bool     `json:"autoCreate"`
 	ObjName      string   `json:"-"`
 	DbFileName   string   `json:"-"`
 	AttrList     []string `json:"-"`
@@ -45,7 +46,7 @@ type ObjectMembersInfo struct {
 	IsArray      bool   `json:"isArray"`
 	Description  string `json:"description"`
 	DefaultVal   string `json:"default"`
-    IsDefaultSet bool   `json:"isDefaultSet"`
+	IsDefaultSet bool   `json:"isDefaultSet"`
 	Position     int    `json:"position"`
 	Selections   string `json:"selections"`
 	QueryParam   string `json:"queryparam"`
@@ -54,6 +55,7 @@ type ObjectMembersInfo struct {
 	Max          int    `json:"max"`
 	Len          int    `json:"len"`
 	UsesStateDB  bool   `json:"usesStateDB"`
+	AutoCreate   bool   `json:"autoCreate"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -149,6 +151,9 @@ func main() {
 								if val.UsesStateDB == true {
 									obj.UsesStateDB = true
 								}
+								if val.AutoCreate == true {
+									obj.AutoCreate = true
+								}
 							}
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.ContainsAny(obj.Access, "rw") {
@@ -239,22 +244,25 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 				attrInfo.Selections = keys[idx+1]
 			case "DEFAULT":
 				attrInfo.DefaultVal = strings.TrimSpace(keys[idx+1])
-                attrInfo.IsDefaultSet = true
+				attrInfo.IsDefaultSet = true
 			case "ACCELERATED":
 				attrInfo.Accelerated = true
 			case "MIN":
-				attrInfo.Min = 0 //strconv.Atoi(keys[idx+1])
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "MAX":
-				attrInfo.Min = 10 //strconv.Atoi(keys[idx+1])
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "RANGE":
-				attrInfo.Min = 0  //keys[idx+1]
-				attrInfo.Max = 10 //keys[idx+1]
+				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
+				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
 			case "LEN":
-				attrInfo.Len, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
+				fmt.Println(keys)
+				attrInfo.Len, _ = strconv.Atoi(keys[idx])
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
 			case "USESTATEDB":
 				attrInfo.UsesStateDB = true
+			case "AUTOCREATE":
+				attrInfo.AutoCreate = true
 			}
 		}
 	}
@@ -381,6 +389,8 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 
 												case "USESTATEDB":
 													obj.UsesStateDB = true
+												case "AUTOCREATE":
+													obj.AutoCreate = true
 												}
 											}
 										}
@@ -454,6 +464,8 @@ func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string,
 				if attrInfo.IsDefaultSet {
 					if attrInfo.VarType == "string" {
 						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+" = "+"\""+attrInfo.DefaultVal+"\""+"\n")
+					} else if attrInfo.IsArray {
+						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+"= make([]"+attrInfo.VarType+", 0)"+"\n")
 					} else {
 						marshalFcnsLine = append(marshalFcnsLine, "obj."+attrName+" = "+attrInfo.DefaultVal+"\n")
 					}
