@@ -6,6 +6,9 @@ def isNumericAttr (attrInfo) :
     else:
         return False
 
+def isListAttr(attrInfo) :
+    return attrInfo['isArray'] == 'True'
+
 def isBoolean(attrType) :
     return attrType in ["bool"]
 

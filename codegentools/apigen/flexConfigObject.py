@@ -1,6 +1,6 @@
 import json
 import re
-from flexObject import FlexObject, isNumericAttr, isBoolean, boolFromString
+from flexObject import FlexObject, isNumericAttr, isBoolean, boolFromString, isListAttr
 class FlexConfigObject(FlexObject) :
 
     def createCreateMethod(self, fileHdl):
@@ -31,6 +31,12 @@ class FlexConfigObject(FlexObject) :
                         assignmentStr = "True if %s else False" %(attr)
                     else:
                         assignmentStr = "%s" %(boolFromString(attrInfo['default'].lstrip()))
+                elif isListAttr(attrInfo):
+                    if attrInfo['isKey'] != 'True':
+                        argStr = "\n" + spaces + "%s=[]," %(attr)
+                        assignmentStr = "%s" %(attr)
+                    else:
+                        assignmentStr = "'%s'" %(attrInfo['default'].lstrip())
                 else:
                     if attrInfo['isKey'] != 'True':
                         argStr = "\n" + spaces + "%s=\'%s\'," %(attr,attrInfo['default'].lstrip())
