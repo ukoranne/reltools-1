@@ -4,23 +4,21 @@ import json
 import urllib2                                                                                                          
                                                                                                                         
 headers = {'Accept' : 'application/json', 'Content-Type' : 'application/json'}                                          
-'''
-def processReturnCode (method) :
-    def returnDetails (self, *args, **kwargs) :
-        r = method(self, *args, **kwargs)
-        if r.status_code in self.httpSuccessCodes:
-            return (r.json(), None)
-        else:
-            ret = {}
-            try:
-                ret = r.json()
-            except:
-                print 'Did not receive Json. HTTP Status %s: Code %s ' %(r.reason, r.status_code) 
-                return ret, r.reason
-            print 'Error from server. Error code %s, Error Message: %s' %(r.status_code, r.json()['Error']) 
-            return (r.json(), "Error")
-    return returnDetails
-'''
+#def processReturnCode (method) :
+#    def returnDetails (self, *args, **kwargs) :
+#        r = method(self, *args, **kwargs)
+#        if r.status_code in self.httpSuccessCodes:
+#            return (r.json(), None)
+#        else:
+#            ret = {}
+#            try:
+#                ret = r.json()
+#            except:
+#                print 'Did not receive Json. HTTP Status %s: Code %s ' %(r.reason, r.status_code) 
+#                return ret, r.reason
+#            print 'Error from server. Error code %s, Error Message: %s' %(r.status_code, r.json()['Error']) 
+#            return (r.json(), "Error")
+#    return returnDetails
 class FlexSwitch( object):                                                                                              
     httpSuccessCodes = [200, 201, 202, 204]
     def  __init__ (self, ip, port):                                                                                     
