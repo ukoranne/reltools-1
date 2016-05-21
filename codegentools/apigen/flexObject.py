@@ -6,6 +6,9 @@ def isNumericAttr (attrInfo) :
     else:
         return False
 
+def isListAttr(attrInfo) :
+    return attrInfo['isArray'] == 'True'
+
 def isBoolean(attrType) :
     return attrType in ["bool"]
 
@@ -86,7 +89,7 @@ class FlexObject(object) :
                 elif isBoolean(attrInfo['type']):
                     #argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
                     assignmentStr = "True if %s else False" %(attr)
-                
+
                 lines.append(argStr)
                 objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
 
@@ -99,7 +102,7 @@ class FlexObject(object) :
             objName = self.name[:-5]
         else:
             objName = self.name
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(objName))
+        lines.append (tabs + "reqUrl =  self.cfgUrlBase+" +"\'%s\'\n" %(objName))
         lines.append(tabs + "r = requests.get(reqUrl, data=json.dumps(obj), headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
