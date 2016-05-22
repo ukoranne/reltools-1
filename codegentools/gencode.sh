@@ -6,7 +6,7 @@ pyang --plugindir `pwd` -f pybind  -o $SR_CODE_BASE/snaproute/src/models/gen_stp
 pyang --plugindir `pwd` -f pybind  -o $SR_CODE_BASE/snaproute/src/models/gen_vxlan.go $SR_CODE_BASE/snaproute/src/models/yangmodel/vxlan/*.yang
 pyang --plugindir `pwd` -f pybind  -o $SR_CODE_BASE/snaproute/src/models/gen_lacp.go $SR_CODE_BASE/snaproute/src/models/yangmodel/lacp/openconfig-if-aggregate.yang
 mkdir -p  ._genInfo
-cd $SR_CODE_BASE/reltools/codegentools/dbif/sqllite
+cd $SR_CODE_BASE/reltools/codegentools/dbif/
 ./dbifGen.sh
 cd $SR_CODE_BASE/reltools/codegentools/thrift
 python thriftgen.py

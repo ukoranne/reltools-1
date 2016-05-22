@@ -50,8 +50,6 @@ func createSchema(objMap map[string]ObjectMembersInfo, objConfig ObjectInfoJson)
 			info.Category = "status"
 		case "w":
 			info.Category = "configuration"
-		case "x":
-			fmt.Println("Check with Hari for configuration type")
 		case "":
 			// This is special case for objects that are referenced
 			info.Category = "configuration"
@@ -94,7 +92,6 @@ const (
 func writeJson(extSchemaFile string, jsonSchema SchemaInfo) {
 	var genFile *os.File
 	var err error
-	fmt.Println(extSchemaFile, "created")
 	if genFile == nil {
 		genFile, err = os.Create(extSchemaFile)
 		if err != nil {

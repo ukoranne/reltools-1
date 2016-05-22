@@ -987,16 +987,23 @@ def setSelectionFromElemtype(elemtype,):
             elements_str += ", SELECTION: "
         else:
             #import ipdb; ipdb.set_trace()
-            #if type(elemtype['restriction_dict']) == dict:
-            #    for k, v in elemtype['restriction_dict'].iteritems():
-            #        if k == 'range':
-            #            elements_str += ", SELECTION: %s" % v.lstrip('u')
-            #        elif k == 'length':
-            #            pass
-            #        else:
-            #            elements_str += ", SELECTION: %s" % elemtype['restriction_dict']
+            if type(elemtype['restriction_dict']) == dict:
+                #print elemtype['restriction_dict']
+                for k, v in elemtype['restriction_dict'].iteritems():
+                    if k == 'range':
+                        range = v.split("..")
+                        elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                    elif k == 'length':
+                        if '..' in v:
+                            range = v.split("..")
+                            elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                        else:
+                            length = int(v)
+                            elements_str += ", SELECTION: LEN %s" %(length,)
+                    else:
+                        elements_str += ", SELECTION: %s" % v
             #else:
-            elements_str += ", SELECTION: %s" % elemtype['restriction_dict']
+            #    elements_str += ", SELECTION: %s" % elemtype['restriction_dict']
 
     if restriction:
         for k, v in restriction.iteritems():
@@ -1021,9 +1028,15 @@ def setDefaultFromElemtype(elem):
         if restriction:
             for k, v in restriction.iteritems():
                 if k == elem['default']:
-                    elements_str += ", DEFAULT: \"%s\"" %(v['value'],)
+                    if str(v['value']).isdigit():
+                        elements_str += ", DEFAULT: %s" %(v['value'],)
+                    else:
+                        elements_str += ", DEFAULT: \"%s\"" %(v['value'],)
         else:
-            elements_str += ", DEFAULT: \"%s\"" %(elem['default'],)
+            if str(elem['default']).isdigit():
+                elements_str += ", DEFAULT: %s" %(elem['default'],)
+            else:
+                elements_str += ", DEFAULT: \"%s\"" %(elem['default'],)
 
     return elements_str
 
