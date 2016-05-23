@@ -419,7 +419,7 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op string, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op []models.PatchOpInfo, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    ok = false
@@ -447,68 +447,6 @@ class DaemonObjectsInfo (object) :
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet, op)
                         if err == nil && ok == true {\n""" %s)
-                if array_obj == 'True' :
-                    clientIfFd.write("""    
-				         if op == "add" {
-					        fmt.Println("Add operation in update")
-					        if attrSet != nil {
-						        objTyp := reflect.TypeOf(*origconf)
-				                fmt.Println("attr set not nil, set individual attributes")
-						        for i := 0; i < objTyp.NumField(); i++ {
-							        objName := objTyp.Field(i).Name\n""")
-                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
-                         if attrInfo['isArray'] != 'False' :
-                              clientIfFd.write("""    
-							        if attrSet[i] && objName == "%s" {
-									    fmt.Println("add ", objName)
-									    for j := 0; j < len(origdata.%s); j++ {
-										    updatedata.%s = append(updatedata.%s, origdata.%s[j])
-									    }
-							        }\n"""%(attrName, attrName, attrName, attrName, attrName))
-                    clientIfFd.write("""
-						        }
-					        }
-					    }\n""")
-                    clientIfFd.write("""    
-				         if op == "remove" {
-					        fmt.Println("remove operation in update")
-					        if attrSet != nil {
-						        objTyp := reflect.TypeOf(*origconf)
-				                fmt.Println("attr set not nil, set individual attributes")
-						        for i := 0; i < objTyp.NumField(); i++ {
-							        objName := objTyp.Field(i).Name\n""")
-                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
-                         if attrInfo['isArray'] != 'False' :
-                              clientIfFd.write("""    
-							        if attrSet[i] && objName == "%s" {
-									    fmt.Println("remove ", objName)
-										for i1 := 0; i1< len(updatedata.%s); i1++ {
-											found := false
-											match := -1
-											for i2 := 0; i2 < len(origdata.%s) ; i2++ {
-												if origdata.%s[i2] == updatedata.%s[i1] {
-													found = true
-													match = i2
-													break
-												}
-											}
-											if !found {
-											} else {
-												origdata.%s[match] = origdata.%s[len(origdata.%s) - 1]
-										         origdata.%s = origdata.%s[:(len(origdata.%s)-1)]
-											}
-										}
-										updatedata.%s = updatedata.%s[:0]
-									    for i3 := 0; i3 < len(origdata.%s); i3++ {
-										    updatedata.%s = append(updatedata.%s, origdata.%s[i3])
-									    }
-							        }\n"""%(attrName, attrName, attrName, attrName, attrName, attrName,
-                                               attrName, attrName, attrName, attrName, attrName, attrName,
-											attrName, attrName, attrName, attrName, attrName))
-                    clientIfFd.write("""
-						        }
-					        }
-					    }\n""")
                 clientIfFd.write(""" 
                               err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
                               if err != nil {
