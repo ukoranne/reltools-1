@@ -2,8 +2,7 @@ MKDIR=mkdir -p
 RMDIRFORCE=rm -rf
 PKG_BUILD=FALSE
 PROD_NAME=flexswitch
-OPENNSL_TARGET=cel_redstone
-SAI_TARGET=mlnx
+BUILD_TARGET=cel_redstone
 ifneq (,$(findstring $(PKG_BUILD), FALSE))
 	EXT_INSTALL_PATH=
 	BUILD_DIR=out
@@ -34,7 +33,7 @@ COMPS_WITH_IPC=$(SR_CODE_BASE)/snaproute/src/asicd\
 
 define timedMake
 @echo -n "Building component $(1) started at :`date`\n"
-make -C $(1) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";
+make -C $(1) exe DESTDIR=$(DESTDIR)/$(EXE_DIR) BUILD_TARGET=$(BUILD_TARGET) GOLDFLAGS="-r /opt/flexswitch/sharedlib";
 @echo -n "Done building component $(1) at :`date`\n\n"
 endef
 all: $(ALL_DEPS)
@@ -65,7 +64,7 @@ ipc: $(COMPS_WITH_IPC)
 	$(foreach f,$^, make -C $(f) ipc DESTDIR=$(DESTDIR);)
 
 copy: $(COMPS)
-	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH) OPENNSL_TARGET=$(OPENNSL_TARGET) SAI_TARGET=$(SAI_TARGET);)
+	$(foreach f,$^, make -C $(f) install DESTDIR=$(DESTDIR)/$(EXT_INSTALL_PATH) BUILD_TARGET=$(BUILD_TARGET);)
 
 install:installdir copy
 	install $(SR_CODE_BASE)/reltools/flexswitch $(DESTDIR)/$(EXT_INSTALL_PATH)
