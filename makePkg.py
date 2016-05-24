@@ -7,8 +7,7 @@ PACKAGE_BUILD="PKG_BUILD=TRUE"
 TEMPLATE_BUILD_TYPE="PKG_BUILD=FALSE"
 TEMPLATE_CHANGELOG_VER = "0.0.1"
 TEMPLATE_BUILD_DIR = "flexswitch-0.0.1"
-TEMPLATE_SAI_TARGET = "mlnx"
-TEMPLATE_OPENNSL_TARGET = "cel_redstone"
+TEMPLATE_BUILD_TARGET = "cel_redstone"
 
 def executeCommand (command) :
     out = ''
@@ -22,16 +21,15 @@ def executeCommand (command) :
 if __name__ == '__main__':
     #Parse options
     parser = OptionParser()
-    parser.add_option("-s", "--sai",
-                      dest="saiTarget",
-                      default="mlnx",
-                      action='store',
-                      help="Taget platform to use for SAI plugin (mlnx/bfoot)")
-    parser.add_option("-o", "--opennsl",
-                      dest="opennslTarget",
+    parser.add_option("-t", "--target",
+                      dest="buildTarget",
                       default="cel_redstone",
                       action='store',
-                      help="Target platform to use for opennsl plugin (currently unused)")
+                      help="Target platform to use for package generation. Currently supported platforms \
+                            - cel_redstone \
+                            - accton_wedge \
+                            - accton_as5712 \
+                            - mlnx")
 
     cmd = 'python  buildInfoGen.py'
     executeCommand(cmd)
@@ -50,14 +48,11 @@ if __name__ == '__main__':
             ]
     executeCommand(preProcess)
 
-    #Override sai, opennsl targets
+    #Override build target
     (opts, args) = parser.parse_args()
-    if opts.saiTarget != None:
-        saiTarget = opts.saiTarget
-        executeCommand('sed -i s/' + TEMPLATE_SAI_TARGET +'/' + saiTarget + '/ ' + build_dir + '/Makefile')
-    if opts.opennslTarget != None:
-        opennslTarget = opts.opennslTarget
-        executeCommand('sed -i s/' + TEMPLATE_OPENNSL_TARGET +'/' + opennslTarget + '/ ' + build_dir + '/Makefile')
+    if opts.buildTarget != None:
+        buildTarget = opts.buildTarget
+        executeCommand('sed -i s/' + TEMPLATE_BUILD_TARGET +'/' + buildTarget + '/ ' + build_dir + '/Makefile')
 
     os.chdir(build_dir)
     pkgRecipe = [
