@@ -19,7 +19,8 @@
         ],
         "PackageDeps" : ["fakeroot", 
                          "dh-make"
-        ]
+        ],
+        "MiscDeps" : ["libpcap-dev" ]
     },
     "GoDeps" : [
         { "repo"      : "thrift",
@@ -84,5 +85,6 @@
         }
      ],
 	 "SnapRouteOrg" : "snaproute",
-	 "SnapRouteRepos" : [ "docs", "l2", "l3", "utils", "asicd", "config", "models", "infra", "vendors", "test","flexSdk", "apps"]
+	 "PublicRepos" : [ "docs", "l2", "l3", "utils", "asicd", "config", "models", "infra", "flexSdk", "apps"],
+	 "PrivateRepos" : [ "docs", "l2", "l3", "utils", "asicd", "config", "models", "infra", "vendors", "test","flexSdk", "apps"]
 }

@@ -41,7 +41,10 @@ class setupGenie (object) :
                     return self.anchor + EXTERNAL_SRC + dep['repo']
 
     def getSRRepos(self, comp = None) :
-        return self.info['SnapRouteRepos']
+        if self.internalUser:
+            return self.info['PrivateRepos']
+        else:
+            return self.info['PublicRepos']
 
     def getExtSrcDir (self ) :
         return self.anchor + EXTERNAL_SRC
