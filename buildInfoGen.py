@@ -1,4 +1,4 @@
-mport os
+import os
 import subprocess
 from optparse import OptionParser
 import sys
