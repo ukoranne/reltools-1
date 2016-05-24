@@ -695,6 +695,7 @@ func (obj *ObjectInfoJson) WriteLicenseInfo(fd *os.File) {
 //	 See the License for the specific language governing permissions and
 //	 limitations under the License.
 //
+//   This is a auto-generated file, please do not edit!
 //  _______  __       __________   ___      _______.____    __    ____  __  .___________.  ______  __    __  
 // |   ____||  |     |   ____\  \ /  /     /       |\   \  /  \  /   / |  | |           | /      ||  |  |  | 
 // |  |__   |  |     |  |__   \  V  /     |   (----  \   \/    \/   /  |  |  ---|  |---- |  ,---- |  |__|  | 
