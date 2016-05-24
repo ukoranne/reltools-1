@@ -250,7 +250,7 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 			case "MIN":
 				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "MAX":
-				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
+				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
 			case "RANGE":
 				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
