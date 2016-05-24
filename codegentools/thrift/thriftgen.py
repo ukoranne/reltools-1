@@ -611,7 +611,8 @@ class DaemonObjectsInfo (object) :
             structName = str(structName)
             for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo):
                 if attrInfo['isArray'] != 'False' :
-                    array_obj = 'True'				
+                    if 'w' in structInfo['access'] :
+                        array_obj = 'True'				
         clientIfFd = open(self.clientIfFileName, 'w+')
         clientIfFd.write("""
 //Copyright [2016] [SnapRoute Inc]
