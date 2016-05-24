@@ -254,9 +254,8 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 			case "RANGE":
 				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
-			case "LEN":
-				fmt.Println(keys)
-				attrInfo.Len, _ = strconv.Atoi(keys[idx])
+			case "STRLEN":
+				attrInfo.Len, _ = strconv.Atoi(keys[idx+1])
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
 			case "USESTATEDB":
