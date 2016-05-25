@@ -160,6 +160,9 @@ def _createDirectoryStructure() :
         local('mkdir -p '+ everydir) 
 
 def _verifyThriftInstallation(thriftVersion='0.9.3'):
+    ret = local('which thrift', capture=True)
+    if 'thrift' not in ret:
+       return False
     resp =  local('thrift -version', capture=True)
     return thriftVersion in resp
 
