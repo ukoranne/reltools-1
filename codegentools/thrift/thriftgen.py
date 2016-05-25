@@ -126,12 +126,18 @@ class DaemonObjectsInfo (object) :
                         thriftfd.write("\t%s : %s %s\n" % (index,
                                                          str(attrInfo['type']),
                                                          attrName))
-             
             thriftfd.write('}\n')
+             
             if 'r' in structInfo['access']:
                 thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(structName, structName, structName))
 
 
+        thriftfd.write("""\nstruct PatchOpInfo {
+    1 : string Op
+    2 : string Path
+    3 : list<map<string,string>> Value
+}
+			        \n""")
         if sName == "nil" :
             thriftfd.write("service %sServices {\n" % (dmn.upper()))
         elif "Services" in dmn: 
@@ -142,7 +148,7 @@ class DaemonObjectsInfo (object) :
             s = structName
             if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
-                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset, 4: string op);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset, 4: list<PatchOpInfo> op);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
 
                 if structInfo['accelerated']:
                     thriftfd.write(
