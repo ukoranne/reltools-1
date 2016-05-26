@@ -102,7 +102,7 @@ class FlexObject(object) :
             objName = self.name[:-5]
         else:
             objName = self.name
-        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'\n" %(objName))
+        lines.append (tabs + "reqUrl =  self.cfgUrlBase+" +"\'%s\'\n" %(objName))
         lines.append(tabs + "r = requests.get(reqUrl, data=json.dumps(obj), headers=headers) \n")
         lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
