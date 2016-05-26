@@ -20,7 +20,9 @@
         "PackageDeps" : ["fakeroot", 
                          "dh-make"
         ],
-        "MiscDeps" : ["libpcap-dev" ]
+        "MiscDeps" : [ "libpcap-dev",
+		      "gccgo-4.8"
+	]
     },
     "GoDeps" : [
         { "repo"      : "thrift",
