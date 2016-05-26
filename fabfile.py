@@ -167,6 +167,15 @@ def _verifyThriftInstallation(thriftVersion='0.9.3'):
     resp =  local('thrift -version', capture=True)
     return thriftVersion in resp
 
+def printInstruction():
+    print "###########################"
+    print "Please add the following lines in your ~/.bashrc file"
+    print "###########################"
+    print "export PATH=$PATH:/usr/local/go/bin"
+    print "export SR_CODE_BASE=$HOME/git"
+    print "export GOPATH=$SR_CODE_BASE/snaproute/:$SR_CODE_BASE/external/:$SR_CODE_BASE/generated/"
+    print "###########################"
+
 def setupDevEnv() :
     global gAnchorDir, gGitUsrName, gRole
     gAnchorDir = prompt('Host directory:', default='git')
@@ -181,4 +190,5 @@ def setupDevEnv() :
     installNanoMsgLib()
     installIpTables()
     setupSRRepos()
+    printInstruction()
      
