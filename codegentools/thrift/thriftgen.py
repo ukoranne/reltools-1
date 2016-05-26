@@ -425,13 +425,23 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op []models.PatchOpInfo, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, patchOpInfo []models.PatchOpInfo, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    ok = false
             err = nil
+			
+			var op []*%s.PatchOpInfo = make([]*%s.PatchOpInfo, len(patchOpInfo))
+			var opArr []%s.PatchOpInfo = make([]%s.PatchOpInfo,len(patchOpInfo))
+	        for _, tempOp := range patchOpInfo {
+		        opArr = append(opArr, %s.PatchOpInfo{tempOp.Op, tempOp.Path, tempOp.Value.([]map[string]string)})
+	        }
+	        for _, tempOpVal := range opArr {
+		        op = append(op, &tempOpVal)
+	        }
+
             switch obj.(type) {
-        """ %(self.newDeamonName))
+        """ %(self.newDeamonName,self.servicesName,self.servicesName,self.servicesName, self.servicesName, self.servicesName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -537,8 +547,8 @@ class DaemonObjectsInfo (object) :
         #if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
         # BELOW CODE WILL BE FORMATED BY GOFMT
         clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"utils/dbutils"\n""" % self.servicesName)
-        if array_obj == 'True' :
-            clientIfFd.write(""" "reflect"\n""" )		
+        #if array_obj == 'True' :
+            #clientIfFd.write(""" "reflect"\n""" )		
         clientIfFd.write(""")\n""")
         self.clientIfBasicHelper(clientIfFd)
         self.createClientIfCreateObject(clientIfFd, objectNames)
