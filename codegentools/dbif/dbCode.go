@@ -489,7 +489,6 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 			return err
 		}`)
 	lines = append(lines, `
-						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -501,50 +500,35 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 								fieldTyp := objTyp.Field(i)
 								fieldVal := objVal.Field(i)
 								fieldName := fieldTyp.Name
-								if fieldVal.Kind() == reflect.Int ||
-									fieldVal.Kind() == reflect.Int8 ||
-									fieldVal.Kind() == reflect.Int16 ||
-									fieldVal.Kind() == reflect.Int32 ||
-									fieldVal.Kind() == reflect.Int64 || 
-									fieldVal.Kind() == reflect.Uint ||
-									fieldVal.Kind() == reflect.Uint8 ||
-									fieldVal.Kind() == reflect.Uint16 ||
-									fieldVal.Kind() == reflect.Uint32 ||
-									fieldVal.Kind() == reflect.Uint64 || 
-									fieldVal.Kind() == reflect.Bool || 
-									fieldVal.Kind() == reflect.String {
-						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
-								} else if fieldVal.Kind() == reflect.Slice {
-					                    secObjVal := fieldVal.Index(0)
+								if fieldVal.Kind() == reflect.Slice {
+									if fieldVal.Len() > 0 {
+										secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
 										if err != nil {
 											return err
 										}
-					                    if secObjVal.Kind() == reflect.Struct {
-												bytes, err := json.Marshal(fieldVal.Interface())
+										if secObjVal.Kind() == reflect.Struct {
+											bytes, err := json.Marshal(fieldVal.Interface())
+											if err != nil {
+												return err
+											}
+											_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
+											if err != nil {
+												return err
+											}
+										} else {
+											for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
+												_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
 												if err != nil {
 													return err
 												}
-												_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
-												if err != nil {
-													return err
-												}
-					                    } else {
-												for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
-													_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
-													if err != nil {
-														return err
-													}
-												}
+											}
 										}
+									}
 								}
 							}
 							idx++
 						}
-//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-//						if err != nil {
-//							return err
-//						}
 						return nil
 					}`)
 	for _, line := range lines {
