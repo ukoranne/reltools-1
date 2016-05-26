@@ -40,7 +40,7 @@ if DEBUG:
 
 # for each structure there may be a 'list' key that should be identified
 # for purposes of a DB
-LIST_KEY_STR = '`SNAPROUTE: KEY`'
+LIST_KEY_STR = '`SNAPROUTE: "KEY", '
 
 # YANG is quite flexible in terms of what it allows as input to a boolean
 # value, this map is used to provide a mapping of these values to the python
@@ -183,12 +183,12 @@ class BTPyGOClass(plugin.PyangPlugin):
                   "func": open(name + "_serializer.go", 'w+b')}
 
         modelFileName  = fd.name.strip('.tmp')
-        serializerName = modelFileName.strip('.go') + '_serializer.go'
+        #serializerName = modelFileName.strip('.go') + '_serializer.go'
         build_pybind(ctx, modules, fdDict)
 
         with open(GENERATED_FILES_LIST, 'a+') as fp:
             fp.write(modelFileName + '\n')
-            fp.write(serializerName+ '\n')
+            #fp.write(serializerName+ '\n')
 
         objsData = srBase+ '/snaproute/src/models/'+'genObjectConfig.json' 
         with open(objsData, 'w+') as fp:
@@ -364,10 +364,10 @@ def build_pybind(ctx, modules, fdDict):
         fd.write(ctx.pybind_common_hdr)
 
 
-    fdDict["func"].write("import (\n")
-    fdDict["func"].write("""\t \"encoding/json\"\n
-    \t\"fmt\"\n
-    )\n""")
+    #fdDict["func"].write("import (\n")
+    #fdDict["func"].write("""\t \"encoding/json\"\n
+    #\t\"fmt\"\n
+    #)\n""")
 
     #fdDict["func"].write("""type ConfigObj interface {
     #     UnmarshalObject(data []byte) (ConfigObj, error)
@@ -961,18 +961,84 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
 def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
 
     structName = CreateStructSkeleton(module, nfd, parent, path, write=False)
-    if structName != '':
-        nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
-        var err error
-        if len(body) > 0 {
-            if err = json.Unmarshal(body, &obj); err != nil  {
-                fmt.Println("### %s called, unmarshal failed", obj, err)
-            }
-        }
-        return obj, err
-        }\n""" %(structName, structName))
+    #if structName != '':
+    #    nfd.write("""func (obj %s) UnmarshalObject(body []byte) (ConfigObj, error) {
+    #    var err error
+    #    if len(body) > 0 {
+    #        if err = json.Unmarshal(body, &obj); err != nil  {
+    #            fmt.Println("### %s called, unmarshal failed", obj, err)
+    #        }
+    #    }
+    #    return obj, err
+    #    }\n""" %(structName, structName))
 
     return structName
+
+def setSelectionFromElemtype(elemtype,):
+
+    elements_str = ""
+    restriction = None
+    if 'restriction_argument' in elemtype:
+        restriction = elemtype['restriction_argument']
+        elements_str += ", SELECTION: "
+    if 'restriction_dict' in elemtype:
+        if 'restriction_argument' in elemtype['restriction_dict']:
+            restriction = elemtype['restriction_dict']['restriction_argument']
+            elements_str += ", SELECTION: "
+        else:
+            #import ipdb; ipdb.set_trace()
+            if type(elemtype['restriction_dict']) == dict:
+                #print elemtype['restriction_dict']
+                for k, v in elemtype['restriction_dict'].iteritems():
+                    if k == 'range':
+                        range = v.split("..")
+                        elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                    elif k == 'length':
+                        if '..' in v:
+                            range = v.split("..")
+                            elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                        else:
+                            length = int(v)
+                            elements_str += ", SELECTION: LEN %s" %(length,)
+                    else:
+                        elements_str += ", SELECTION: %s" % v
+            #else:
+            #    elements_str += ", SELECTION: %s" % elemtype['restriction_dict']
+
+    if restriction:
+        for k, v in restriction.iteritems():
+            elements_str += "%s(%s)/" %(k, v['value'])
+        elements_str = elements_str.rstrip('/')
+
+    return elements_str
+
+def setDefaultFromElemtype(elem):
+    #import ipdb; ipdb.set_trace()
+    elements_str = ""
+    restriction = None
+    if 'default' in elem and elem['default']:
+        if 'elemtype' in elem:
+            elemtype = elem['elemtype']
+            if 'restriction_argument' in elemtype:
+                restriction = elemtype['restriction_argument']
+            if 'restriction_dict' in elemtype:
+                if 'restriction_argument' in elemtype['restriction_dict']:
+                    restriction = elemtype['restriction_dict']['restriction_argument']
+
+        if restriction:
+            for k, v in restriction.iteritems():
+                if k == elem['default']:
+                    if str(v['value']).isdigit():
+                        elements_str += ", DEFAULT: %s" %(v['value'],)
+                    else:
+                        elements_str += ", DEFAULT: \"%s\"" %(v['value'],)
+        else:
+            if str(elem['default']).isdigit():
+                elements_str += ", DEFAULT: %s" %(elem['default'],)
+            else:
+                elements_str += ", DEFAULT: \"%s\"" %(elem['default'],)
+
+    return elements_str
 
 def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
     attrDescriptionDict = {}
@@ -994,8 +1060,8 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
     for name, elemtype in parentChildrenLeaf.iteritems():
         attrDescriptionDict[name] = elemtype[2]
 
-    # lets add the default interface functions from the BaseObj
-    elements_str += "\tBaseObj\n"
+    # lets add the default interface functions from the ConfigObj
+    elements_str += "\tConfigObj\n"
 
     elementList = []
 
@@ -1003,15 +1069,19 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
         if safe_name(name) in elementList:
             continue
-
+        #import ipdb; ipdb.set_trace()
         # is key?
         if elemtype[1]:
             #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if isinstance(elemtype[0][1]["native_type"], list):
                 elements_str += "\t%s []%s %s" % (safe_name(name), elemtype[0][1]["native_type"][0], LIST_KEY_STR)
+                elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
             else:
                 elements_str += "\t%s %s %s" % (safe_name(name), elemtype[0][1]["native_type"], LIST_KEY_STR)
-            elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+                elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
+            elements_str += setSelectionFromElemtype(elemtype[0][1])
+            elements_str += setDefaultFromElemtype(elemtype[0][1])
+            elements_str += "`\n"
             elementList.append(safe_name(name))
         elif safe_name(name) not in childNameList:
             if elemtype[0] is None:
@@ -1020,9 +1090,14 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
             if elemtype[0][0] != 'leaf-union':
                 if isinstance(elemtype[0][1]["native_type"], list):
                     elements_str += "\t%s []%s" % (safe_name(name), elemtype[0][1]["native_type"][0])
+                    elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
                 else:
                     elements_str += "\t%s %s" % (safe_name(name), elemtype[0][1]["native_type"])
-                elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+                    elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
+                elements_str += setSelectionFromElemtype(elemtype[0][1])
+                elements_str += setDefaultFromElemtype(elemtype[0][1])
+                elements_str += "`\n"
+
                 elementList.append(safe_name(name))
             else:
                 for subtype in elemtype[0][1]:
@@ -1040,10 +1115,14 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
                     if keyname == i["name"]:
                         elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                        elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
                     else:
                         elements_str += "\t%s %s" % (elemName, membertype)
+                        elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[name].replace('\n',' '))
 
-                    elements_str += "\t //%s\n" %(attrDescriptionDict[name].replace('\n',' '))
+                    elements_str += setSelectionFromElemtype(subtype[1])
+                    elements_str += setDefaultFromElemtype(subtype[1])
+                    elements_str += "`\n"
                     elementList.append(elemName)
 
     for i in elements:
@@ -1052,6 +1131,7 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         if elemName in elementList:
             continue
 
+        #import ipdb; ipdb.set_trace()
         #elements_str += "\t//yang_name: %s class: %s\n" % (i['yang_name'], i['class'])
         #elements_str += "\t//%s\n" % (i['description'].replace('\n', ' '))
         if i["class"] == "leaf-list":
@@ -1074,10 +1154,17 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
                         if keyname == i["name"]:
                             elements_str += "\t%s %s  %s" % (elemName, varname, LIST_KEY_STR)
+                            elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
                         else:
                             elements_str += "\t%s %s" % (elemName, varname)
+                            elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
 
-                        elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+
+                        if 'elemtype' in i:
+                            elements_str += setSelectionFromElemtype(i['elemtype'])
+                        elements_str += setDefaultFromElemtype(i)
+
+                        elements_str += "`\n"
                         elementList.append(elemName)
 
                 else:
@@ -1087,9 +1174,18 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
                     if keyname == i["name"]:
                         elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                        elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
                     else:
                         elements_str += "\t%s []%s" % (elemName, varname)
-                    elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                        elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
+
+                    if 'elemtype' in i:
+                        elements_str += setSelectionFromElemtype(i['elemtype'])
+
+                    elements_str += setDefaultFromElemtype(i)
+                    elements_str += "`\n"
+                    elementList.append(elemName)
+
             else:
                 varname = i["type"]["native_type"]
                 if isinstance(varname, list):
@@ -1097,10 +1193,16 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
                 if keyname == i["name"]:
                     elements_str += "\t%s []%s  %s" % (elemName, varname, LIST_KEY_STR)
+                    elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
                 else:
                     elements_str += "\t%s []%s" % (elemName, varname)
+                    elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
 
-                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+
+                if 'elemtype' in i:
+                    elements_str += setSelectionFromElemtype(i['elemtype'])
+                elements_str += setDefaultFromElemtype(i)
+                elements_str += "`\n"
                 elementList.append(elemName)
 
 
@@ -1112,10 +1214,16 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
             if keyname == i["name"]:
                 elements_str += "\t%s []%s  %s" % (elemName, listType, LIST_KEY_STR)
+                elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
             else:
                 elements_str += "\t%s []%s" % (elemName, listType)
+                elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
 
-            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+
+            if 'elemtype' in i:
+                elements_str += setSelectionFromElemtype(i['elemtype'])
+            elements_str += setDefaultFromElemtype(i)
+            elements_str += "`\n"
             elementList.append(elemName)
 
         elif i["class"] == "union" or i["class"] == "leaf-union":
@@ -1139,10 +1247,16 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
                 if keyname == i["name"]:
                     elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                    elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
                 else:
                     elements_str += "\t%s %s" % (elemName, membertype)
+                    elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
 
-                elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+                import ipdb; ipdb.set_trace()
+                if 'elemtype' in i:
+                    elements_str += setSelectionFromElemtype(i['elemtype'])
+                elements_str += setDefaultFromElemtype(i)
+                elements_str += "`\n"
                 elementList.append(elemName)
 
         else:
@@ -1152,10 +1266,15 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
             if keyname == i["name"]:
                 elements_str += "\t%s %s  %s" % (elemName, membertype, LIST_KEY_STR)
+                elements_str += " DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
             else:
                 elements_str += "\t%s %s" % (elemName, membertype)
+                elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
 
-            elements_str += "\t //%s\n" %(attrDescriptionDict[elemName].replace('\n',' '))
+            if 'elemtype' in i:
+                elements_str += setSelectionFromElemtype(i['elemtype'])
+            elements_str += setDefaultFromElemtype(i)
+            elements_str += "`\n"
             elementList.append(elemName)
 
     elements_str += "}\n"
@@ -1320,9 +1439,9 @@ def build_elemtype(ctx, et, prefix=False):
             enumeration_dict = {}
             for enum in et.search('enum'):
                 enumeration_dict[unicode(enum.arg)] = {}
-                val = enum.search_one('value')
+                val = enum.i_value
                 if val is not None:
-                    enumeration_dict[unicode(enum.arg)]["value"] = int(val.arg)
+                    enumeration_dict[unicode(enum.arg)]["value"] = int(val)
             elemtype = {"native_type": """int32""", \
                         "restriction_argument": enumeration_dict, \
                         "restriction_type": "dict_key", \
@@ -1446,6 +1565,8 @@ def get_element(ctx, fdDict, element, module, parent, path,
             newpath = path
     else:
         newpath = path
+
+    #import ipdb; ipdb.set_trace()
 
     this_object = []
     default = False

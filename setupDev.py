@@ -19,6 +19,8 @@ GENERATED_SRC = '/generated/src/'
 gHomeDir = None
 gDryRun =  False
 
+gitProtocol = "https"
+
 def executeCommandV2(command):
     out = ''
     if type(command) != list:
@@ -225,13 +227,30 @@ def getExternalGoDeps() :
                        'renamesrc'   : 'net',
                        'renamedst'   : 'golang.org/x/net'
                      },
+                     { 'repo'        : 'redigo',
+                       'renamesrc'   : 'redigo',
+                       'renamedst'   : 'github.com/garyburd/redigo'
+                     },
+                     {
+                        'repo'      : 'libovsdb',
+                        'renamesrc' : 'libovsdb',
+                        'renamedst' : 'github.com/socketplane/libovsdb'
+                     },
+                     {
+                        'repo'      : 'netfilter',
+                        'renamesrc' : 'netfilter',
+                        'renamedst' : 'github.com/netfilter'
+                     },
                      ]
 
     dirLocation = gHomeDir + EXTERNAL_SRC 
     for dep in externalGoDeps:
         #if dep['repo'] == 'netlink':
         #    import ipdb;ipdb.set_trace()
-        repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
+        if gitProtocol == "ssh":
+            repoUrl = 'git@github.com:SnapRoute/'+ dep['repo']
+        else:
+            repoUrl = 'https://github.com/SnapRoute/'+ dep['repo']
         dstDir =  dep['renamedst'] if dep.has_key('renamedst') else ''
         dirToMake = dstDir 
         #if dstDir == '' or (dstDir != '' and not (os.path.isdir(dirLocation + dstDir) and os.path.exists(dirLocation + dstDir))):
@@ -251,10 +270,17 @@ def getExternalGoDeps() :
                 executeCommand(cmd)
             if dep['repo'] == 'nanomsg':
                 installNanoMsgLib(dirLocation + dep['renamedst'] + dep['renamesrc'])
+            if dep['repo'] == 'netfilter':
+                setupIpTablelib()
+                
 
 def cloneSnapRouteGitRepos( gitReposToClone = None):
-    userRepoPrefix   = 'https://github.com/'+gUserName+'/'
-    remoteRepoPrefix = 'https://github.com/'+ 'SnapRoute/'
+    if gitProtocol == "ssh":
+        userRepoPrefix   = 'git@github.com:'+gUserName+'/'
+        remoteRepoPrefix = 'git@github.com:'+ 'SnapRoute/'
+    else:
+        userRepoPrefix   = 'https://github.com/'+gUserName+'/'
+        remoteRepoPrefix = 'https://github.com/'+ 'SnapRoute/'
     dirLocation      = gHomeDir + SNAP_ROUTE_SRC
 
     if not gitReposToClone :
@@ -285,9 +311,14 @@ def setupOpenNslLibLink ():
         executeCommand(cmd)
 
 def setupIpTablelib ():
-    nfLoc = gHomeDir + SNAP_ROUTE_SRC + 'netfilter/'
-    repoUrl= 'https://github.com/'+ 'SnapRoute/netfilter'
-    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + SNAP_ROUTE_SRC)
+    nfLoc = gHomeDir + EXTERNAL_SRC + 'github.com/netfilter/'
+    if gitProtocol == "ssh":
+        repoUrl = 'git@github.com:'+ 'SnapRoute/netfilter'
+    else:
+        repoUrl= 'https://github.com/'+ 'SnapRoute/netfilter'
+    print nfLoc
+    print repoUrl
+    cloneGitRepo ( repoUrl ,'netfilter', gHomeDir + EXTERNAL_SRC + 'github.com/')
     libipDir = 'libiptables'
     allLibs = ['libmnl', 'libnftnl', 'iptables']
     os.chdir(nfLoc)
@@ -342,12 +373,21 @@ if __name__ == '__main__':
                       action='store_true',
                       help="Update the new additions")
 
+    parser.add_option("-g", "--gitprotocol", 
+                      dest="git_proto",
+                      action='store',
+                      help="Git protocol ssh/https")
+
 
     (options, args) = parser.parse_args()
 
     gUserName =  raw_input('Please Enter github username:')
     gHomeDir = os.path.dirname(os.getcwd())
     print '### Anchor Directory is %s' %(gHomeDir)
+
+    if options.git_proto == "ssh":
+        print '### set git protocol to ssh'
+        gitProtocol = "ssh"
 
     todo = ['external', 'snaproute', 'specific_repo', 'python', 'netfilter']
     if options.sr_repos or options.specific_repo:

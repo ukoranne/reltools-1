@@ -1,4 +1,23 @@
 import json
+import operator
+def isNumericAttr (attrInfo) :
+    if attrInfo['isArray'] == 'False':
+        return attrInfo['type'] in ["int32", "uint32", "uint8", "uint16", "int16"]
+    else:
+        return False
+
+def isListAttr(attrInfo) :
+    return attrInfo['isArray'] == 'True'
+
+def isBoolean(attrType) :
+    return attrType in ["bool"]
+
+def boolFromString (val) :
+    if val == 'false':
+        return False
+    else:
+        return True 
+
 class FlexObject(object) :
     TAB = "    " 
     def __init__ (self,     # Yours truly
@@ -11,52 +30,99 @@ class FlexObject(object) :
         self.attrFile = attrFile
         self.multiplicity = multiplicity
         self.attrDict = {}
+        self.attrList = None
+        
         with open(attrFile) as fileHdl:
             attrDict = json.load(fileHdl)
+            attrList = [None] *len(attrDict)
+            keysList = []
+            dfltAttrList = []
             for attrName, tmpInfo in attrDict.iteritems():
                 tmpDict = {}
                 for k,v in tmpInfo.iteritems():
                     tmpDict[str(k)] = str(v)
+
                 self.attrDict[str(attrName)] = tmpDict
+                if tmpDict['isKey'] == 'True':
+                    keysList.append((attrName, self.attrDict[str(attrName)]))
+                elif tmpDict['default'] != '':
+                    dfltAttrList.append((attrName, self.attrDict[str(attrName)]))
+                else:
+                    attrList[tmpInfo['position'] -1] = (attrName, self.attrDict[str(attrName)])
+
+            self.attrList =  keysList + [x for x in attrList if x!= None] + dfltAttrList 
+
                 
     def createGetByIdMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "def delete" + self.name + "ById(self, objectId ):\n"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
+        lines.append("\n"+ tabs + "def get" + self.name + "ById(self, objectId ):\n")
         tabs = tabs + self.TAB
-        lines.append (tabs + "reqUrl =  self.urlBase+" +"\'%s\'" %(self.name))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.stateUrlBase+" +"\'%s\'" %(objName))
         lines[-1] = lines[-1] + "+\"/%s\"%(objectId)\n"
-        lines.append(tabs + "r = requests.delete(reqUrl, data=None, headers=headers) \n")
-        lines.append(tabs + "return r.json() \n\n")
+        lines.append(tabs + "r = requests.get(reqUrl, data=None, headers=headers) \n")
+        lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
 
     def createGetMethod (self, fileHdl):
         tabs = self.TAB
-        lines = [ "\n"+ tabs + "def get" + self.name + "(self,"]
+        #lines = [ "\n"+ tabs + "@processReturnCode"]
+        lines = []
+        lines.append("\n"+ tabs + "def get" + self.name + "(self,")
         tabs = tabs + self.TAB
         spaces = ' ' * (len(lines[-1])  - len("self, "))
         objLines = [tabs + "obj =  { \n"]
-        for attr, attrInfo in self.attrDict.iteritems():
+        argStr = ''
+        for (attr, attrInfo) in self.attrList:
             if attrInfo['isKey'] == 'True':
-                lines.append("\n" + spaces + "%s," %(attr))
-                objLines.append(tabs+tabs + "\'%s\' : %s\n" %(attr, attr))
+                argStr = "\n" + spaces + "%s," %(attr)
+                assignmentStr = "%s" %(attr)
+
+                if isNumericAttr(attrInfo):
+                    #argStr = "\n" + spaces + "%s=%d," %(attr,int(attrInfo['default'].lstrip()))
+                    assignmentStr = "int(%s)" %(attr)
+                elif isBoolean(attrInfo['type']):
+                    #argStr = "\n" + spaces + "%s=%s," %(attr, boolFromString(attrInfo['default'].lstrip()))
+                    assignmentStr = "True if %s else False" %(attr)
+
+                lines.append(argStr)
+                objLines.append(tabs+tabs + "\'%s\' : %s,\n" %(attr, assignmentStr))
+
+
         lines[-1] = lines[-1][0:lines[-1].find(',')]
         lines.append("):\n")
         objLines.append(tabs + tabs+"}\n")
         lines = lines + objLines
-        lines.append (tabs + "reqUrl =  self.urlBase+" +"\'%s\'\n" %(self.name))
+        if self.name.endswith('State'):
+            objName = self.name[:-5]
+        else:
+            objName = self.name
+        lines.append (tabs + "reqUrl =  self.cfgUrlBase+" +"\'%s\'\n" %(objName))
         lines.append(tabs + "r = requests.get(reqUrl, data=json.dumps(obj), headers=headers) \n")
-        lines.append(tabs + "return r.json() \n\n")
+        lines.append(tabs + "return r\n")                                                                                  
         fileHdl.writelines(lines)
 
-    def createGetAllMethod (self, fileHdl):
+    def createGetAllMethod (self, fileHdl, urlPath):
         tabs = self.TAB
         lines = [ "\n"+ tabs + "def getAll" + self.name+"s" + "(self):\n"]
         tabs = tabs + self.TAB
-        lines.append (tabs + "return self.getObjects( \'%s\') \n\n" %(self.name))
+        if 'r' in self.access:
+            if self.name.endswith('State'):
+                objName = self.name[:-5]
+            else:
+                objName = self.name
+        else:
+            objName = self.name
+        lines.append (tabs + "return self.getObjects( \'%s\', %s)\n\n" %(objName, urlPath))
         fileHdl.writelines(lines)
 
     def writeAllMethods (self, fileHdl):
         self.createGetMethod(fileHdl)
         self.createGetByIdMethod(fileHdl)
-        self.createGetAllMethod(fileHdl)
+        self.createGetAllMethod(fileHdl, 'self.stateUrlBase')
 

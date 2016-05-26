@@ -17,13 +17,15 @@ class apiGenie (object) :
             with open(desc) as fileHdl:
                 objMembersData = json.load(fileHdl)                                                                        
                 for objName, objInfo in objMembersData.iteritems():
-                    if str(objInfo['access']) == 'w':
+                    #if objName != 'BGPNeighbor':
+                    #    continue
+                    if 'w' in str(objInfo['access']):
                         self.objDict[objName] = FlexConfigObject (objName, 
                                                                   objInfo['access'],
                                                                   objInfo['multiplicity'],
                                                                   self.attrBase + objName + "Members.json"
                                                                   )
-                    elif str(objInfo['access']) == 'r':
+                    elif 'r' in str(objInfo['access']):
                         self.objDict[objName] = FlexStateObject  (objName,
                                                                   objInfo['access'],
                                                                   objInfo['multiplicity'],
@@ -31,9 +33,13 @@ class apiGenie (object) :
                                                                   )
 
     def writeApiCode(self) :
-        outputFile = 'tmp.py'
+        filePath = ''
+        basePath= os.getenv('SR_CODE_BASE')
+        if basePath!= None:
+            filePath = basePath + '/reltools/codegentools/apigen/'
+        outputFile = self.outputDir + 'flexswitchV2.py'
         with open(outputFile, 'w+') as fileHdl:
-            with open('baseCode.txt', 'r') as base:
+            with open(filePath + 'baseCode.txt', 'r') as base:
                 fileHdl.writelines(base.readlines())
             for objName, obj in self.objDict.iteritems():
                 obj.writeAllMethods(fileHdl)
@@ -44,10 +50,8 @@ if __name__ == '__main__':
     if not baseDir:
         print 'Environment variable SR_CODE_BASE is not set'
     
-    objDescriptors = [ baseDir + '/snaproute/src/models/' + 'genObjectConfig.json',
-                       #baseDir + '/snaproute/src/models/' + 'handCodedObjInfo.json'
-                     ]
+    objDescriptors = [ baseDir + '/snaproute/src/models/' + 'genObjectConfig.json', ]
     attrDescriptorsLocation = baseDir+'/reltools/codegentools/._genInfo/'
-    outputDir = baseDir+'snaproute/src/flexSdk/py'
+    outputDir = baseDir+'/snaproute/src/flexSdk/py/'
     gen = apiGenie( outputDir, objDescriptors, attrDescriptorsLocation)
     gen.writeApiCode()

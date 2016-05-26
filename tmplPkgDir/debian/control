@@ -1,7 +1,7 @@
 Source: flexswitch
 Section: misc
 Priority: optional
-Maintainer: Hari <hari@unknown>
+Maintainer: SnapRoute <support@snaproute.com>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.4
 Homepage:http://www.snaproute.com 
@@ -10,6 +10,6 @@ Homepage:http://www.snaproute.com
 
 Package: flexswitch
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Depends: ${shlibs:Depends}, ${misc:Depends}, redis-server(>=2.8)
+Description: <FlexSwitch : Opensource Network Protocols Stacks>
+ <OpenSource Protocol Suite developed by SnapRoute>
