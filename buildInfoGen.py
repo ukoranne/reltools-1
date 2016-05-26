@@ -51,7 +51,7 @@ if __name__ == '__main__':
     srcFile = baseDir + '/reltools/' + SRC_INFO_FILE
     with open(srcFile) as infoFd:
         info = json.load(infoFd)
-        for rp in info ['repos'] ['snaproute'] ['package']:
+        for rp in info ['repos'] ['snaproute']:
             repos.append(repo(baseDir, rp))
     reposInfoList = []
     with open(BUILD_INFO_FILE, 'w') as bldFile: 
