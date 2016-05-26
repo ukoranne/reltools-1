@@ -457,7 +457,7 @@ func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, 
 	for owner, objList := range objectsByOwner {
 		if len(objList) > 0 {
 			srcFile := objList[0].SrcFile
-			if owner != "lacpd" || owner != "ospfd" {
+			if owner != "lacpd" { //|| owner != "ospfd" {
 				generateUnmarshalFcn(listingsFd, fileBase, dirStore, owner, srcFile, objList)
 			}
 		}
