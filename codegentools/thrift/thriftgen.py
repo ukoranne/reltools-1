@@ -135,7 +135,7 @@ class DaemonObjectsInfo (object) :
         thriftfd.write("""\nstruct PatchOpInfo {
     1 : string Op
     2 : string Path
-    3 : list<map<string,string>> Value
+    3 : string Value
 }
 			        \n""")
         if sName == "nil" :
@@ -431,14 +431,14 @@ class DaemonObjectsInfo (object) :
 	    ok = false
             err = nil
 			
-			var op []*%s.PatchOpInfo = make([]*%s.PatchOpInfo, len(patchOpInfo))
-			var opArr []%s.PatchOpInfo = make([]%s.PatchOpInfo,len(patchOpInfo))
+			var op []*%s.PatchOpInfo = make([]*%s.PatchOpInfo, 0)
+			var opArr []%s.PatchOpInfo = make([]%s.PatchOpInfo,0)
 	        for _, tempOp := range patchOpInfo {
-		        opArr = append(opArr, %s.PatchOpInfo{tempOp.Op, tempOp.Path, tempOp.Value.([]map[string]string)})
+		        opArr = append(opArr, %s.PatchOpInfo{tempOp.Op, tempOp.Path, tempOp.Value})
 	        }
-	        for _, tempOpVal := range opArr {
-		        op = append(op, &tempOpVal)
-	        }
+	        for opIdx := 0; opIdx < len(opArr); opIdx++ {
+	 	        op = append(op, &opArr[opIdx])
+ 	        }
 
             switch obj.(type) {
         """ %(self.newDeamonName,self.servicesName,self.servicesName,self.servicesName, self.servicesName, self.servicesName))
