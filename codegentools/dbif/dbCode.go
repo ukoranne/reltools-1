@@ -590,7 +590,7 @@ func (obj *ObjectInfoJson) WriteCopyRecursiveFcn(str *ast.StructType, fd *os.Fil
 func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
 	var lines []string
 	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObjForPatchUpdate(dbObj ConfigObj, patchOpInfoSlice []PatchOpInfo) (ConfigObj, []bool, error) {\n")
-	lines = append(lines, "var mergedObject, tempObj  "+obj.ObjName+"\n")
+	lines = append(lines, "var mergedObject, tempObject  "+obj.ObjName+"\n")
 	lines = append(lines, `objTyp := reflect.TypeOf(obj)
 						dbObjVal := reflect.ValueOf(dbObj)
 						mergedObjVal := reflect.ValueOf(&mergedObject)
@@ -629,7 +629,6 @@ func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.St
 		                         if fieldTyp.Anonymous {
 			                        continue
 		                         }
-		                         dbObjField := dbObjVal.Field(i)
 			                    if fieldTyp.Name == patchOpInfo.Path {
 				                   fmt.Println("found pathStr ", patchOpInfo.Path, " at index ", i)
 				                   diff[idx] = true
@@ -655,6 +654,27 @@ func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.St
 		    lines = append(lines,"}\n")
 	         lines = append(lines, `
 						                      case "remove":
+						`)
+			lines = append(lines, "for k := 0; k < len(tempObject."+attrInfo.MemberName+"); k++ {\n")
+			lines = append(lines,`
+							found := false
+							match := -1
+					`)
+			lines = append(lines,	"for k2 := 0 ; k2 < len(mergedObject."+attrInfo.MemberName+");k2++{\n")
+			lines = append(lines, "if mergedObject."+attrInfo.MemberName+"[k2] == tempObject."+attrInfo.MemberName+"[k] {")
+			lines = append(lines,`
+								    found = true
+									match = k2 
+									break
+								}
+							}
+							if found {
+					`)
+			lines = append(lines, "mergedObject."+attrInfo.MemberName+"[match]  = mergedObject."+attrInfo.MemberName+"[len(mergedObject."+attrInfo.MemberName+") - 1]\n")
+			lines = append(lines, "mergedObject."+attrInfo.MemberName+" = mergedObject."+attrInfo.MemberName+"[:(len(mergedObject."+attrInfo.MemberName+") - 1)]\n")
+			lines = append(lines,`
+							}
+						}
 						 `)
 		}
 	    lines = append(lines, `
