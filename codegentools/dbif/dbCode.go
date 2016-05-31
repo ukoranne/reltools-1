@@ -606,7 +606,6 @@ func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.St
 							}
 						}
        	                 for _, patchOpInfo := range patchOpInfoSlice {
-		                     fmt.Println("path = ", patchOpInfo.Path, "op = ", patchOpInfo.Path, "value = ", patchOpInfo.Value)
 		                     idx := 0
 	                         for i := 0; i < objTyp.NumField(); i++ {
 		                         fieldTyp := objTyp.Field(i)
@@ -614,7 +613,6 @@ func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.St
 			                        continue
 		                         }
 			                    if fieldTyp.Name == patchOpInfo.Path {
-				                   fmt.Println("found pathStr ", patchOpInfo.Path, " at index ", i)
 				                   diff[idx] = true
 				                   switch patchOpInfo.Path {
 				`)
@@ -676,7 +674,6 @@ func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.St
 			                     }
 			                     idx++
 		                      }
-		                      fmt.Println("mergedObj = ", mergedObject)
 	                     }
 						return mergedObject , diff, nil
 					}
