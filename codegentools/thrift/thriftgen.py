@@ -755,6 +755,8 @@ def generateThriftAndClientIfs():
         dmnObj.objectDict[name] = dtls
     
     for dmn, entry in ownerToObjMap.iteritems():
+        if dmn == 'local':
+            continue
         entry.parseSrcFile()
         entry.generateThriftInterfaces(ownerToObjMap[dmn])
         entry.createConvertObjToThriftObj(ownerToObjMap[dmn])
