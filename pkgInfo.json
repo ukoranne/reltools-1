@@ -1,12 +1,6 @@
 {
     "major" : "1",
-<<<<<<< Updated upstream
     "minor" : "0",
     "patch" : "0",
-    "build" : "102"
-=======
-    "minor" : "13",
-    "patch" : "13",
-    "build" : "101"
->>>>>>> Stashed changes
+    "build" : "104"
 }

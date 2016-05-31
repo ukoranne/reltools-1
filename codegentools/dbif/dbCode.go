@@ -489,7 +489,6 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 			return err
 		}`)
 	lines = append(lines, `
-						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -501,50 +500,35 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 								fieldTyp := objTyp.Field(i)
 								fieldVal := objVal.Field(i)
 								fieldName := fieldTyp.Name
-								if fieldVal.Kind() == reflect.Int ||
-									fieldVal.Kind() == reflect.Int8 ||
-									fieldVal.Kind() == reflect.Int16 ||
-									fieldVal.Kind() == reflect.Int32 ||
-									fieldVal.Kind() == reflect.Int64 || 
-									fieldVal.Kind() == reflect.Uint ||
-									fieldVal.Kind() == reflect.Uint8 ||
-									fieldVal.Kind() == reflect.Uint16 ||
-									fieldVal.Kind() == reflect.Uint32 ||
-									fieldVal.Kind() == reflect.Uint64 || 
-									fieldVal.Kind() == reflect.Bool || 
-									fieldVal.Kind() == reflect.String {
-						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
-								} else if fieldVal.Kind() == reflect.Slice {
-					                    secObjVal := fieldVal.Index(0)
+								if fieldVal.Kind() == reflect.Slice {
+									if fieldVal.Len() > 0 {
+										secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
 										if err != nil {
 											return err
 										}
-					                    if secObjVal.Kind() == reflect.Struct {
-												bytes, err := json.Marshal(fieldVal.Interface())
+										if secObjVal.Kind() == reflect.Struct {
+											bytes, err := json.Marshal(fieldVal.Interface())
+											if err != nil {
+												return err
+											}
+											_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
+											if err != nil {
+												return err
+											}
+										} else {
+											for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
+												_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
 												if err != nil {
 													return err
 												}
-												_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
-												if err != nil {
-													return err
-												}
-					                    } else {
-												for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
-													_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
-													if err != nil {
-														return err
-													}
-												}
+											}
 										}
+									}
 								}
 							}
 							idx++
 						}
-//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-//						if err != nil {
-//							return err
-//						}
 						return nil
 					}`)
 	for _, line := range lines {
@@ -793,6 +777,37 @@ func (obj *ObjectInfoJson) ConvertObjectMembersMapToOrderedSlice(attrMap map[str
 	}
 	return
 }
+func (obj *ObjectInfoJson) WriteLicenseInfo(fd *os.File) {
+	var lines []string
+	lines = append(lines, `
+//Copyright [2016] [SnapRoute Inc]
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//	 Unless required by applicable law or agreed to in writing, software
+//	 distributed under the License is distributed on an "AS IS" BASIS,
+//	 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//	 See the License for the specific language governing permissions and
+//	 limitations under the License.
+//
+//   This is a auto-generated file, please do not edit!
+//  _______  __       __________   ___      _______.____    __    ____  __  .___________.  ______  __    __  
+// |   ____||  |     |   ____\  \ /  /     /       |\   \  /  \  /   / |  | |           | /      ||  |  |  | 
+// |  |__   |  |     |  |__   \  V  /     |   (----  \   \/    \/   /  |  |  ---|  |---- |  ,---- |  |__|  | 
+// |   __|  |  |     |   __|   >   <       \   \      \            /   |  |     |  |     |  |     |   __   | 
+// |  |     |  ----. |  |____ /  .  \  .----)   |      \    /\    /    |  |     |  |     |   ----.|  |  |  | 
+// |__|     |_______||_______/__/ \__\ |_______/        \__/  \__/     |__|     |__|      \______||__|  |__| 
+//                                                                                                           
+	`)
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
 
 func (obj *ObjectInfoJson) WriteDBFunctions(str *ast.StructType, attrMap map[string]ObjectMembersInfo, objMap map[string]ObjectInfoJson) {
 	fileHeaderOptionalForState := ""
@@ -802,6 +817,7 @@ func (obj *ObjectInfoJson) WriteDBFunctions(str *ast.StructType, attrMap map[str
 		return
 	}
 	defer dbFile.Close()
+	obj.WriteLicenseInfo(dbFile)
 	attrMapSlice := obj.ConvertObjectMembersMapToOrderedSlice(attrMap)
 	if strings.Contains(obj.Access, "w") || strings.Contains(obj.Access, "rw") {
 		dbFile.WriteString(fileHeader)
