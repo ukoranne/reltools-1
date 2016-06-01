@@ -789,7 +789,6 @@ def get_children(ctx, fdDict, i_children, module, parent, path=str(), \
 
             # create struct skeleton
             # this will create the beginning of the struct definition
-            #import ipdb;ipdb.set_trace()
             structName = CreateStructSkeleton(module, fdDict["struct"], parent, path)
             if structName != '':
                 #print 'creating unique class name', structName
@@ -930,7 +929,6 @@ def CreateStructSkeleton(module, nfd, parent, path, write=True):
                         print 'genObjectConfig exists but problem with json', e
                         gYangObjInfo = {}
 
-        # import ipdb; ipdb.set_trace()
         if parent.i_module.i_modulename in gOwnersInfo:
             nfd.write("type %s struct {\n" % structName)
 
@@ -975,7 +973,7 @@ def createGONewStructMethod(ctx, module, classes, nfd, parent, path):
     return structName
 
 def setSelectionFromElemtype(elemtype,):
-
+    isRange = False 
     elements_str = ""
     restriction = None
     if 'restriction_argument' in elemtype:
@@ -986,34 +984,34 @@ def setSelectionFromElemtype(elemtype,):
             restriction = elemtype['restriction_dict']['restriction_argument']
             elements_str += ", SELECTION: "
         else:
-            #import ipdb; ipdb.set_trace()
             if type(elemtype['restriction_dict']) == dict:
-                #print elemtype['restriction_dict']
                 for k, v in elemtype['restriction_dict'].iteritems():
                     if k == 'range':
+                        isRange = True
                         range = v.split("..")
-                        elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                        elements_str += ", MIN: \"%s\" ,  MAX: \"%s\"" %(int(range[0]), int(range[1]))
                     elif k == 'length':
                         if '..' in v:
                             range = v.split("..")
-                            elements_str += ", SELECTION: MIN %s MAX %s" %(int(range[0]), int(range[1]))
+                            elements_str += ", MIN : \"%s\" ,MAX : \"%s\"" %(int(range[0]), int(range[1]))
                         else:
                             length = int(v)
-                            elements_str += ", SELECTION: LEN %s" %(length,)
+                            elements_str += ", LEN : \"%s\"" %(length,)
                     else:
-                        elements_str += ", SELECTION: %s" % v
-            #else:
-            #    elements_str += ", SELECTION: %s" % elemtype['restriction_dict']
-
+                        elements_str += ", SELECTION: \"%s\"" % v
+    
+    #if isRange:
+    #    print elements_str
     if restriction:
         for k, v in restriction.iteritems():
             elements_str += "%s(%s)/" %(k, v['value'])
         elements_str = elements_str.rstrip('/')
 
+    #if isRange:
+    #    print elements_str
     return elements_str
 
 def setDefaultFromElemtype(elem):
-    #import ipdb; ipdb.set_trace()
     elements_str = ""
     restriction = None
     if 'default' in elem and elem['default']:
@@ -1069,8 +1067,6 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
 
         if safe_name(name) in elementList:
             continue
-        #import ipdb; ipdb.set_trace()
-        # is key?
         if elemtype[1]:
             #elements_str += "\t// parent %s\n" % elemtype[0][0]
             if isinstance(elemtype[0][1]["native_type"], list):
@@ -1131,9 +1127,6 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
         if elemName in elementList:
             continue
 
-        #import ipdb; ipdb.set_trace()
-        #elements_str += "\t//yang_name: %s class: %s\n" % (i['yang_name'], i['class'])
-        #elements_str += "\t//%s\n" % (i['description'].replace('\n', ' '))
         if i["class"] == "leaf-list":
             #print '******************************************'
             #print "GO-STRUCT %s %s %s %s %s" % (elemName, i["class"], i["type"]["native_names"], i["type"]["native_type"], type(i["type"]["native_names"]))
@@ -1251,8 +1244,6 @@ def addGOStructMembers(structName, elements, keyval, parentChildrenLeaf, nfd):
                 else:
                     elements_str += "\t%s %s" % (elemName, membertype)
                     elements_str += " `DESCRIPTION: %s" %(attrDescriptionDict[elemName].replace('\n',' '))
-
-                import ipdb; ipdb.set_trace()
                 if 'elemtype' in i:
                     elements_str += setSelectionFromElemtype(i['elemtype'])
                 elements_str += setDefaultFromElemtype(i)
@@ -1566,7 +1557,6 @@ def get_element(ctx, fdDict, element, module, parent, path,
     else:
         newpath = path
 
-    #import ipdb; ipdb.set_trace()
 
     this_object = []
     default = False
