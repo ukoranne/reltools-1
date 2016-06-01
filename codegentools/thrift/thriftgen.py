@@ -150,12 +150,18 @@ class DaemonObjectsInfo (object) :
                         thriftfd.write("\t%s : %s %s\n" % (index,
                                                          str(attrInfo['type']),
                                                          attrName))
-             
             thriftfd.write('}\n')
+             
             if 'r' in structInfo['access']:
                 thriftfd.write("""struct %sGetInfo {\n\t1: int StartIdx\n\t2: int EndIdx\n\t3: int Count\n\t4: bool More\n\t5: list<%s> %sList\n}\n""" %(structName, structName, structName))
 
 
+        thriftfd.write("""\nstruct PatchOpInfo {
+    1 : string Op
+    2 : string Path
+    3 : string Value
+}
+			        \n""")
         if sName == "nil" :
             thriftfd.write("service %sServices {\n" % (dmn.upper()))
         elif "Services" in dmn: 
@@ -166,7 +172,7 @@ class DaemonObjectsInfo (object) :
             s = structName
             if 'w' in structInfo['access'] or 'rw' in structInfo['access']:
                 thriftfd.write(
-                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset, 4: string op);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
+                    """\tbool Create%s(1: %s config);\n\tbool Update%s(1: %s origconfig, 2: %s newconfig, 3: list<bool> attrset, 4: list<PatchOpInfo> op);\n\tbool Delete%s(1: %s config);\n\n""" % (s, s, s, s, s, s, s))
 
                 if structInfo['accelerated']:
                     thriftfd.write(
@@ -465,13 +471,23 @@ class DaemonObjectsInfo (object) :
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
         clientIfFd.write("""
-                            func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op string, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+                            func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, patchOpInfo []models.PatchOpInfo, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    ok = false
             err = nil
+			
+			var op []*%s.PatchOpInfo = make([]*%s.PatchOpInfo, 0)
+			var opArr []%s.PatchOpInfo = make([]%s.PatchOpInfo,0)
+	        for _, tempOp := range patchOpInfo {
+		        opArr = append(opArr, %s.PatchOpInfo{tempOp.Op, tempOp.Path, tempOp.Value})
+	        }
+	        for opIdx := 0; opIdx < len(opArr); opIdx++ {
+	 	        op = append(op, &opArr[opIdx])
+ 	        }
+
             switch obj.(type) {
-        """ %(self.newDeamonName))
+        """ %(self.newDeamonName,self.servicesName,self.servicesName,self.servicesName, self.servicesName, self.servicesName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
             s = structName
@@ -493,68 +509,6 @@ class DaemonObjectsInfo (object) :
                     if clnt.ClientHdl != nil {
                         ok, err = clnt.ClientHdl.Update%s(origconf, updateconf, attrSet, op)
                         if err == nil && ok == true {\n""" %s)
-                if array_obj == 'True' :
-                    clientIfFd.write("""    
-				         if op == "add" {
-					        fmt.Println("Add operation in update")
-					        if attrSet != nil {
-						        objTyp := reflect.TypeOf(*origconf)
-				                fmt.Println("attr set not nil, set individual attributes")
-						        for i := 0; i < objTyp.NumField(); i++ {
-							        objName := objTyp.Field(i).Name\n""")
-                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
-                         if attrInfo['isArray'] != 'False' :
-                              clientIfFd.write("""    
-							        if attrSet[i] && objName == "%s" {
-									    fmt.Println("add ", objName)
-									    for j := 0; j < len(origdata.%s); j++ {
-										    updatedata.%s = append(updatedata.%s, origdata.%s[j])
-									    }
-							        }\n"""%(attrName, attrName, attrName, attrName, attrName))
-                    clientIfFd.write("""
-						        }
-					        }
-					    }\n""")
-                    clientIfFd.write("""    
-				         if op == "remove" {
-					        fmt.Println("remove operation in update")
-					        if attrSet != nil {
-						        objTyp := reflect.TypeOf(*origconf)
-				                fmt.Println("attr set not nil, set individual attributes")
-						        for i := 0; i < objTyp.NumField(); i++ {
-							        objName := objTyp.Field(i).Name\n""")
-                    for attrName, attrInfo in self.convertMemberInfoToOrderedList(structName, structInfo) :
-                         if attrInfo['isArray'] != 'False' :
-                              clientIfFd.write("""    
-							        if attrSet[i] && objName == "%s" {
-									    fmt.Println("remove ", objName)
-										for i1 := 0; i1< len(updatedata.%s); i1++ {
-											found := false
-											match := -1
-											for i2 := 0; i2 < len(origdata.%s) ; i2++ {
-												if origdata.%s[i2] == updatedata.%s[i1] {
-													found = true
-													match = i2
-													break
-												}
-											}
-											if !found {
-											} else {
-												origdata.%s[match] = origdata.%s[len(origdata.%s) - 1]
-										         origdata.%s = origdata.%s[:(len(origdata.%s)-1)]
-											}
-										}
-										updatedata.%s = updatedata.%s[:0]
-									    for i3 := 0; i3 < len(origdata.%s); i3++ {
-										    updatedata.%s = append(updatedata.%s, origdata.%s[i3])
-									    }
-							        }\n"""%(attrName, attrName, attrName, attrName, attrName, attrName,
-                                               attrName, attrName, attrName, attrName, attrName, attrName,
-											attrName, attrName, attrName, attrName, attrName))
-                    clientIfFd.write("""
-						        }
-					        }
-					    }\n""")
                 clientIfFd.write(""" 
                               err = dbHdl.UpdateObjectInDb(updatedata, dbObj, attrSet)
                               if err != nil {
@@ -665,8 +619,8 @@ class DaemonObjectsInfo (object) :
         #if (len([ x for x,y in accessDict.iteritems() if x in crudStructsList and 'r' in y]) > 0):
         # BELOW CODE WILL BE FORMATED BY GOFMT
         clientIfFd.write("""import (\n "%s"\n"fmt"\n"models"\n"utils/ipcutils"\n"utils/dbutils"\n""" % self.servicesName)
-        if array_obj == 'True' :
-            clientIfFd.write(""" "reflect"\n""" )		
+        #if array_obj == 'True' :
+            #clientIfFd.write(""" "reflect"\n""" )		
         clientIfFd.write(""")\n""")
         self.clientIfBasicHelper(clientIfFd)
         self.createClientIfCreateObject(clientIfFd, objectNames)
