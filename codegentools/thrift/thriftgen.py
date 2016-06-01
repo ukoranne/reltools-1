@@ -292,10 +292,12 @@ class DaemonObjectsInfo (object) :
                                  var err error
                                  if clnt.IsConnectedToServer() {
                                      err = clnt.CloseIPCHandles()
-                                 }
-                                 if err != nil {
-                                     fmt.Println("Failed to close IPC handles: ", err)
-                                     return false
+                                     if err != nil {
+                                         fmt.Println("Failed to close IPC handles: ", err)
+                                         return false
+                                     }
+                                     clnt.IsConnected = false
+                                     clnt.ClientHdl = nil
                                  }
                                  return true
                             }\n""" % (self.newDeamonName))
