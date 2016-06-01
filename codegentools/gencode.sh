@@ -14,7 +14,7 @@ for srcFile in `cat $SR_CODE_BASE/reltools/codegentools/._genInfo/generatedGoFil
 do
 if [[ $srcFile == *."go"* ]]
 then
-	   gofmt -w $srcFile
+	   go fmt $srcFile
 fi
 done    
 cd $SR_CODE_BASE/reltools/codegentools/apigen
