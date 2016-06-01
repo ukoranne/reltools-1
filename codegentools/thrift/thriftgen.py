@@ -273,7 +273,8 @@ class DaemonObjectsInfo (object) :
                                 clnt.Address = address
                                 return
                             }\n""" % (self.newDeamonName,))
-        clientIfFd.write("""func (clnt *%sClient) ConnectToServer() bool {
+        clientIfFd.write("""
+                            func (clnt *%sClient) ConnectToServer() bool {
 
                                 clnt.TTransport, clnt.PtrProtocolFactory, _ = ipcutils.CreateIPCHandles(clnt.Address)
                                 if clnt.TTransport != nil && clnt.PtrProtocolFactory != nil {
@@ -286,15 +287,30 @@ class DaemonObjectsInfo (object) :
                                 }
                                 return true
                             }\n""" % (self.newDeamonName, self.servicesName, self.newDeamonName))
-        clientIfFd.write("""func (clnt *%sClient) IsConnectedToServer() bool {
+        clientIfFd.write("""
+                            func (clnt *%sClient) DisconnectFromServer() bool {
+                                 var err error
+                                 if clnt.IsConnectedToServer() {
+                                     err = clnt.CloseIPCHandles()
+                                 }
+                                 if err != nil {
+                                     fmt.Println("Failed to close IPC handles: ", err)
+                                     return false
+                                 }
+                                 return true
+                            }\n""" % (self.newDeamonName))
+        clientIfFd.write("""
+                            func (clnt *%sClient) IsConnectedToServer() bool {
                                 return clnt.IsConnected
                             }\n""" % (self.newDeamonName,))
-        clientIfFd.write("""func (clnt *%sClient) GetServerName() string {
+        clientIfFd.write("""
+                            func (clnt *%sClient) GetServerName() string {
                                 return clnt.Name
                             }\n""" % (self.newDeamonName,))
 
     def createClientIfCreateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""
+                            func (clnt *%sClient) CreateObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, bool) {
                             var err error
                             var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -329,7 +345,8 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfDeleteObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""
+                            func (clnt *%sClient) DeleteObject(obj models.ConfigObj, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
                                 var err error
                                 var ok bool
                                 switch obj.(type) {\n""" % (self.newDeamonName,))
@@ -364,7 +381,8 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfGetObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, models.ConfigObj) {
+        clientIfFd.write("""
+                            func (clnt *%sClient) GetObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil) (error, models.ConfigObj) {
             switch obj.(type) {\n""" % (self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -417,7 +435,8 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfExecuteAction(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) ExecuteAction(obj models.ConfigObj) error {
+        clientIfFd.write("""
+                            func (clnt *%sClient) ExecuteAction(obj models.ConfigObj) error {
             switch obj.(type) {\n""" % (self.newDeamonName))
         for structName, structInfo in objectNames.objectDict.iteritems ():
             structName = str(structName)
@@ -443,7 +462,8 @@ class DaemonObjectsInfo (object) :
                             }\n""")
 
     def createClientIfUpdateObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op string, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
+        clientIfFd.write("""
+                            func (clnt *%sClient) UpdateObject(dbObj models.ConfigObj, obj models.ConfigObj, attrSet []bool, op string, objKey string, dbHdl *dbutils.DBUtil) (error, bool) {
             var ok bool
             var err error
 	    ok = false
@@ -553,7 +573,8 @@ class DaemonObjectsInfo (object) :
                 }\n""")
 
     def createClientIfGetBulkObject(self, clientIfFd, objectNames):
-        clientIfFd.write("""func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil, currMarker int64, count int64) (err error,
+        clientIfFd.write("""
+                            func (clnt *%sClient) GetBulkObject(obj models.ConfigObj, dbHdl *dbutils.DBUtil, currMarker int64, count int64) (err error,
                                             objCount int64,
                                             nextMarker int64,
                                             more bool,
