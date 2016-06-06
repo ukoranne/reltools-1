@@ -49,6 +49,7 @@ installdir:
 
 .PHONY:buildinfogen
 buildinfogen:
+	echo 'Generating build information'
 	$(shell python $(SR_CODE_BASE)/reltools/buildInfoGen.py)
 
 codegen:
