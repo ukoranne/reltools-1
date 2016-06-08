@@ -287,6 +287,7 @@ def cloneSnapRouteGitRepos( gitReposToClone = None):
         gitReposToClone = []
         with open('setupInfo.json') as data_file:
             data = json.load(data_file)
+            #gitReposToClone = data['repos']['snaproute']
             gitReposToClone = data['PrivateRepos']
 
     for repo in gitReposToClone:
