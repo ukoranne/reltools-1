@@ -11,7 +11,7 @@ TEMPLATE_BUILD_DIR = "flexswitch-0.0.1"
 TEMPLATE_BUILD_TARGET = "cel_redstone"
 
 def buildDocker (command) :
-    p = subprocess.Popen(command , shell=True, stdout=PIPE, stderr=PIPE)
+    p = subprocess.Popen(command , shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     print out.rstrip(), err.rstrip()
     print "Docker image return code ", p.returncode 
