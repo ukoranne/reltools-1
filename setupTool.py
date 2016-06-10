@@ -15,19 +15,28 @@ class setupGenie (object) :
         self.usrName = gitUsrName
         if role in ['y', 'yes', 'Y', 'Yes', 'YES']:
             self.internalUser = True
-            self.org = self.info['SnapRouteOrg']
+            self.org = 'SnapRoute'
         else:
             self.internalUser = False
             self.org = 'OpenSnapRoute'
 
         with open(self.setupInfo) as dataFile:
             self.info = json.load(dataFile)                                                                                 
+        self.generateSrcInfo()
 
     def getExternalInstalls(self, comp = None) :
         if comp:
             return { comp+'Deps' : self.info['Externals'] [comp+'Deps']}
         else:
             return self.info['Externals']
+
+    def generateSrcInfo (self) :
+        srcInfoFile = 'srcInfo.json'
+        with open(srcInfoFile, 'w') as fd :
+            rpList =  self.getSRRepos()
+            srcInfo = {'repos': { 'snaproute': rpList},
+                       'srcLocation':SNAP_ROUTE_SRC }
+            json.dump(srcInfo,fd, indent=4)
 
     def getGoDeps (self, comp = None) :
         return self.info['GoDeps']
@@ -41,7 +50,10 @@ class setupGenie (object) :
                     return self.anchor + EXTERNAL_SRC + dep['repo']
 
     def getSRRepos(self, comp = None) :
-        return self.info['SnapRouteRepos']
+        if self.internalUser:
+            return self.info['PrivateRepos']
+        else:
+            return self.info['PublicRepos']
 
     def getExtSrcDir (self ) :
         return self.anchor + EXTERNAL_SRC

@@ -15,6 +15,7 @@ def setupHandler():
     return getSetupHdl('setupInfo.json', gAnchorDir, gGitUsrName, gRole)
 
 def setupExternals (comp=None):
+    print 'Installing all External dependencies....'
     info = setupHandler().getExternalInstalls(comp)
     for comp, deps in info.iteritems(): 
         print 'Installing dependencies for %s' %(comp)
@@ -24,18 +25,16 @@ def setupExternals (comp=None):
                 local(cmd)
 
 def setupGoDeps(comp=None, gitProto='http'):
+    print 'Fetching external  Golang repos ....'
     info = setupHandler().getGoDeps(comp)
     extSrcDir = setupHandler().getExtSrcDir()
-    print extSrcDir
     org = setupHandler().getOrg()
     for rp in info:
         with lcd(extSrcDir):
-            print rp
             if gitProto == "ssh":
                 repoUrl = 'git@github.com:%s/%s' %(org , rp['repo'])
             else:
                 repoUrl = 'https://github.com/%s/%s' %(org , rp['repo'])
-            print repoUrl
             dstDir =  rp['renamedst'] if rp.has_key('renamedst') else ''
             dirToMake = dstDir 
             if dstDir == '' or (dstDir != '' and not (os.path.exists(extSrcDir+ dstDir + '/' + rp['repo']))):
@@ -56,6 +55,7 @@ def setupGoDeps(comp=None, gitProto='http'):
                 local(cmd)
 
 def setupSRRepos( gitProto = 'http' , comp = None):
+    print 'Fetching Snaproute repositories dependencies....'
     srRepos = setupHandler().getSRRepos()
     org = setupHandler().getOrg()
     internalUser =  setupHandler().getUsrRole()
@@ -97,15 +97,19 @@ def setupSRRepos( gitProto = 'http' , comp = None):
                         local(cmd)
 def installThrift():
     TMP_DIR = ".tmp"
-    thrift_version = '0.9.3'
-    thrift_pkg_name = 'thrift-'+thrift_version 
-    thrift_tar = thrift_pkg_name +'.tar.gz'
+    thriftVersion = '0.9.3'
+    thriftPkgName = 'thrift-'+thriftVersion 
+    if _verifyThriftInstallation(thriftVersion):
+        print 'Thrift Already installed. Skipping installation'
+        return
+
+    thrift_tar = thriftPkgName +'.tar.gz'
     local('mkdir -p '+TMP_DIR)
     local('wget -O '+ TMP_DIR + '/' +thrift_tar+ ' '+ 'http://www-us.apache.org/dist/thrift/0.9.3/thrift-0.9.3.tar.gz')
     
     with lcd(TMP_DIR):
         local('tar -xvf '+ thrift_tar)
-        with lcd (thrift_pkg_name):
+        with lcd (thriftPkgName):
             local ('./configure --with-java=false')
             local ('make')
             local ('sudo make install')
@@ -155,6 +159,23 @@ def _createDirectoryStructure() :
     for everydir in dirs:
         local('mkdir -p '+ everydir) 
 
+def _verifyThriftInstallation(thriftVersion='0.9.3'):
+    with settings(warn_only=True):
+        ret = local('which thrift', capture=True)
+        if ret.failed:
+           return False
+    resp =  local('thrift -version', capture=True)
+    return thriftVersion in resp
+
+def printInstruction():
+    print "###########################"
+    print "Please add the following lines in your ~/.bashrc file"
+    print "###########################"
+    print "export PATH=$PATH:/usr/local/go/bin"
+    print "export SR_CODE_BASE=$HOME/git"
+    print "export GOPATH=$SR_CODE_BASE/snaproute/:$SR_CODE_BASE/external/:$SR_CODE_BASE/generated/"
+    print "###########################"
+
 def setupDevEnv() :
     global gAnchorDir, gGitUsrName, gRole
     gAnchorDir = prompt('Host directory:', default='git')
@@ -169,4 +190,5 @@ def setupDevEnv() :
     installNanoMsgLib()
     installIpTables()
     setupSRRepos()
+    printInstruction()
      

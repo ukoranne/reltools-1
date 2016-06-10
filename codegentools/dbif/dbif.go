@@ -14,29 +14,19 @@ import (
 )
 
 // This structure represents the json layout for config objects
-/*
-type ObjectSrcInfo struct {
-	Access      string `json:"access"`
-	Owner       string `json:"owner"`
-	SrcFile     string `json:"srcfile"`
-	UsesStateDB bool   `json:"usesStateDB"`
-	ObjName     string
-	DbFileName  string
-	AttrList    []string
-}
-*/
-
 type ObjectInfoJson struct {
-	Access       string   `json:"access"`
-	Owner        string   `json:"owner"`
-	SrcFile      string   `json:"srcfile"`
-	Multiplicity string   `json:"multiplicity"`
-	Accelerated  bool     `json:"accelerated"`
-	UsesStateDB  bool     `json:"usesStateDB"`
-	AutoCreate   bool     `json:"autoCreate"`
-	ObjName      string   `json:"-"`
-	DbFileName   string   `json:"-"`
-	AttrList     []string `json:"-"`
+	Access        string   `json:"access"`
+	Owner         string   `json:"owner"`
+	SrcFile       string   `json:"srcfile"`
+	Multiplicity  string   `json:"multiplicity"`
+	Accelerated   bool     `json:"accelerated"`
+	UsesStateDB   bool     `json:"usesStateDB"`
+	AutoCreate    bool     `json:"autoCreate"`
+	LinkedObjects []string `json:"linkedObjects"`
+	Parent        string   `json:"parent"`
+	ObjName       string   `json:"-"`
+	DbFileName    string   `json:"-"`
+	AttrList      []string `json:"-"`
 }
 
 // This structure represents the a golang Structure for a config object
@@ -56,6 +46,8 @@ type ObjectMembersInfo struct {
 	Len          int    `json:"len"`
 	UsesStateDB  bool   `json:"usesStateDB"`
 	AutoCreate   bool   `json:"autoCreate"`
+	Parent       string `json:"-"` //`json:"parent"`
+	IsParentSet  bool   `json:"-"` //`json:"isParentSet"`
 }
 
 type ObjectMemberAndInfo struct {
@@ -75,8 +67,8 @@ func main() {
 		fmt.Println(" Environment Variable SR_CODE_BASE has not been set")
 		return
 	}
-	jsonFile := base + "/snaproute/src/models/genObjectConfig.json"
-	fileBase := base + "/snaproute/src/models/"
+	jsonFile := base + "/snaproute/src/models/objects/genObjectConfig.json"
+	fileBase := base + "/snaproute/src/models/objects/"
 	var objMap map[string]ObjectInfoJson
 
 	//
@@ -92,7 +84,7 @@ func main() {
 	// structure here.
 	//
 
-	goObjSources := base + "/snaproute/src/models/goObjInfo.json"
+	goObjSources := base + "/snaproute/src/models/objects/goObjInfo.json"
 
 	listingsFd, err := os.OpenFile(listingFile, os.O_RDWR|os.O_APPEND+os.O_CREATE, 0660)
 	if err != nil {
@@ -110,6 +102,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error in unmarshaling data from ", goObjSources, err)
 	}
+
 	for goSrcFile, ownerName := range goSrcsMap {
 		generateHandCodedObjectsInformation(listingsFd, fileBase, goSrcFile, ownerName.Owner)
 	}
@@ -124,14 +117,12 @@ func main() {
 		fmt.Printf("Error in unmarshaling data from ", jsonFile, err)
 	}
 
+	parentChild := make(map[string][]string, 1)
+	childParent := make(map[string]string, 1)
 	for name, obj := range objMap {
 		obj.ObjName = name
 		srcFile := fileBase + obj.SrcFile
-		f, err := parser.ParseFile(fset,
-			srcFile,
-			nil,
-			parser.ParseComments)
-
+		f, err := parser.ParseFile(fset, srcFile, nil, parser.ParseComments)
 		if err != nil {
 			fmt.Println("Failed to parse input file ", srcFile, err)
 			return
@@ -154,6 +145,15 @@ func main() {
 								if val.AutoCreate == true {
 									obj.AutoCreate = true
 								}
+								if val.IsParentSet {
+									// Set parent to true when auto create is set
+									// Temporarily store parent child into a map...
+									//fmt.Println("Child:", typ.Name.Name, "Parent:", val.Parent)
+									pEntry := parentChild[val.Parent]
+									pEntry = append(pEntry, typ.Name.Name)
+									parentChild[val.Parent] = pEntry
+									childParent[typ.Name.Name] = val.Parent
+								}
 							}
 							obj.DbFileName = fileBase + "gen_" + typ.Name.Name + "dbif.go"
 							if strings.ContainsAny(obj.Access, "rw") {
@@ -167,6 +167,9 @@ func main() {
 			}
 		}
 	}
+
+	// Update genObjectConfig.json file with linkedObjects information...
+	addLinkedObjectToGenObjConfig(parentChild, childParent, objMap, jsonFile)
 	objectsByOwner := make(map[string][]ObjectInfoJson, 1)
 	for name, obj := range objMap {
 		obj.ObjName = name
@@ -177,6 +180,39 @@ func main() {
 	genJsonSchema(dirStore, objectsByOwner)
 }
 
+func addLinkedObjectToGenObjConfig(parentChild map[string][]string, childParent map[string]string,
+	objMap map[string]ObjectInfoJson, jsonFile string) {
+	//fmt.Println("ParentChild", parentChild)
+	for key, value := range parentChild {
+		//fmt.Println("key is", key, "value is", value)
+		entry, exists := objMap[key]
+		if exists {
+			entry.LinkedObjects = append(entry.LinkedObjects, value...)
+			objMap[key] = entry
+		}
+	}
+
+	for key, value := range childParent {
+		entry, exists := objMap[key]
+		if exists {
+			entry.Parent = value
+			objMap[key] = entry
+		}
+	}
+	lines, err := json.MarshalIndent(objMap, "", " ")
+	if err != nil {
+		fmt.Println("Error is ", err)
+	} else {
+		genFile, err := os.Create(jsonFile)
+		if err != nil {
+			fmt.Println("Failed to open the file", jsonFile)
+			return
+		}
+		defer genFile.Close()
+		genFile.WriteString(string(lines))
+	}
+}
+
 func getObjectMemberInfo(objMap map[string]ObjectInfoJson, objName string) (membersInfo map[string]ObjectMembersInfo) {
 	fset := token.NewFileSet() // positions are relative to fset
 	base := os.Getenv("SR_CODE_BASE")
@@ -184,7 +220,7 @@ func getObjectMemberInfo(objMap map[string]ObjectInfoJson, objName string) (memb
 		fmt.Println(" Environment Variable SR_CODE_BASE has not been set")
 		return membersInfo
 	}
-	fileBase := base + "/snaproute/src/models/"
+	fileBase := base + "/snaproute/src/models/objects"
 	for name, obj := range objMap {
 		if objName == name {
 			obj.ObjName = name
@@ -250,19 +286,21 @@ func getSpecialTagsForAttribute(attrTags string, attrInfo *ObjectMembersInfo) {
 			case "MIN":
 				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 			case "MAX":
-				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
+				attrInfo.Max, _ = strconv.Atoi(strings.TrimSpace(keys[idx+1]))
 			case "RANGE":
 				attrInfo.Min, _ = strconv.Atoi(keys[idx+1])
 				attrInfo.Max, _ = strconv.Atoi(keys[idx+1])
-			case "LEN":
-				fmt.Println(keys)
-				attrInfo.Len, _ = strconv.Atoi(keys[idx])
+			case "STRLEN":
+				attrInfo.Len, _ = strconv.Atoi(keys[idx+1])
 			case "QPARAM":
 				attrInfo.QueryParam = keys[idx+1]
 			case "USESTATEDB":
 				attrInfo.UsesStateDB = true
 			case "AUTOCREATE":
 				attrInfo.AutoCreate = true
+			case "PARENT":
+				attrInfo.Parent = strings.TrimSpace(keys[idx+1])
+				attrInfo.IsParentSet = true
 			}
 		}
 	}
@@ -346,11 +384,7 @@ func generateHandCodedObjectsInformation(listingsFd *os.File, fileBase string, s
 	fset := token.NewFileSet() // positions are relative to fset
 
 	// Now read the contents of Hand coded Go structures
-	f, err := parser.ParseFile(fset,
-		fileBase+srcFile,
-		nil,
-		parser.ParseComments)
-
+	f, err := parser.ParseFile(fset, fileBase+srcFile, nil, parser.ParseComments)
 	if err != nil {
 		fmt.Println("Failed to parse input file ", srcFile, err)
 		return err
@@ -423,7 +457,7 @@ func generateSerializers(listingsFd *os.File, fileBase string, dirStore string, 
 	for owner, objList := range objectsByOwner {
 		if len(objList) > 0 {
 			srcFile := objList[0].SrcFile
-			if owner != "lacpd" || owner != "ospfd" {
+			if owner != "lacpd" { //|| owner != "ospfd" {
 				generateUnmarshalFcn(listingsFd, fileBase, dirStore, owner, srcFile, objList)
 			}
 		}
@@ -485,7 +519,7 @@ func generateUnmarshalFcn(listingsFd *os.File, fileBase string, dirStore string,
 		}
 	}
 	if len(marshalFcnsLine) > 0 {
-		marshalFcnFd.WriteString(`package models
+		marshalFcnFd.WriteString(`package objects
 
 													import (
 													   "encoding/json"

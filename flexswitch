@@ -135,7 +135,7 @@ def getDaemonsInfo (baseDir) :
                      'params': '-params=' + baseDir + '/params'},
 
                     {'name': 'confd',
-                     'runlevel' : 14,
+                     'runlevel' : 15,
                      'params': '-params=' + baseDir + '/params'},
 
                     ]

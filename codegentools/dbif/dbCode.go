@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var fileHeader = `package models
+var fileHeader = `package objects
 import (
    "fmt"
    "encoding/json"
@@ -22,7 +22,7 @@ var _ = errors.New("")
 
 `
 
-var fileHeaderForState = `package models
+var fileHeaderForState = `package objects
 import (
    "fmt"
    "github.com/garyburd/redigo/redis"
@@ -489,7 +489,6 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 			return err
 		}`)
 	lines = append(lines, `
-						//primaryArgs := redis.Args{}.Add(obj.GetKey())
 						objTyp := reflect.TypeOf(obj)
 						objVal := reflect.ValueOf(obj)
 						idx := 0
@@ -501,50 +500,35 @@ func (obj *ObjectInfoJson) WriteUpdateObjectInDbFcn(str *ast.StructType, fd *os.
 								fieldTyp := objTyp.Field(i)
 								fieldVal := objVal.Field(i)
 								fieldName := fieldTyp.Name
-								if fieldVal.Kind() == reflect.Int ||
-									fieldVal.Kind() == reflect.Int8 ||
-									fieldVal.Kind() == reflect.Int16 ||
-									fieldVal.Kind() == reflect.Int32 ||
-									fieldVal.Kind() == reflect.Int64 || 
-									fieldVal.Kind() == reflect.Uint ||
-									fieldVal.Kind() == reflect.Uint8 ||
-									fieldVal.Kind() == reflect.Uint16 ||
-									fieldVal.Kind() == reflect.Uint32 ||
-									fieldVal.Kind() == reflect.Uint64 || 
-									fieldVal.Kind() == reflect.Bool || 
-									fieldVal.Kind() == reflect.String {
-						//				primaryArgs = primaryArgs.Add(fieldName).Add(fieldVal.Interface())
-								} else if fieldVal.Kind() == reflect.Slice {
-					                    secObjVal := fieldVal.Index(0)
+								if fieldVal.Kind() == reflect.Slice {
+									if fieldVal.Len() > 0 {
+										secObjVal := fieldVal.Index(0)
 										_, err := dbHdl.Do("DEL", obj.GetKey()+fieldName)
 										if err != nil {
 											return err
 										}
-					                    if secObjVal.Kind() == reflect.Struct {
-												bytes, err := json.Marshal(fieldVal.Interface())
+										if secObjVal.Kind() == reflect.Struct {
+											bytes, err := json.Marshal(fieldVal.Interface())
+											if err != nil {
+												return err
+											}
+											_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
+											if err != nil {
+												return err
+											}
+										} else {
+											for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
+												_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
 												if err != nil {
 													return err
 												}
-												_, err = dbHdl.Do("SET", obj.GetKey()+fieldName, string(bytes))
-												if err != nil {
-													return err
-												}
-					                    } else {
-												for idx := fieldVal.Len() - 1; idx >= 0; idx-- {
-													_, err := dbHdl.Do("LPUSH", obj.GetKey()+fieldName, fieldVal.Index(idx))
-													if err != nil {
-														return err
-													}
-												}
+											}
 										}
+									}
 								}
 							}
 							idx++
 						}
-//						_, err := dbHdl.Do("HMSET", primaryArgs...) 
-//						if err != nil {
-//							return err
-//						}
 						return nil
 					}`)
 	for _, line := range lines {
@@ -582,6 +566,118 @@ func (obj *ObjectInfoJson) WriteCopyRecursiveFcn(str *ast.StructType, fd *os.Fil
 	                       }
                        }`)
 	lines = append(lines, "\n")
+	for _, line := range lines {
+		fd.WriteString(line)
+	}
+	fd.Sync()
+}
+func (obj *ObjectInfoJson) WriteMergeDbAndConfigObjForPatchUpdateFcn(str *ast.StructType, fd *os.File, attrMap []ObjectMemberAndInfo, objMap map[string]ObjectInfoJson) {
+	var lines []string
+	lines = append(lines, "\nfunc (obj "+obj.ObjName+") MergeDbAndConfigObjForPatchUpdate(dbObj ConfigObj, patchOpInfoSlice []PatchOpInfo) (ConfigObj, []bool, error) {\n")
+	lines = append(lines, "var mergedObject, tempObject  "+obj.ObjName+"\n")
+	lines = append(lines, `objTyp := reflect.TypeOf(obj)
+						dbObjVal := reflect.ValueOf(dbObj)
+						mergedObjVal := reflect.ValueOf(&mergedObject)
+	                      diff := make([]bool, objTyp.NumField())
+	                      for i := 0; i < objTyp.NumField(); i++ {
+							fieldTyp := objTyp.Field(i)
+		                      if fieldTyp.Anonymous {
+			                      continue
+		                      }
+		                      dbObjField := dbObjVal.Field(i)
+							if dbObjField.Kind() == reflect.Int ||
+								dbObjField.Kind() == reflect.Int8 ||
+								dbObjField.Kind() == reflect.Int16 ||
+								dbObjField.Kind() == reflect.Int32 ||
+								dbObjField.Kind() == reflect.Int64 {
+								mergedObjVal.Elem().Field(i).SetInt(dbObjField.Int())
+							} else if dbObjField.Kind() == reflect.Uint ||
+								dbObjField.Kind() == reflect.Uint ||
+								dbObjField.Kind() == reflect.Uint8 ||
+								dbObjField.Kind() == reflect.Uint16 ||
+								dbObjField.Kind() == reflect.Uint32 {
+								mergedObjVal.Elem().Field(i).SetUint(dbObjField.Uint())
+							} else if dbObjField.Kind() == reflect.Bool {
+								mergedObjVal.Elem().Field(i).SetBool(dbObjField.Bool())
+							} else if dbObjField.Kind() == reflect.Slice {
+                                   obj.CopyRecursive(mergedObjVal.Elem().Field(i), dbObjField)
+                              } else {
+								mergedObjVal.Elem().Field(i).SetString(dbObjField.String())
+							}
+						}
+       	                 for _, patchOpInfo := range patchOpInfoSlice {
+		                     idx := 0
+	                         for i := 0; i < objTyp.NumField(); i++ {
+		                         fieldTyp := objTyp.Field(i)
+		                         if fieldTyp.Anonymous {
+			                        continue
+		                         }
+			                    if fieldTyp.Name == patchOpInfo.Path {
+				                   diff[idx] = true
+				                   switch patchOpInfo.Path {
+				`)
+	for _, attrInfo := range attrMap {
+		attrStr := "\"" + attrInfo.MemberName + "\""
+		lines = append(lines, "case "+attrStr+":\n")
+		lines = append(lines, "err := json.Unmarshal([]byte(patchOpInfo.Value), &tempObject."+attrInfo.MemberName+")\n")
+		lines = append(lines, `
+						                  if err != nil {
+							                 fmt.Println("error unmarshaling value:", err)
+							                 return mergedObject, diff, errors.New(fmt.Sprintln("error unmarshaling value:", err))
+						                  }
+						                  switch patchOpInfo.Op {
+						`)
+		if attrInfo.IsArray {
+			lines = append(lines, `
+						                      case "add":
+						   `)
+			lines = append(lines, " for j := 0;j< len(tempObject."+attrInfo.MemberName+");j++ {\n")
+			lines = append(lines, "mergedObject."+attrInfo.MemberName+"= append(mergedObject."+attrInfo.MemberName+", tempObject."+attrInfo.MemberName+"[j])\n")
+			lines = append(lines, "}\n")
+			lines = append(lines, `
+						                      case "remove":
+						`)
+			lines = append(lines, "for k := 0; k < len(tempObject."+attrInfo.MemberName+"); k++ {\n")
+			lines = append(lines, `
+							found := false
+							match := -1
+					`)
+			lines = append(lines, "for k2 := 0 ; k2 < len(mergedObject."+attrInfo.MemberName+");k2++{\n")
+			lines = append(lines, "if mergedObject."+attrInfo.MemberName+"[k2] == tempObject."+attrInfo.MemberName+"[k] {")
+			lines = append(lines, `
+								    found = true
+									match = k2 
+									break
+								}
+							}
+							if found {
+					`)
+			lines = append(lines, "mergedObject."+attrInfo.MemberName+"[match]  = mergedObject."+attrInfo.MemberName+"[len(mergedObject."+attrInfo.MemberName+") - 1]\n")
+			lines = append(lines, "mergedObject."+attrInfo.MemberName+" = mergedObject."+attrInfo.MemberName+"[:(len(mergedObject."+attrInfo.MemberName+") - 1)]\n")
+			lines = append(lines, `
+							}
+						}
+						 `)
+		}
+		lines = append(lines, `
+						                      case "replace":
+							                     fmt.Println("replace")
+											default:				   
+					                              fmt.Println("Patch update op not supported for this attr")
+								                 return mergedObject, diff, errors.New("Invalid patch op type ")
+				                           }
+					    `)
+	}
+	lines = append(lines, `
+	                                }
+				                    break
+			                     }
+			                     idx++
+		                      }
+	                     }
+						return mergedObject , diff, nil
+					}
+					`)
 	for _, line := range lines {
 		fd.WriteString(line)
 	}
@@ -695,6 +791,7 @@ func (obj *ObjectInfoJson) WriteLicenseInfo(fd *os.File) {
 //	 See the License for the specific language governing permissions and
 //	 limitations under the License.
 //
+//   This is a auto-generated file, please do not edit!
 //  _______  __       __________   ___      _______.____    __    ____  __  .___________.  ______  __    __  
 // |   ____||  |     |   ____\  \ /  /     /       |\   \  /  \  /   / |  | |           | /      ||  |  |  | 
 // |  |__   |  |     |  |__   \  V  /     |   (----  \   \/    \/   /  |  |  ---|  |---- |  ,---- |  |__|  | 
@@ -730,6 +827,7 @@ func (obj *ObjectInfoJson) WriteDBFunctions(str *ast.StructType, attrMap map[str
 		obj.WriteUpdateObjectInDbFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteCopyRecursiveFcn(str, dbFile)
 		obj.WriteMergeDbAndConfigObjFcn(str, dbFile, attrMapSlice, objMap)
+		obj.WriteMergeDbAndConfigObjForPatchUpdateFcn(str, dbFile, attrMapSlice, objMap)
 		obj.WriteGetBulkObjFromDbFcn(str, dbFile, attrMapSlice, objMap)
 	} else {
 		if obj.UsesStateDB {
