@@ -46,7 +46,7 @@ class apiGenie (object) :
 
         outputFile = self.outputDir + 'flexprintV2.py'
         with open(outputFile, 'w+') as fileHdl:
-            with open(filePath + 'baseShowCode.txt', 'r') as base:
+            with open(filePath + 'baseCode.txt', 'r') as base:
                 fileHdl.writelines(base.readlines())
             for objName, obj in self.objDict.iteritems():
                 obj.writeAllPrintMethods(fileHdl)
