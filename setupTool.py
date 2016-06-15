@@ -15,7 +15,7 @@ class setupGenie (object) :
         self.usrName = gitUsrName
         if role in ['y', 'yes', 'Y', 'Yes', 'YES']:
             self.internalUser = True
-            self.org = self.info['SnapRouteOrg']
+            self.org = 'SnapRoute'
         else:
             self.internalUser = False
             self.org = 'OpenSnapRoute'
